@@ -243,12 +243,15 @@ const defaultSevaCatalog: SevaItem[] = [
 ];
 
 export default function ContributePage() {
+  // Mode switcher: "general" (open-ended) or "catalog" (specific items)
+  const [activeMode, setActiveMode] = useState<"general" | "catalog">("general");
+
   const [sevaList, setSevaList] = useState<SevaItem[]>(defaultSevaCatalog);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   // Modal State for Direct Card Seva Checkout
   const [modalSeva, setModalSeva] = useState<SevaItem | null>(null);
-  const [modalTab, setModalTab] = useState<"upi_app" | "qr_code">("qr_code");
+  const [modalTab, setModalTab] = useState<"qr_code" | "upi_app">("qr_code");
   const [modalFormData, setModalFormData] = useState({
     name: "",
     phone: "",
@@ -269,7 +272,6 @@ export default function ContributePage() {
     upiRef: "",
     isNameVisible: true,
   });
-  const [showCustomQr, setShowCustomQr] = useState(false);
 
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -305,6 +307,14 @@ export default function ContributePage() {
       }
     }
     loadCategories();
+
+    // Deep link query check
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("category") || params.get("amount")) {
+        setActiveMode("catalog");
+      }
+    }
   }, []);
 
   const filteredSevas = sevaList.filter((item) => {
@@ -323,7 +333,6 @@ export default function ContributePage() {
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
-  // Helper to generate dynamic UPI String
   const generateUpiString = (amt: number, note: string) => {
     return `upi://pay?pa=${SOCIETY_UPI_ID}&pn=${encodeURIComponent(SOCIETY_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(note)}`;
   };
@@ -351,17 +360,18 @@ export default function ContributePage() {
       }
 
       const generatedPaymentId = modalFormData.upiRef.trim() 
-        ? `UPI_${modalFormData.upiRef.trim()}` 
-        : `UPI_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+        ? `UTR_${modalFormData.upiRef.trim()}` 
+        : `WEB_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
+      // Insert with "Pending Verification"
       const { error } = await supabase.from("contributions").insert({
-        contributor_name: modalFormData.name,
-        email: modalFormData.email,
-        phone: modalFormData.phone,
-        flat_number: modalFormData.flatNumber,
+        contributor_name: modalFormData.name.trim(),
+        email: modalFormData.email.trim(),
+        phone: modalFormData.phone.trim(),
+        flat_number: modalFormData.flatNumber.trim(),
         amount: Number(modalSeva.amount),
         category_id: catData?.id,
-        status: "Success",
+        status: "Pending Verification",
         is_name_visible: modalFormData.isNameVisible,
         payment_id: generatedPaymentId,
       });
@@ -369,9 +379,9 @@ export default function ContributePage() {
       if (error) throw error;
 
       setReceiptData({
-        name: modalFormData.name,
-        flatNumber: modalFormData.flatNumber,
-        phone: modalFormData.phone,
+        name: modalFormData.name.trim(),
+        flatNumber: modalFormData.flatNumber.trim(),
+        phone: modalFormData.phone.trim(),
         amount: Number(modalSeva.amount),
         category: `${modalSeva.day} - ${modalSeva.title}`,
         paymentId: generatedPaymentId,
@@ -420,17 +430,18 @@ export default function ContributePage() {
       }
 
       const generatedPaymentId = customFormData.upiRef.trim() 
-        ? `UPI_${customFormData.upiRef.trim()}` 
-        : `UPI_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+        ? `UTR_${customFormData.upiRef.trim()}` 
+        : `WEB_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
+      // Insert with "Pending Verification"
       const { error } = await supabase.from("contributions").insert({
-        contributor_name: customFormData.name,
-        email: customFormData.email,
-        phone: customFormData.phone,
-        flat_number: customFormData.flatNumber,
+        contributor_name: customFormData.name.trim(),
+        email: customFormData.email.trim(),
+        phone: customFormData.phone.trim(),
+        flat_number: customFormData.flatNumber.trim(),
         amount: Number(customAmount),
         category_id: catData?.id,
-        status: "Success",
+        status: "Pending Verification",
         is_name_visible: customFormData.isNameVisible,
         payment_id: generatedPaymentId,
       });
@@ -438,9 +449,9 @@ export default function ContributePage() {
       if (error) throw error;
 
       setReceiptData({
-        name: customFormData.name,
-        flatNumber: customFormData.flatNumber,
-        phone: customFormData.phone,
+        name: customFormData.name.trim(),
+        flatNumber: customFormData.flatNumber.trim(),
+        phone: customFormData.phone.trim(),
         amount: Number(customAmount),
         category: categoryName,
         paymentId: generatedPaymentId,
@@ -474,17 +485,17 @@ export default function ContributePage() {
           </div>
 
           <span className="text-xs uppercase font-bold text-amber-800 tracking-wider bg-amber-100/60 px-3 py-1 rounded-full">
-            Official E-Seva Confirmation
+            Offering Submitted • Receipt
           </span>
           <h1 className="font-heading text-3xl sm:text-4xl text-primary font-bold mt-2 mb-2">
             ধন্যবাদ! (Dhonnobad)
           </h1>
-          <p className="text-gray-600 text-xs sm:text-sm max-w-md mx-auto mb-8">
-            Your generous contribution to <strong>PBEL Sanskritik Samiti</strong> has been officially recorded in the Pujo Seva registry. Maa Durga bless you and your family!
+          <p className="text-gray-600 text-xs sm:text-sm max-w-md mx-auto mb-6">
+            Your generous contribution to <strong>PBEL Sanskritik Samiti</strong> has been officially received. Maa Durga bless you and your family!
           </p>
 
           {/* Official Receipt Card */}
-          <div className="bg-gradient-to-br from-[#FFFDF9] to-[#FDF8F0] rounded-2xl p-6 border border-amber-300/60 text-left text-xs sm:text-sm space-y-3 mb-8 shadow-xs">
+          <div className="bg-gradient-to-br from-[#FFFDF9] to-[#FDF8F0] rounded-2xl p-6 border border-amber-300/60 text-left text-xs sm:text-sm space-y-3 mb-6 shadow-xs">
             <div className="flex items-center justify-between pb-3 border-b border-amber-900/10">
               <div>
                 <span className="font-heading text-lg font-bold text-primary block">PBEL Sanskritik Samiti</span>
@@ -496,28 +507,37 @@ export default function ContributePage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <span className="text-gray-500 text-[11px] block">Devotee Name</span>
-                <span className="font-semibold text-gray-900">{receiptData.name}</span>
+                <span className="font-semibold text-gray-900">{receiptData.name} ({receiptData.flatNumber})</span>
               </div>
               <div>
-                <span className="text-gray-500 text-[11px] block">Flat Number</span>
-                <span className="font-semibold text-gray-900">{receiptData.flatNumber || "PBEL Resident"}</span>
-              </div>
-              <div>
-                <span className="text-gray-500 text-[11px] block">Seva Category / Purpose</span>
+                <span className="text-gray-500 text-[11px] block">Seva Purpose</span>
                 <span className="font-semibold text-gray-900">{receiptData.category}</span>
               </div>
               <div>
                 <span className="text-gray-500 text-[11px] block">Amount Contributed</span>
                 <span className="font-bold text-green-700 text-base">₹{Number(receiptData.amount).toLocaleString("en-IN")}</span>
               </div>
+              <div>
+                <span className="text-gray-500 text-[11px] block">Verification Status</span>
+                <span className="text-amber-900 font-bold bg-amber-100/90 px-2 py-0.5 rounded-md inline-block text-[11px]">
+                  ⏳ Pending Society Bank Match
+                </span>
+              </div>
             </div>
 
             <div className="pt-2 text-[11px] text-gray-500 border-t border-amber-900/10 flex items-center justify-between">
               <span>Date: {receiptData.date}</span>
               <span className="text-green-600 font-semibold flex items-center gap-1">
-                <ShieldCheck size={13} /> Direct Bank Account Verified
+                <ShieldCheck size={13} /> Direct Society ICICI A/C
               </span>
             </div>
+          </div>
+
+          <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200/80 text-xs text-amber-900 mb-6 text-left flex items-start gap-2">
+            <Info size={16} className="text-primary shrink-0 mt-0.5" />
+            <span>
+              Your contribution is being verified against our society bank account. Once approved by the committee, your name will appear on the public <strong>Wall of Contributors</strong>!
+            </span>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
@@ -548,22 +568,22 @@ export default function ContributePage() {
     <div className="flex flex-col items-center w-full min-h-screen">
       
       {/* 1. ROYAL FESTIVE HERO BANNER */}
-      <section className="w-full bg-festive-hero text-white relative overflow-hidden py-14 md:py-20 px-4 sm:px-6 lg:px-8 border-b border-amber-500/20 text-center">
+      <section className="w-full bg-festive-hero text-white relative overflow-hidden py-12 md:py-16 px-4 sm:px-6 lg:px-8 border-b border-amber-500/20 text-center">
         <div className="absolute -top-24 -right-24 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-4xl mx-auto relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-4 backdrop-blur-md">
+          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-3 backdrop-blur-md">
             <HeartHandshake size={14} className="text-amber-400" />
             <span>PBEL City Durgotsav 2026 E-Seva Portal</span>
           </div>
 
-          <h1 className="font-heading text-4xl sm:text-6xl font-bold tracking-tight text-white mb-4 leading-tight">
-            Pujo Seva & <span className="text-gold-gradient">Bhog Offerings</span>
+          <h1 className="font-heading text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3 leading-tight">
+            Pujo Seva & <span className="text-gold-gradient">Devotee Contributions</span>
           </h1>
 
-          <p className="text-sm sm:text-base text-amber-100/90 max-w-2xl mx-auto font-normal leading-relaxed mb-4">
-            Click directly on any fixed Seva card below to sponsor flowers, sweets, 108 lotuses, or Maha Bhog via <strong>Direct Society Bank UPI / QR Code</strong> (0% Gateway Fees), or use the general form at the bottom.
+          <p className="text-xs sm:text-sm text-amber-100/90 max-w-2xl mx-auto font-normal leading-relaxed mb-4">
+            Every offering, big or small, sustains the sanctity of our 6-day community celebration. Direct 0% fee bank transfer to <strong>PBEL Sanskritik Samiti</strong>.
           </p>
 
           {/* Official Bank UPI Badge */}
@@ -582,290 +602,313 @@ export default function ContributePage() {
         </div>
       </section>
 
-      {/* 2. MAIN E-SEVA CARDS STOREFRONT */}
-      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-14">
-        
-        {/* Category Filter Pills */}
-        <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
-          {[
-            { id: "all", label: "🌟 All 6-Day Offerings" },
-            { id: "flowers", label: "🌺 Flowers & Mala" },
-            { id: "bhog", label: "🍚 Maha Bhog" },
-            { id: "sweets", label: "🍬 Sweets & Prasad" },
-            { id: "rituals", label: "🪔 Sandhi Pujo & Havan" },
-            { id: "grand", label: "👑 Grand Patrons" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setCategoryFilter(tab.id)}
-              className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
-                categoryFilter === tab.id
-                  ? "bg-primary text-white shadow-md golden-glow"
-                  : "bg-white text-gray-700 border border-gray-200 hover:border-amber-400 hover:bg-amber-50/50"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Storefront Grid with Direct Pay on Every Card */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
-          {filteredSevas.map((item) => (
-            <div
-              key={item.id}
-              className="bg-white rounded-3xl p-6 border border-amber-900/15 shadow-sm hover:shadow-xl hover:border-amber-400 transition-all flex flex-col justify-between relative group"
-            >
-              {item.badge && (
-                <div className="absolute top-4 right-4">
-                  <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full uppercase">
-                    {item.badge}
-                  </span>
-                </div>
-              )}
-
-              <div>
-                <div className="text-3xl mb-2">{item.icon}</div>
-                <div className="text-xs font-bold text-amber-700 flex items-center gap-1 mb-1">
-                  <Calendar size={13} /> {item.day} ({item.date})
-                </div>
-                <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
-                  {item.title}
-                </h3>
-                <p className="text-xs text-gray-600 leading-relaxed mb-4">
-                  {item.description}
-                </p>
-              </div>
-
-              <div className="pt-4 border-t border-gray-100">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
-                    <Lock size={12} className="text-amber-600" /> Fixed Seva Amount
-                  </span>
-                  <span className="text-2xl font-bold text-primary">₹{item.amount.toLocaleString("en-IN")}</span>
-                </div>
-
-                {/* Direct UPI / QR Checkout Button */}
-                <button
-                  type="button"
-                  onClick={() => setModalSeva(item)}
-                  className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 rounded-2xl font-bold text-xs transition shadow-md golden-glow flex items-center justify-center gap-2"
-                >
-                  <QrCode size={16} />
-                  <span>Sponsor Seva • Pay ₹{item.amount.toLocaleString("en-IN")} (UPI / QR)</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* 3. GENERAL / CUSTOM OPEN-ENDED DONATION SECTION */}
-        <div id="general-donation-section" className="bg-white rounded-3xl shadow-xl border border-amber-900/15 p-6 sm:p-10">
+      {/* 2. TOP DUAL-MODE SWITCHER (ZERO SCROLLING BARRIER) */}
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 pt-8 pb-4">
+        <div className="bg-white p-2 rounded-2xl border border-amber-300/80 shadow-md flex flex-col sm:flex-row gap-2">
           
-          <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-gray-100 mb-8">
-            <div>
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100/60 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+          <button
+            type="button"
+            onClick={() => setActiveMode("general")}
+            className={`flex-1 py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
+              activeMode === "general"
+                ? "bg-primary text-white shadow-md golden-glow"
+                : "bg-gray-50 text-gray-700 hover:bg-amber-50/60"
+            }`}
+          >
+            <HeartHandshake size={17} />
+            <span>1. General Open Contribution (Any Amount)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveMode("catalog")}
+            className={`flex-1 py-3.5 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 ${
+              activeMode === "catalog"
+                ? "bg-primary text-white shadow-md golden-glow"
+                : "bg-gray-50 text-gray-700 hover:bg-amber-50/60"
+            }`}
+          >
+            <Sparkles size={17} />
+            <span>2. Sponsor Specific Seva Packages ({defaultSevaCatalog.length} Offerings)</span>
+          </button>
+
+        </div>
+      </div>
+
+      {/* 3. MODE 1: GENERAL OPEN-ENDED CONTRIBUTION (ZERO FRICTION FRONT & CENTER) */}
+      {activeMode === "general" && (
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 mb-16">
+          <div className="bg-white rounded-3xl shadow-xl border border-amber-900/15 p-6 sm:p-10">
+            
+            <div className="pb-6 border-b border-gray-100 mb-6">
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100/60 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
                 <HeartHandshake size={14} /> Open Seva Fund
-              </span>
+              </div>
               <h2 className="font-heading text-2xl sm:text-3xl text-gray-900 font-bold">
-                General / Custom Pujo Contribution
+                General Pujo Contribution
               </h2>
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs sm:text-sm text-gray-500 mt-1">
                 Contribute any custom amount directly to the PBEL Sanskritik Samiti Bank Account via UPI or QR Code.
               </p>
             </div>
-          </div>
 
-          <form onSubmit={handleCustomDonate} className="space-y-8">
-            
-            {/* Custom Amount with Quick Increment Chips */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
-                Custom Donation Amount (₹ INR) *
-              </label>
+            <form onSubmit={handleCustomDonate} className="space-y-6">
               
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 mb-3">
-                {[501, 1001, 1501, 2501, 5001, 11000].map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setCustomAmount(amt)}
-                    className={`py-2.5 px-3 rounded-xl border text-xs sm:text-sm font-bold transition-all ${
-                      customAmount === amt
-                        ? "bg-primary text-white border-primary shadow-sm"
-                        : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-amber-50 hover:border-amber-300"
-                    }`}
-                  >
-                    ₹{amt.toLocaleString("en-IN")}
-                  </button>
-                ))}
-              </div>
-
-              <div className="relative">
-                <span className="absolute left-4 top-3.5 text-gray-500 font-bold text-base">₹</span>
-                <input
-                  type="number"
-                  min="1"
-                  required
-                  value={customAmount}
-                  onChange={(e) => setCustomAmount(e.target.value ? Number(e.target.value) : "")}
-                  placeholder="Or enter any custom amount..."
-                  className="w-full pl-9 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-base font-semibold text-gray-900 transition"
-                />
-              </div>
-            </div>
-
-            {/* Custom Purpose */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-800 mb-2">
-                Contribution Purpose / Note
-              </label>
-              <input
-                type="text"
-                value={customPurpose}
-                onChange={(e) => setCustomPurpose(e.target.value)}
-                placeholder="e.g. General Pujo Fund, Pushpanjali, Cultural Stage..."
-                className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm text-gray-900 transition"
-              />
-            </div>
-
-            {/* Dynamic QR Scanner Toggle for Custom Amount */}
-            {customAmount && Number(customAmount) > 0 && (
-              <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-300 flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="text-center md:text-left space-y-1">
-                  <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
-                    <QrCode size={16} className="text-primary" /> Society Bank UPI Scanner
-                  </span>
-                  <p className="text-sm font-bold text-gray-900">
-                    Scan with GPay, PhonePe, Paytm, or BHIM to pay ₹{Number(customAmount).toLocaleString("en-IN")}
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    UPI ID: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> (PBEL Sanskritik Samiti)
-                  </p>
-                  <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
-                    <a
-                      href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
-                      className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+              {/* Quick Amount Selection Chips */}
+              <div>
+                <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-2">
+                  Select or Enter Contribution Amount (₹ INR) *
+                </label>
+                
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
+                  {[251, 501, 1001, 2001, 5001, 11000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setCustomAmount(amt)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs sm:text-sm font-bold transition-all ${
+                        customAmount === amt
+                          ? "bg-primary text-white border-primary shadow-sm scale-102"
+                          : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-amber-50 hover:border-amber-300"
+                      }`}
                     >
-                      <Smartphone size={14} /> Open UPI App on Mobile
-                    </a>
+                      ₹{amt.toLocaleString("en-IN")}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative">
+                  <span className="absolute left-4 top-3.5 text-gray-500 font-bold text-base">₹</span>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={customAmount}
+                    onChange={(e) => setCustomAmount(e.target.value ? Number(e.target.value) : "")}
+                    placeholder="Or enter any custom amount..."
+                    className="w-full pl-9 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-base font-semibold text-gray-900"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic QR Scanner & 1-Click Mobile Widget */}
+              {customAmount && Number(customAmount) > 0 && (
+                <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-300 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="text-center md:text-left space-y-1">
+                    <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
+                      <QrCode size={16} className="text-primary" /> Dynamic Society Bank UPI QR Code
+                    </span>
+                    <p className="text-sm font-bold text-gray-900">
+                      Scan with GPay, PhonePe, Paytm, or BHIM to pay ₹{Number(customAmount).toLocaleString("en-IN")}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Beneficiary: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> (PBEL Sanskritik Samiti)
+                    </p>
+                    <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
+                      <a
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
+                        className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Smartphone size={14} /> 1-Click Pay on Mobile (GPay / PhonePe)
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
+                      )}`}
+                      alt="PBEL Sanskritik Samiti UPI QR"
+                      className="w-36 h-36 mx-auto rounded-lg"
+                    />
+                    <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan & Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
                   </div>
                 </div>
+              )}
 
-                <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
-                  <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                      generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
-                    )}`}
-                    alt="PBEL Sanskritik Samiti UPI QR"
-                    className="w-36 h-36 mx-auto rounded-lg"
+              {/* Devotee Personal Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customFormData.name}
+                    onChange={(e) => setCustomFormData({ ...customFormData, name: e.target.value })}
+                    placeholder="Your Full Name"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
                   />
-                  <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan & Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    Flat Number * (Required for PBEL Residents)
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={customFormData.flatNumber}
+                    onChange={(e) => setCustomFormData({ ...customFormData, flatNumber: e.target.value })}
+                    placeholder="e.g. Tower B - 1204 / Guest"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    WhatsApp Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={customFormData.phone}
+                    onChange={(e) => setCustomFormData({ ...customFormData, phone: e.target.value })}
+                    placeholder="10-digit mobile number"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                    UPI UTR / Ref No. (From GPay / PhonePe)
+                  </label>
+                  <input
+                    type="text"
+                    value={customFormData.upiRef}
+                    onChange={(e) => setCustomFormData({ ...customFormData, upiRef: e.target.value })}
+                    placeholder="e.g. 12-digit UTR for instant verification"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-mono"
+                  />
                 </div>
               </div>
-            )}
 
-            {/* Devotee Personal Details */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-gray-100">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  Full Name *
-                </label>
+              {/* Privacy Wall Checkbox */}
+              <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/60 flex items-start gap-3">
                 <input
-                  type="text"
-                  required
-                  value={customFormData.name}
-                  onChange={(e) => setCustomFormData({ ...customFormData, name: e.target.value })}
-                  placeholder="Your Full Name"
-                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
+                  type="checkbox"
+                  id="wall-custom-visibility"
+                  checked={customFormData.isNameVisible}
+                  onChange={(e) => setCustomFormData({ ...customFormData, isNameVisible: e.target.checked })}
+                  className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mt-0.5"
                 />
+                <label htmlFor="wall-custom-visibility" className="text-xs text-gray-800 leading-normal cursor-pointer">
+                  <strong>Display my name on the public "Wall of Contributors"</strong>
+                  <span className="block text-gray-500 text-[11px] mt-0.5">
+                    Uncheck if you prefer your contribution to remain Anonymous.
+                  </span>
+                </label>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  Flat Number * (Required for PBEL Residents)
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={customFormData.flatNumber}
-                  onChange={(e) => setCustomFormData({ ...customFormData, flatNumber: e.target.value })}
-                  placeholder="e.g. Tower B - 1204 / Guest"
-                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
-                />
+              {/* Submit Action */}
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !customAmount || customAmount <= 0}
+                  className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] hover:from-[#B8801C] hover:to-[#78520D] text-white font-bold text-base py-3.5 rounded-2xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2"
+                >
+                  <HeartHandshake size={20} />
+                  <span>
+                    {isSubmitting
+                      ? "Recording Offering..."
+                      : `Confirm & Record ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Offering`}
+                  </span>
+                </button>
+                <p className="text-[11px] text-gray-400 text-center mt-2.5 flex items-center justify-center gap-1">
+                  <ShieldCheck size={13} className="text-green-600" /> Direct 100% Zero-Fee Transfer to PBEL Sanskritik Samiti Bank Account
+                </p>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  WhatsApp Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={customFormData.phone}
-                  onChange={(e) => setCustomFormData({ ...customFormData, phone: e.target.value })}
-                  placeholder="10-digit mobile number"
-                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
-                />
-              </div>
+            </form>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  UPI Ref / UTR / Transaction No. (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={customFormData.upiRef}
-                  onChange={(e) => setCustomFormData({ ...customFormData, upiRef: e.target.value })}
-                  placeholder="e.g. 12-digit UTR from GPay / PhonePe"
-                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm font-mono"
-                />
-              </div>
-            </div>
+          </div>
+        </div>
+      )}
 
-            {/* Privacy Wall Checkbox */}
-            <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200/60 flex items-start gap-3">
-              <input
-                type="checkbox"
-                id="wall-custom-visibility"
-                checked={customFormData.isNameVisible}
-                onChange={(e) => setCustomFormData({ ...customFormData, isNameVisible: e.target.checked })}
-                className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary mt-0.5"
-              />
-              <label htmlFor="wall-custom-visibility" className="text-xs sm:text-sm text-gray-800 leading-normal cursor-pointer">
-                <strong>Display my name on the public "Wall of Contributors"</strong>
-                <span className="block text-gray-500 text-xs mt-0.5">
-                  Uncheck if you prefer your contribution to remain Anonymous.
-                </span>
-              </label>
-            </div>
-
-            {/* Submit Action */}
-            <div className="pt-2">
+      {/* 4. MODE 2: DAY-WISE SPECIFIC SEVA CATALOG */}
+      {activeMode === "catalog" && (
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 mb-16">
+          
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
+            {[
+              { id: "all", label: "🌟 All 6-Day Offerings" },
+              { id: "flowers", label: "🌺 Flowers & Mala" },
+              { id: "bhog", label: "🍚 Maha Bhog" },
+              { id: "sweets", label: "🍬 Sweets & Prasad" },
+              { id: "rituals", label: "🪔 Sandhi Pujo & Havan" },
+              { id: "grand", label: "👑 Grand Patrons" },
+            ].map((tab) => (
               <button
-                type="submit"
-                disabled={isSubmitting || !customAmount || customAmount <= 0}
-                className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] hover:from-[#B8801C] hover:to-[#78520D] text-white font-bold text-lg py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2"
+                key={tab.id}
+                onClick={() => setCategoryFilter(tab.id)}
+                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                  categoryFilter === tab.id
+                    ? "bg-primary text-white shadow-md golden-glow"
+                    : "bg-white text-gray-700 border border-gray-200 hover:border-amber-400 hover:bg-amber-50/50"
+                }`}
               >
-                <HeartHandshake size={22} />
-                <span>
-                  {isSubmitting
-                    ? "Confirming Contribution..."
-                    : `Confirm & Record ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Offering`}
-                </span>
+                {tab.label}
               </button>
-              <p className="text-[11px] text-gray-400 text-center mt-3 flex items-center justify-center gap-1">
-                <ShieldCheck size={13} className="text-green-600" /> Direct 100% Zero-Fee Transfer to PBEL Sanskritik Samiti Bank Account
-              </p>
-            </div>
+            ))}
+          </div>
 
-          </form>
+          {/* Storefront Grid with Direct Pay on Every Card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {filteredSevas.map((item) => (
+              <div
+                key={item.id}
+                className="bg-white rounded-3xl p-6 border border-amber-900/15 shadow-sm hover:shadow-xl hover:border-amber-400 transition-all flex flex-col justify-between relative group"
+              >
+                {item.badge && (
+                  <div className="absolute top-4 right-4">
+                    <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full uppercase">
+                      {item.badge}
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-3xl mb-2">{item.icon}</div>
+                  <div className="text-xs font-bold text-amber-700 flex items-center gap-1 mb-1">
+                    <Calendar size={13} /> {item.day} ({item.date})
+                  </div>
+                  <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-xs text-gray-600 leading-relaxed mb-4">
+                    {item.description}
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                      <Lock size={12} className="text-amber-600" /> Fixed Seva Amount
+                    </span>
+                    <span className="text-2xl font-bold text-primary">₹{item.amount.toLocaleString("en-IN")}</span>
+                  </div>
+
+                  {/* Direct UPI / QR Checkout Button */}
+                  <button
+                    type="button"
+                    onClick={() => setModalSeva(item)}
+                    className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 rounded-2xl font-bold text-xs transition shadow-md golden-glow flex items-center justify-center gap-2"
+                  >
+                    <QrCode size={16} />
+                    <span>Sponsor Seva • Pay ₹{item.amount.toLocaleString("en-IN")} (UPI / QR)</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
 
         </div>
+      )}
 
-      </div>
-
-      {/* 4. DIRECT FIXED-SEVA QUICK CHECKOUT MODAL (WITH DYNAMIC UPI QR SCANNER) */}
+      {/* 5. DIRECT FIXED-SEVA QUICK CHECKOUT MODAL (WITH DYNAMIC UPI QR SCANNER) */}
       {modalSeva && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
@@ -1034,7 +1077,7 @@ export default function ContributePage() {
                     type="text"
                     value={modalFormData.upiRef}
                     onChange={(e) => setModalFormData({ ...modalFormData, upiRef: e.target.value })}
-                    placeholder="12-digit UTR"
+                    placeholder="12-digit UTR from GPay"
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                   />
                 </div>

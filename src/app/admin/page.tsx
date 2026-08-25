@@ -228,7 +228,30 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  const totalFund = contributions.reduce((acc, c) => acc + (c.status === "Success" ? Number(c.amount) : 0), 0);
+  // Handler to update contribution verification status
+  const handleUpdateContributionStatus = async (id: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from("contributions")
+        .update({ status: newStatus })
+        .eq("id", id);
+
+      if (error) throw error;
+
+      setContributions((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c))
+      );
+    } catch (err) {
+      console.error("Error updating contribution status:", err);
+      alert("Failed to update status.");
+    }
+  };
+
+  // 1. Overview Calculations
+  const verifiedContributions = contributions.filter((c) => c.status === "Success");
+  const pendingContributions = contributions.filter((c) => c.status === "Pending Verification" || c.status === "Pending");
+  const totalFunds = verifiedContributions.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+  const pendingFunds = pendingContributions.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
 
   // CATEGORIES CMS
   const handleSaveCategory = async (e: React.FormEvent) => {
@@ -419,7 +442,7 @@ export default function AdminDashboard() {
         <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
           <div className="text-xs font-bold text-amber-800 uppercase mb-1">Total Pujo Fund Raised</div>
           <div className="text-2xl sm:text-3xl font-bold text-green-700 font-heading">
-            ₹{totalFund.toLocaleString("en-IN")}
+            ₹{totalFunds.toLocaleString("en-IN")}
           </div>
           <div className="text-[11px] text-gray-500 mt-1">{contributions.length} total transactions</div>
         </div>
@@ -527,14 +550,56 @@ export default function AdminDashboard() {
       {/* TAB CONTENT: 2. CONTRIBUTIONS CRM */}
       {activeTab === "contributions" && (
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50">
-            <h3 className="font-heading text-lg font-bold text-gray-900">All Donor Contributions</h3>
-            <button
-              onClick={() => window.print()}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 self-start sm:self-auto"
-            >
-              <Download size={14} /> Export / Print Registry
-            </button>
+          
+          {/* Header & Verification Summary Cards */}
+          <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50/50 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-heading text-lg font-bold text-gray-900">Donor Contributions & Verification CRM</h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Verify UTR / bank reference numbers against society bank account before approving onto public Wall & Ticker.
+                </p>
+              </div>
+              <button
+                onClick={() => window.print()}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 self-start sm:self-auto shadow-2xs"
+              >
+                <Download size={14} /> Export / Print Registry
+              </button>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="bg-green-50/80 border border-green-200 p-3 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-green-800 uppercase block">Verified Pujo Fund</span>
+                  <span className="text-xl font-bold text-green-700 font-mono">₹{totalFunds.toLocaleString("en-IN")}</span>
+                </div>
+                <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded-full font-bold">
+                  {verifiedContributions.length} Verified
+                </span>
+              </div>
+
+              <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-amber-800 uppercase block">Under Verification</span>
+                  <span className="text-xl font-bold text-amber-700 font-mono">₹{pendingFunds.toLocaleString("en-IN")}</span>
+                </div>
+                <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                  {pendingContributions.length} Pending
+                </span>
+              </div>
+
+              <div className="bg-gray-100/80 border border-gray-200 p-3 rounded-xl flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-gray-700 uppercase block">Total Devotee Submissions</span>
+                  <span className="text-xl font-bold text-gray-900 font-mono">{contributions.length}</span>
+                </div>
+                <span className="text-xs bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full font-bold">
+                  All Records
+                </span>
+              </div>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -545,31 +610,73 @@ export default function AdminDashboard() {
                   <th className="p-3.5">Flat Number</th>
                   <th className="p-3.5">Phone</th>
                   <th className="p-3.5">Amount</th>
-                  <th className="p-3.5">Payment ID</th>
+                  <th className="p-3.5">UTR / Payment ID</th>
                   <th className="p-3.5">Wall Visibility</th>
                   <th className="p-3.5">Status</th>
+                  <th className="p-3.5 text-right">Verification Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {contributions.map((c) => (
-                  <tr key={c.id} className="hover:bg-gray-50/60">
-                    <td className="p-3.5 font-bold text-gray-900">{c.contributor_name}</td>
-                    <td className="p-3.5 text-gray-700">{c.flat_number || "N/A"}</td>
-                    <td className="p-3.5 text-gray-600">{c.phone}</td>
-                    <td className="p-3.5 font-bold text-green-700 text-sm">₹{Number(c.amount).toLocaleString("en-IN")}</td>
-                    <td className="p-3.5 font-mono text-[11px] text-gray-500">{c.payment_id}</td>
-                    <td className="p-3.5">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.is_name_visible ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
-                        {c.is_name_visible ? "Public" : "Anonymous"}
-                      </span>
-                    </td>
-                    <td className="p-3.5">
-                      <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-[10px] font-bold">
-                        {c.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {contributions.map((c) => {
+                  const isVerified = c.status === "Success";
+                  const isPending = c.status === "Pending Verification" || c.status === "Pending";
+                  const isRejected = c.status === "Rejected";
+
+                  return (
+                    <tr key={c.id} className={`hover:bg-gray-50/60 ${isPending ? "bg-amber-50/30" : ""}`}>
+                      <td className="p-3.5 font-bold text-gray-900">{c.contributor_name}</td>
+                      <td className="p-3.5 text-gray-700">{c.flat_number || "N/A"}</td>
+                      <td className="p-3.5 text-gray-600">{c.phone}</td>
+                      <td className="p-3.5 font-bold text-green-700 text-sm font-mono">₹{Number(c.amount).toLocaleString("en-IN")}</td>
+                      <td className="p-3.5 font-mono text-[11px] text-gray-700 font-semibold">{c.payment_id}</td>
+                      <td className="p-3.5">
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.is_name_visible ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
+                          {c.is_name_visible ? "Public" : "Anonymous"}
+                        </span>
+                      </td>
+                      <td className="p-3.5">
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          isVerified 
+                            ? "bg-green-100 text-green-800" 
+                            : isPending 
+                            ? "bg-amber-100 text-amber-900 border border-amber-300 animate-pulse" 
+                            : "bg-red-100 text-red-800"
+                        }`}>
+                          {isVerified ? "✓ Verified" : isPending ? "⏳ Pending Review" : "✕ Rejected"}
+                        </span>
+                      </td>
+                      <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                        {!isVerified && (
+                          <button
+                            onClick={() => handleUpdateContributionStatus(c.id, "Success")}
+                            className="bg-green-600 hover:bg-green-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs"
+                            title="Approve and add to public fund ticker & Wall"
+                          >
+                            Approve (✓)
+                          </button>
+                        )}
+                        {!isRejected && (
+                          <button
+                            onClick={() => handleUpdateContributionStatus(c.id, "Rejected")}
+                            className="bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs"
+                            title="Reject fake/unverified submission"
+                          >
+                            Reject (✕)
+                          </button>
+                        )}
+                        {isVerified && (
+                          <button
+                            onClick={() => handleUpdateContributionStatus(c.id, "Pending Verification")}
+                            className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-[10px] px-2 py-1 rounded-lg transition"
+                            title="Mark back to Pending"
+                          >
+                            Revert
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

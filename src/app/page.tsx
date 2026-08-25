@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { GalleryCarousel } from "@/components/GalleryCarousel";
+import { HomeQuickContribute } from "@/components/HomeQuickContribute";
 
 export const revalidate = 0; // Fresh data on every load
 
@@ -203,19 +204,19 @@ export default async function Home() {
       </section>
 
       {/* 2. LIVE PUJO FUND COUNTER BAR */}
-      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 -mt-8 relative z-20">
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 -mt-8 relative z-20 space-y-6">
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-amber-900/10 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           
           <div className="md:col-span-2 space-y-2">
             <div className="flex items-center gap-2 text-xs font-bold text-amber-800 tracking-wider uppercase">
               <Sparkles size={14} className="text-primary" />
-              <span>Community Pujo Seva Fund (Live)</span>
+              <span>Community Pujo Seva Fund (Live Verified)</span>
             </div>
             <div className="flex items-baseline gap-3">
               <span className="font-heading text-4xl sm:text-5xl font-bold text-green-700">
                 {formattedTotal}
               </span>
-              <span className="text-xs text-gray-500 font-medium">Raised so far for Durga Pujo 2026</span>
+              <span className="text-xs text-gray-500 font-medium">Raised so far from {totalContributorsCount} devotee offerings</span>
             </div>
             <p className="text-xs text-gray-600">
               100% of resident contributions fund the Pujo rituals, daily Maha Bhog distribution, Dhaaki artists, and Pratibimb cultural stage.
@@ -223,13 +224,13 @@ export default async function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row md:flex-col gap-3 justify-center">
-            <Link
-              href="/contribute"
+            <a
+              href="#quick-contribute-section"
               className="bg-primary hover:bg-primary-hover text-white text-center py-3 px-6 rounded-2xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2"
             >
               <HeartHandshake size={16} />
-              <span>Make an E-Seva Offering</span>
-            </Link>
+              <span>Quick Offering Below</span>
+            </a>
             <Link
               href="/volunteer"
               className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-center py-2.5 px-6 rounded-2xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5"
@@ -239,6 +240,11 @@ export default async function Home() {
             </Link>
           </div>
 
+        </div>
+
+        {/* ZERO-FRICTION HOMEPAGE QUICK CONTRIBUTION CARD */}
+        <div id="quick-contribute-section">
+          <HomeQuickContribute />
         </div>
       </section>
 

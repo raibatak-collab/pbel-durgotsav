@@ -6,6 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "node --test test/regression.test.mjs",
+    "ci:test": "npm test && next build",
     "lint": "eslint"
   },
   "dependencies": {
