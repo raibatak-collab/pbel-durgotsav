@@ -1,0 +1,1078 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { 
+  HeartHandshake, 
+  CheckCircle2, 
+  Sparkles, 
+  Lock,
+  ShieldCheck, 
+  Calendar,
+  Layers,
+  ArrowRight,
+  Receipt,
+  Download,
+  X,
+  CreditCard,
+  QrCode,
+  Smartphone,
+  Copy,
+  Check,
+  Info
+} from "lucide-react";
+import { supabase } from "@/utils/supabase/client";
+
+// Official Society Bank Account UPI Configuration
+const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
+const SOCIETY_NAME = "PBEL Sanskritik Samiti";
+
+interface SevaItem {
+  id: string;
+  title: string;
+  day: string;
+  date: string;
+  amount: number;
+  category: "flowers" | "bhog" | "sweets" | "rituals" | "grand";
+  icon: string;
+  description: string;
+  badge?: string;
+}
+
+const defaultSevaCatalog: SevaItem[] = [
+  // Panchami
+  {
+    id: "panchami-agomoni",
+    title: "Panchami Agomoni & Dhaak Seva",
+    day: "Panchami",
+    date: "15 Oct 2026",
+    amount: 2501,
+    category: "rituals",
+    icon: "🥁",
+    description: "Welcome Maa Durga with the vibrant beats of traditional Dhaak and opening music.",
+    badge: "Opening Day",
+  },
+  {
+    id: "panchami-sweets",
+    title: "Panchami Anandamela Sweets & Mishti",
+    day: "Panchami",
+    date: "15 Oct 2026",
+    amount: 1501,
+    category: "sweets",
+    icon: "🍬",
+    description: "Distribution of traditional Bengali sweets and prasad for evening gathering.",
+  },
+
+  // Sashti
+  {
+    id: "sashti-flowers",
+    title: "Sashti Pushpanjali Flowers & Bilva Patra",
+    day: "Maha Sashti",
+    date: "16 Oct 2026",
+    amount: 501,
+    category: "flowers",
+    icon: "🌺",
+    description: "Fresh fragrant marigolds, roses, and sacred bilva leaves for Bodhon & Pushpanjali.",
+    badge: "Popular Seva",
+  },
+  {
+    id: "sashti-sweets",
+    title: "Sashti Devi Bodhon Sweets & Prasad",
+    day: "Maha Sashti",
+    date: "16 Oct 2026",
+    amount: 1501,
+    category: "sweets",
+    icon: "🥮",
+    description: "Sponsor special sweet offerings for the sacred Bodhon and Adhibas rituals.",
+  },
+  {
+    id: "sashti-aarthi",
+    title: "Sashti Sandhya Aarti & Deepam",
+    day: "Maha Sashti",
+    date: "16 Oct 2026",
+    amount: 1001,
+    category: "rituals",
+    icon: "🪔",
+    description: "Earthen lamps, pure ghee, and camphor for the grand evening Sandhya Aarti.",
+  },
+
+  // Saptami
+  {
+    id: "saptami-nabapatrika",
+    title: "Saptami Nabapatrika Pujo Samagri",
+    day: "Maha Saptami",
+    date: "17 Oct 2026",
+    amount: 1100,
+    category: "rituals",
+    icon: "🌿",
+    description: "Sacred plants, yellow cloth, and ceremonial items for Kola Bou Snan.",
+  },
+  {
+    id: "saptami-bhog",
+    title: "Saptami Maha Bhog Seva",
+    day: "Maha Saptami",
+    date: "17 Oct 2026",
+    amount: 2501,
+    category: "bhog",
+    icon: "🍚",
+    description: "Khichuri, Labra, Beguni, Chutney & Payesh prepared for afternoon community bhog.",
+    badge: "Community Bhog",
+  },
+  {
+    id: "saptami-sweets",
+    title: "Saptami Evening Mishti Prasad",
+    day: "Maha Saptami",
+    date: "17 Oct 2026",
+    amount: 1501,
+    category: "sweets",
+    icon: "🍬",
+    description: "Evening prasad boxes for Pratibimb cultural stage attendees.",
+  },
+
+  // Ashtami
+  {
+    id: "ashtami-lotus",
+    title: "Ashtami 108 Lotuses (Pushpanjali & Sandhi)",
+    day: "Maha Ashtami",
+    date: "18 Oct 2026",
+    amount: 3100,
+    category: "flowers",
+    icon: "🪷",
+    description: "108 pristine red lotuses offered at the feet of Devi Durga during Sandhi Pujo.",
+    badge: "Most Auspicious",
+  },
+  {
+    id: "ashtami-sandhi-deepam",
+    title: "Sandhi Pujo 108 Earthen Lamps & Ghee",
+    day: "Maha Ashtami",
+    date: "18 Oct 2026",
+    amount: 2501,
+    category: "rituals",
+    icon: "🪔",
+    description: "108 sacred oil lamps lit during the divine conjunction of Ashtami and Navami.",
+    badge: "Sandhi Pujo",
+  },
+  {
+    id: "ashtami-kumari",
+    title: "Kumari Puja Seva & Gift Hampers",
+    day: "Maha Ashtami",
+    date: "18 Oct 2026",
+    amount: 2100,
+    category: "rituals",
+    icon: "👧",
+    description: "Sponsorship of gifts, new clothes, and prasad for the revered young girls.",
+  },
+  {
+    id: "ashtami-bhog",
+    title: "Ashtami Grand Maha Bhog Family Seva",
+    day: "Maha Ashtami",
+    date: "18 Oct 2026",
+    amount: 5001,
+    category: "bhog",
+    icon: "🍲",
+    description: "Full family sponsorship for afternoon Maha Bhog feast for the entire township.",
+  },
+
+  // Nabami
+  {
+    id: "nabami-yajna",
+    title: "Nabami Maha Yajna & Havan Samagri",
+    day: "Maha Nabami",
+    date: "19 Oct 2026",
+    amount: 2100,
+    category: "rituals",
+    icon: "🔥",
+    description: "Ghee, dry fruits, sacred wood (Samidha), and bel fruit for the auspicious Havan.",
+  },
+  {
+    id: "nabami-bhog",
+    title: "Nabami Maha Bhog Seva",
+    day: "Maha Nabami",
+    date: "19 Oct 2026",
+    amount: 5001,
+    category: "bhog",
+    icon: "🍚",
+    description: "Special Pulao, Paneer/Veg delicacies, and Sweets for Maha Navami prasad.",
+  },
+
+  // Dashami
+  {
+    id: "dashami-sindoor",
+    title: "Dashami Sindoor Khela & Mishti Box",
+    day: "Vijaya Dashami",
+    date: "20 Oct 2026",
+    amount: 1800,
+    category: "sweets",
+    icon: "🔴",
+    description: "Pure vermilion, betel leaves, and sweet boxes for the festive Sindoor Khela.",
+    badge: "Sindoor Khela",
+  },
+  {
+    id: "dashami-visarjan",
+    title: "Shanti Jal & Visarjan Dhaaki Seva",
+    day: "Vijaya Dashami",
+    date: "20 Oct 2026",
+    amount: 3501,
+    category: "rituals",
+    icon: "🌊",
+    description: "Dhunuchi Naach & Dhaaki accompaniment for the immersion procession.",
+  },
+
+  // Grand Patrons
+  {
+    id: "grand-silver",
+    title: "Silver Patron - Sampoorna Pujo Seva",
+    day: "All 6 Days",
+    date: "15 - 20 Oct 2026",
+    amount: 11000,
+    category: "grand",
+    icon: "🥈",
+    description: "Includes special family sankalp during Sandhi Pujo, VIP front seating, & Wall honor.",
+    badge: "Grand Patron",
+  },
+  {
+    id: "grand-gold",
+    title: "Gold Patron - Maha Yajman Sponsorship",
+    day: "All 6 Days",
+    date: "15 - 20 Oct 2026",
+    amount: 25000,
+    category: "grand",
+    icon: "👑",
+    description: "Principal sankalp for daily puja, prime stage acknowledgment & special Bhog delivery.",
+    badge: "Maha Yajman",
+  },
+];
+
+export default function ContributePage() {
+  const [sevaList, setSevaList] = useState<SevaItem[]>(defaultSevaCatalog);
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+
+  // Modal State for Direct Card Seva Checkout
+  const [modalSeva, setModalSeva] = useState<SevaItem | null>(null);
+  const [modalTab, setModalTab] = useState<"upi_app" | "qr_code">("qr_code");
+  const [modalFormData, setModalFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    flatNumber: "",
+    upiRef: "",
+    isNameVisible: true,
+  });
+
+  // State for General / Open-ended Donation Form
+  const [customAmount, setCustomAmount] = useState<number | "">(1001);
+  const [customPurpose, setCustomPurpose] = useState<string>("General Pujo Fund");
+  const [customFormData, setCustomFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    flatNumber: "",
+    upiRef: "",
+    isNameVisible: true,
+  });
+  const [showCustomQr, setShowCustomQr] = useState(false);
+
+  const [copiedUpi, setCopiedUpi] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [receiptData, setReceiptData] = useState<any>(null);
+
+  // Fetch dynamic categories from Supabase on mount
+  useEffect(() => {
+    async function loadCategories() {
+      try {
+        const { data } = await supabase.from("contribution_categories").select("*");
+        if (data && data.length > 0) {
+          const dbItems: SevaItem[] = data.map((d: any) => {
+            const matched = defaultSevaCatalog.find(
+              (def) => def.title.toLowerCase() === d.name.toLowerCase()
+            );
+            return {
+              id: d.id,
+              title: d.name,
+              day: matched?.day || "6-Day Pujo",
+              date: matched?.date || "15 - 20 Oct 2026",
+              amount: d.fixed_amount ? Number(d.fixed_amount) : (matched?.amount || 1001),
+              category: (matched?.category || "rituals") as any,
+              icon: matched?.icon || "🌺",
+              description: d.description || matched?.description || "Special seva offering for PBEL City Durgotsav.",
+              badge: matched?.badge || (d.fixed_amount >= 10000 ? "Grand Seva" : undefined),
+            };
+          });
+          setSevaList(dbItems);
+        }
+      } catch (err) {
+        console.error("Error loading categories from DB:", err);
+      }
+    }
+    loadCategories();
+  }, []);
+
+  const filteredSevas = sevaList.filter((item) => {
+    if (categoryFilter === "all") return true;
+    if (categoryFilter === "flowers") return item.category === "flowers";
+    if (categoryFilter === "bhog") return item.category === "bhog";
+    if (categoryFilter === "sweets") return item.category === "sweets";
+    if (categoryFilter === "rituals") return item.category === "rituals";
+    if (categoryFilter === "grand") return item.category === "grand";
+    return true;
+  });
+
+  const handleCopyUpi = () => {
+    navigator.clipboard.writeText(SOCIETY_UPI_ID);
+    setCopiedUpi(true);
+    setTimeout(() => setCopiedUpi(false), 2500);
+  };
+
+  // Helper to generate dynamic UPI String
+  const generateUpiString = (amt: number, note: string) => {
+    return `upi://pay?pa=${SOCIETY_UPI_ID}&pn=${encodeURIComponent(SOCIETY_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(note)}`;
+  };
+
+  // Handle Direct Card Fixed-Seva Payment
+  const handleModalCheckout = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!modalSeva) return;
+
+    setIsSubmitting(true);
+    try {
+      let { data: catData } = await supabase
+        .from("contribution_categories")
+        .select("id")
+        .eq("name", modalSeva.title)
+        .single();
+
+      if (!catData) {
+        const { data: newCat } = await supabase
+          .from("contribution_categories")
+          .insert({ name: modalSeva.title, fixed_amount: Number(modalSeva.amount) })
+          .select("id")
+          .single();
+        catData = newCat;
+      }
+
+      const generatedPaymentId = modalFormData.upiRef.trim() 
+        ? `UPI_${modalFormData.upiRef.trim()}` 
+        : `UPI_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+
+      const { error } = await supabase.from("contributions").insert({
+        contributor_name: modalFormData.name,
+        email: modalFormData.email,
+        phone: modalFormData.phone,
+        flat_number: modalFormData.flatNumber,
+        amount: Number(modalSeva.amount),
+        category_id: catData?.id,
+        status: "Success",
+        is_name_visible: modalFormData.isNameVisible,
+        payment_id: generatedPaymentId,
+      });
+
+      if (error) throw error;
+
+      setReceiptData({
+        name: modalFormData.name,
+        flatNumber: modalFormData.flatNumber,
+        phone: modalFormData.phone,
+        amount: Number(modalSeva.amount),
+        category: `${modalSeva.day} - ${modalSeva.title}`,
+        paymentId: generatedPaymentId,
+        upiId: SOCIETY_UPI_ID,
+        date: new Date().toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+
+      setModalSeva(null);
+      setIsSuccess(true);
+    } catch (error) {
+      console.error("Error processing fixed seva payment:", error);
+      alert("Payment recording failed. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle General / Custom Contribution Submission
+  const handleCustomDonate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customAmount || customAmount <= 0) return;
+
+    setIsSubmitting(true);
+    try {
+      const categoryName = customPurpose || "General Pujo Fund";
+
+      let { data: catData } = await supabase
+        .from("contribution_categories")
+        .select("id")
+        .eq("name", categoryName)
+        .single();
+
+      if (!catData) {
+        const { data: newCat } = await supabase
+          .from("contribution_categories")
+          .insert({ name: categoryName })
+          .select("id")
+          .single();
+        catData = newCat;
+      }
+
+      const generatedPaymentId = customFormData.upiRef.trim() 
+        ? `UPI_${customFormData.upiRef.trim()}` 
+        : `UPI_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+
+      const { error } = await supabase.from("contributions").insert({
+        contributor_name: customFormData.name,
+        email: customFormData.email,
+        phone: customFormData.phone,
+        flat_number: customFormData.flatNumber,
+        amount: Number(customAmount),
+        category_id: catData?.id,
+        status: "Success",
+        is_name_visible: customFormData.isNameVisible,
+        payment_id: generatedPaymentId,
+      });
+
+      if (error) throw error;
+
+      setReceiptData({
+        name: customFormData.name,
+        flatNumber: customFormData.flatNumber,
+        phone: customFormData.phone,
+        amount: Number(customAmount),
+        category: categoryName,
+        paymentId: generatedPaymentId,
+        upiId: SOCIETY_UPI_ID,
+        date: new Date().toLocaleDateString("en-IN", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      });
+
+      setIsSuccess(true);
+    } catch (error) {
+      console.error("Error making custom contribution:", error);
+      alert("Something went wrong. Please check database connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // RECEIPT VIEW
+  if (isSuccess && receiptData) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-amber-900/15 shadow-2xl relative overflow-hidden">
+          
+          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+            <CheckCircle2 size={48} />
+          </div>
+
+          <span className="text-xs uppercase font-bold text-amber-800 tracking-wider bg-amber-100/60 px-3 py-1 rounded-full">
+            Official E-Seva Confirmation
+          </span>
+          <h1 className="font-heading text-3xl sm:text-4xl text-primary font-bold mt-2 mb-2">
+            ধন্যবাদ! (Dhonnobad)
+          </h1>
+          <p className="text-gray-600 text-xs sm:text-sm max-w-md mx-auto mb-8">
+            Your generous contribution to <strong>PBEL Sanskritik Samiti</strong> has been officially recorded in the Pujo Seva registry. Maa Durga bless you and your family!
+          </p>
+
+          {/* Official Receipt Card */}
+          <div className="bg-gradient-to-br from-[#FFFDF9] to-[#FDF8F0] rounded-2xl p-6 border border-amber-300/60 text-left text-xs sm:text-sm space-y-3 mb-8 shadow-xs">
+            <div className="flex items-center justify-between pb-3 border-b border-amber-900/10">
+              <div>
+                <span className="font-heading text-lg font-bold text-primary block">PBEL Sanskritik Samiti</span>
+                <span className="text-[11px] text-gray-500 font-mono">UPI: {receiptData.upiId}</span>
+              </div>
+              <span className="text-amber-800 font-semibold font-mono text-xs">{receiptData.paymentId}</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <span className="text-gray-500 text-[11px] block">Devotee Name</span>
+                <span className="font-semibold text-gray-900">{receiptData.name}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-[11px] block">Flat Number</span>
+                <span className="font-semibold text-gray-900">{receiptData.flatNumber || "PBEL Resident"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-[11px] block">Seva Category / Purpose</span>
+                <span className="font-semibold text-gray-900">{receiptData.category}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-[11px] block">Amount Contributed</span>
+                <span className="font-bold text-green-700 text-base">₹{Number(receiptData.amount).toLocaleString("en-IN")}</span>
+              </div>
+            </div>
+
+            <div className="pt-2 text-[11px] text-gray-500 border-t border-amber-900/10 flex items-center justify-between">
+              <span>Date: {receiptData.date}</span>
+              <span className="text-green-600 font-semibold flex items-center gap-1">
+                <ShieldCheck size={13} /> Direct Bank Account Verified
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => window.print()}
+              className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold px-6 py-2.5 rounded-full text-xs transition flex items-center justify-center gap-1.5"
+            >
+              <Download size={14} /> Print / Save Official Receipt
+            </button>
+            <button
+              onClick={() => {
+                setIsSuccess(false);
+                setCustomAmount(1001);
+                setCustomFormData({ name: "", phone: "", email: "", flatNumber: "", upiRef: "", isNameVisible: true });
+              }}
+              className="bg-primary hover:bg-primary-hover text-white font-semibold px-6 py-2.5 rounded-full text-xs transition shadow-sm"
+            >
+              Make Another Offering
+            </button>
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center w-full min-h-screen">
+      
+      {/* 1. ROYAL FESTIVE HERO BANNER */}
+      <section className="w-full bg-festive-hero text-white relative overflow-hidden py-14 md:py-20 px-4 sm:px-6 lg:px-8 border-b border-amber-500/20 text-center">
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-4xl mx-auto relative z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-4 backdrop-blur-md">
+            <HeartHandshake size={14} className="text-amber-400" />
+            <span>PBEL City Durgotsav 2026 E-Seva Portal</span>
+          </div>
+
+          <h1 className="font-heading text-4xl sm:text-6xl font-bold tracking-tight text-white mb-4 leading-tight">
+            Pujo Seva & <span className="text-gold-gradient">Bhog Offerings</span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-amber-100/90 max-w-2xl mx-auto font-normal leading-relaxed mb-4">
+            Click directly on any fixed Seva card below to sponsor flowers, sweets, 108 lotuses, or Maha Bhog via <strong>Direct Society Bank UPI / QR Code</strong> (0% Gateway Fees), or use the general form at the bottom.
+          </p>
+
+          {/* Official Bank UPI Badge */}
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 bg-black/40 border border-amber-400/30 px-4 py-1.5 rounded-full text-xs text-amber-200 backdrop-blur-md">
+            <ShieldCheck size={14} className="text-green-400" />
+            <span>Official Society UPI: <strong className="text-white font-mono">{SOCIETY_UPI_ID}</strong></span>
+            <button
+              type="button"
+              onClick={handleCopyUpi}
+              className="ml-1 text-amber-300 hover:text-white transition flex items-center gap-1 bg-white/10 px-2 py-0.5 rounded-full"
+            >
+              {copiedUpi ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
+              <span className="text-[10px]">{copiedUpi ? "Copied!" : "Copy"}</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. MAIN E-SEVA CARDS STOREFRONT */}
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-14">
+        
+        {/* Category Filter Pills */}
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
+          {[
+            { id: "all", label: "🌟 All 6-Day Offerings" },
+            { id: "flowers", label: "🌺 Flowers & Mala" },
+            { id: "bhog", label: "🍚 Maha Bhog" },
+            { id: "sweets", label: "🍬 Sweets & Prasad" },
+            { id: "rituals", label: "🪔 Sandhi Pujo & Havan" },
+            { id: "grand", label: "👑 Grand Patrons" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setCategoryFilter(tab.id)}
+              className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                categoryFilter === tab.id
+                  ? "bg-primary text-white shadow-md golden-glow"
+                  : "bg-white text-gray-700 border border-gray-200 hover:border-amber-400 hover:bg-amber-50/50"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Storefront Grid with Direct Pay on Every Card */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-16">
+          {filteredSevas.map((item) => (
+            <div
+              key={item.id}
+              className="bg-white rounded-3xl p-6 border border-amber-900/15 shadow-sm hover:shadow-xl hover:border-amber-400 transition-all flex flex-col justify-between relative group"
+            >
+              {item.badge && (
+                <div className="absolute top-4 right-4">
+                  <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full uppercase">
+                    {item.badge}
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <div className="text-3xl mb-2">{item.icon}</div>
+                <div className="text-xs font-bold text-amber-700 flex items-center gap-1 mb-1">
+                  <Calendar size={13} /> {item.day} ({item.date})
+                </div>
+                <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
+                  {item.title}
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed mb-4">
+                  {item.description}
+                </p>
+              </div>
+
+              <div className="pt-4 border-t border-gray-100">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                    <Lock size={12} className="text-amber-600" /> Fixed Seva Amount
+                  </span>
+                  <span className="text-2xl font-bold text-primary">₹{item.amount.toLocaleString("en-IN")}</span>
+                </div>
+
+                {/* Direct UPI / QR Checkout Button */}
+                <button
+                  type="button"
+                  onClick={() => setModalSeva(item)}
+                  className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 rounded-2xl font-bold text-xs transition shadow-md golden-glow flex items-center justify-center gap-2"
+                >
+                  <QrCode size={16} />
+                  <span>Sponsor Seva • Pay ₹{item.amount.toLocaleString("en-IN")} (UPI / QR)</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* 3. GENERAL / CUSTOM OPEN-ENDED DONATION SECTION */}
+        <div id="general-donation-section" className="bg-white rounded-3xl shadow-xl border border-amber-900/15 p-6 sm:p-10">
+          
+          <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-gray-100 mb-8">
+            <div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100/60 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                <HeartHandshake size={14} /> Open Seva Fund
+              </span>
+              <h2 className="font-heading text-2xl sm:text-3xl text-gray-900 font-bold">
+                General / Custom Pujo Contribution
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Contribute any custom amount directly to the PBEL Sanskritik Samiti Bank Account via UPI or QR Code.
+              </p>
+            </div>
+          </div>
+
+          <form onSubmit={handleCustomDonate} className="space-y-8">
+            
+            {/* Custom Amount with Quick Increment Chips */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
+                Custom Donation Amount (₹ INR) *
+              </label>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 mb-3">
+                {[501, 1001, 1501, 2501, 5001, 11000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setCustomAmount(amt)}
+                    className={`py-2.5 px-3 rounded-xl border text-xs sm:text-sm font-bold transition-all ${
+                      customAmount === amt
+                        ? "bg-primary text-white border-primary shadow-sm"
+                        : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-amber-50 hover:border-amber-300"
+                    }`}
+                  >
+                    ₹{amt.toLocaleString("en-IN")}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative">
+                <span className="absolute left-4 top-3.5 text-gray-500 font-bold text-base">₹</span>
+                <input
+                  type="number"
+                  min="1"
+                  required
+                  value={customAmount}
+                  onChange={(e) => setCustomAmount(e.target.value ? Number(e.target.value) : "")}
+                  placeholder="Or enter any custom amount..."
+                  className="w-full pl-9 pr-4 py-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-base font-semibold text-gray-900 transition"
+                />
+              </div>
+            </div>
+
+            {/* Custom Purpose */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-800 mb-2">
+                Contribution Purpose / Note
+              </label>
+              <input
+                type="text"
+                value={customPurpose}
+                onChange={(e) => setCustomPurpose(e.target.value)}
+                placeholder="e.g. General Pujo Fund, Pushpanjali, Cultural Stage..."
+                className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm text-gray-900 transition"
+              />
+            </div>
+
+            {/* Dynamic QR Scanner Toggle for Custom Amount */}
+            {customAmount && Number(customAmount) > 0 && (
+              <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-300 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="text-center md:text-left space-y-1">
+                  <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
+                    <QrCode size={16} className="text-primary" /> Society Bank UPI Scanner
+                  </span>
+                  <p className="text-sm font-bold text-gray-900">
+                    Scan with GPay, PhonePe, Paytm, or BHIM to pay ₹{Number(customAmount).toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    UPI ID: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> (PBEL Sanskritik Samiti)
+                  </p>
+                  <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
+                    <a
+                      href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
+                      className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Smartphone size={14} /> Open UPI App on Mobile
+                    </a>
+                  </div>
+                </div>
+
+                <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                      generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
+                    )}`}
+                    alt="PBEL Sanskritik Samiti UPI QR"
+                    className="w-36 h-36 mx-auto rounded-lg"
+                  />
+                  <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan & Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Devotee Personal Details */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-gray-100">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customFormData.name}
+                  onChange={(e) => setCustomFormData({ ...customFormData, name: e.target.value })}
+                  placeholder="Your Full Name"
+                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                  Flat Number * (Required for PBEL Residents)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customFormData.flatNumber}
+                  onChange={(e) => setCustomFormData({ ...customFormData, flatNumber: e.target.value })}
+                  placeholder="e.g. Tower B - 1204 / Guest"
+                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                  WhatsApp Phone Number *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={customFormData.phone}
+                  onChange={(e) => setCustomFormData({ ...customFormData, phone: e.target.value })}
+                  placeholder="10-digit mobile number"
+                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                  UPI Ref / UTR / Transaction No. (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={customFormData.upiRef}
+                  onChange={(e) => setCustomFormData({ ...customFormData, upiRef: e.target.value })}
+                  placeholder="e.g. 12-digit UTR from GPay / PhonePe"
+                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Privacy Wall Checkbox */}
+            <div className="bg-amber-50/70 p-4 rounded-xl border border-amber-200/60 flex items-start gap-3">
+              <input
+                type="checkbox"
+                id="wall-custom-visibility"
+                checked={customFormData.isNameVisible}
+                onChange={(e) => setCustomFormData({ ...customFormData, isNameVisible: e.target.checked })}
+                className="w-5 h-5 text-primary rounded border-gray-300 focus:ring-primary mt-0.5"
+              />
+              <label htmlFor="wall-custom-visibility" className="text-xs sm:text-sm text-gray-800 leading-normal cursor-pointer">
+                <strong>Display my name on the public "Wall of Contributors"</strong>
+                <span className="block text-gray-500 text-xs mt-0.5">
+                  Uncheck if you prefer your contribution to remain Anonymous.
+                </span>
+              </label>
+            </div>
+
+            {/* Submit Action */}
+            <div className="pt-2">
+              <button
+                type="submit"
+                disabled={isSubmitting || !customAmount || customAmount <= 0}
+                className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] hover:from-[#B8801C] hover:to-[#78520D] text-white font-bold text-lg py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2"
+              >
+                <HeartHandshake size={22} />
+                <span>
+                  {isSubmitting
+                    ? "Confirming Contribution..."
+                    : `Confirm & Record ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Offering`}
+                </span>
+              </button>
+              <p className="text-[11px] text-gray-400 text-center mt-3 flex items-center justify-center gap-1">
+                <ShieldCheck size={13} className="text-green-600" /> Direct 100% Zero-Fee Transfer to PBEL Sanskritik Samiti Bank Account
+              </p>
+            </div>
+
+          </form>
+
+        </div>
+
+      </div>
+
+      {/* 4. DIRECT FIXED-SEVA QUICK CHECKOUT MODAL (WITH DYNAMIC UPI QR SCANNER) */}
+      {modalSeva && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            
+            <button
+              onClick={() => setModalSeva(null)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+              aria-label="Close Modal"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="text-center pb-4 border-b border-gray-100 mb-6">
+              <span className="text-4xl mb-2 block">{modalSeva.icon}</span>
+              <span className="text-xs uppercase font-bold text-amber-800 bg-amber-100/60 px-3 py-0.5 rounded-full inline-block mb-1">
+                {modalSeva.day} ({modalSeva.date})
+              </span>
+              <h3 className="font-heading text-2xl font-bold text-gray-900">{modalSeva.title}</h3>
+              <p className="text-xs text-gray-500 mt-1">{modalSeva.description}</p>
+              
+              {/* Locked Fixed Price Badge */}
+              <div className="mt-4 bg-gradient-to-r from-amber-50 to-orange-50 p-3 rounded-2xl border border-amber-200/80 flex items-center justify-between px-6">
+                <span className="text-xs font-bold text-gray-700 uppercase flex items-center gap-1">
+                  <Lock size={13} className="text-amber-700" /> Locked Seva Amount
+                </span>
+                <span className="text-2xl font-bold text-primary font-mono">
+                  ₹{modalSeva.amount.toLocaleString("en-IN")}
+                </span>
+              </div>
+            </div>
+
+            {/* UPI & QR Scanner Section */}
+            <div className="bg-gray-50 p-4 rounded-2xl border border-amber-300/80 mb-5 text-center">
+              
+              {/* Payment Mode Selector */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setModalTab("qr_code")}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
+                    modalTab === "qr_code"
+                      ? "bg-primary text-white shadow-xs"
+                      : "bg-white text-gray-700 border border-gray-200"
+                  }`}
+                >
+                  <QrCode size={13} /> Scan QR Code
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalTab("upi_app")}
+                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
+                    modalTab === "upi_app"
+                      ? "bg-primary text-white shadow-xs"
+                      : "bg-white text-gray-700 border border-gray-200"
+                  }`}
+                >
+                  <Smartphone size={13} /> 1-Click Pay on Mobile
+                </button>
+              </div>
+
+              {/* TAB 1: QR CODE DISPLAY */}
+              {modalTab === "qr_code" && (
+                <div className="space-y-3">
+                  <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm inline-block mx-auto">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                        generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)
+                      )}`}
+                      alt="PBEL Sanskritik Samiti UPI QR"
+                      className="w-40 h-40 mx-auto rounded-lg"
+                    />
+                  </div>
+                  <p className="text-xs font-bold text-gray-800">
+                    Scan with any UPI App (GPay, PhonePe, Paytm, BHIM, Cred)
+                  </p>
+                  <div className="flex items-center justify-center gap-2 text-[11px] text-gray-600">
+                    <span>UPI ID: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong></span>
+                    <button
+                      type="button"
+                      onClick={handleCopyUpi}
+                      className="text-amber-800 hover:text-black font-semibold flex items-center gap-1 bg-amber-100/70 px-2 py-0.5 rounded-md"
+                    >
+                      {copiedUpi ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
+                      <span>{copiedUpi ? "Copied" : "Copy"}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: 1-CLICK PAY ON MOBILE */}
+              {modalTab === "upi_app" && (
+                <div className="space-y-3 py-2">
+                  <p className="text-xs text-gray-600">
+                    Tap below to open your installed UPI app with ₹{modalSeva.amount} pre-filled for <strong>PBEL Sanskritik Samiti</strong>:
+                  </p>
+                  <a
+                    href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md"
+                  >
+                    <Smartphone size={16} />
+                    <span>Open GPay / PhonePe / Paytm to Pay ₹{modalSeva.amount}</span>
+                  </a>
+                  <p className="text-[11px] text-gray-500">
+                    (Works directly when browsing from an Android or iPhone device)
+                  </p>
+                </div>
+              )}
+
+            </div>
+
+            {/* Direct Seva Devotee Details Form */}
+            <form onSubmit={handleModalCheckout} className="space-y-4 text-xs sm:text-sm">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Your Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={modalFormData.name}
+                  onChange={(e) => setModalFormData({ ...modalFormData, name: e.target.value })}
+                  placeholder="e.g. Suman Banerjee"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Flat Number *</label>
+                  <input
+                    type="text"
+                    required
+                    value={modalFormData.flatNumber}
+                    onChange={(e) => setModalFormData({ ...modalFormData, flatNumber: e.target.value })}
+                    placeholder="Tower B - 1204"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={modalFormData.phone}
+                    onChange={(e) => setModalFormData({ ...modalFormData, phone: e.target.value })}
+                    placeholder="10-digit number"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Email (Optional)</label>
+                  <input
+                    type="email"
+                    value={modalFormData.email}
+                    onChange={(e) => setModalFormData({ ...modalFormData, email: e.target.value })}
+                    placeholder="name@example.com"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">UPI UTR / Ref No. (Optional)</label>
+                  <input
+                    type="text"
+                    value={modalFormData.upiRef}
+                    onChange={(e) => setModalFormData({ ...modalFormData, upiRef: e.target.value })}
+                    placeholder="12-digit UTR"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="modal-visibility"
+                  checked={modalFormData.isNameVisible}
+                  onChange={(e) => setModalFormData({ ...modalFormData, isNameVisible: e.target.checked })}
+                  className="w-4 h-4 text-primary rounded border-gray-300"
+                />
+                <label htmlFor="modal-visibility" className="text-xs text-gray-700">
+                  Display my name on the Wall of Contributors
+                </label>
+              </div>
+
+              <div className="pt-3">
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] text-white font-bold py-3.5 rounded-xl transition shadow-lg golden-glow flex items-center justify-center gap-2 text-sm"
+                >
+                  <CheckCircle2 size={17} />
+                  <span>
+                    {isSubmitting
+                      ? "Recording Offering..."
+                      : `I Have Paid ₹${modalSeva.amount.toLocaleString("en-IN")} • Confirm & Get Receipt`}
+                  </span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}

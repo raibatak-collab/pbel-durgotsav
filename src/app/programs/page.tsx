@@ -1,0 +1,654 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { 
+  CalendarDays, 
+  Music, 
+  CheckCircle2, 
+  Sparkles, 
+  Clock, 
+  Flame, 
+  MapPin, 
+  Users, 
+  Info,
+  Calendar,
+  Layers,
+  ChevronRight,
+  HeartHandshake,
+  Star,
+  Mic,
+  Tv
+} from "lucide-react";
+import { supabase } from "@/utils/supabase/client";
+
+interface DaySchedule {
+  id: string;
+  dayName: string;
+  bengaliName: string;
+  date: string;
+  theme: string;
+  rituals: { time: string; event: string; type: "ritual" | "bhog" | "aarti" | "cultural" }[];
+  culturalEvening: {
+    title: string;
+    time: string;
+    description: string;
+    pssHeadliner?: {
+      title: string;
+      time: string;
+      duration: string;
+      genre: string;
+    };
+    acts: string[];
+    residentSlotsAvailable: number;
+  };
+}
+
+const pujoSchedule: DaySchedule[] = [
+  {
+    id: "panchami",
+    dayName: "Maha Panchami",
+    bengaliName: "মহাপঞ্চমী",
+    date: "15 Oct 2026",
+    theme: "Agomoni, Anandamela & Stage Inauguration",
+    rituals: [
+      { time: "05:30 PM", event: "Pandal Inauguration & Diya Lighting Ceremony", type: "ritual" },
+      { time: "06:00 PM", event: "Anandamela Food Stalls (Resident Home Chefs)", type: "bhog" },
+      { time: "07:00 PM", event: "Agomoni Songs & Dhaak Welcome Rhythm", type: "cultural" },
+    ],
+    culturalEvening: {
+      title: "Agomoni Musical Night & Anandamela Gala",
+      time: "07:00 PM - 09:30 PM",
+      description: "Welcoming Maa Durga with heartfelt Agomoni songs, traditional Rabindra Sangeet, and resident food fiesta.",
+      acts: ["Agomoni Choral Melodies", "Kids Anandamela Performance", "Opening Classical Dance Recital"],
+      residentSlotsAvailable: 10,
+    },
+  },
+  {
+    id: "sashti",
+    dayName: "Maha Sashti",
+    bengaliName: "মহাষষ্ঠী",
+    date: "16 Oct 2026",
+    theme: "Devi Bodhon & Retro Rock Gala",
+    rituals: [
+      { time: "08:30 AM", event: "Pratima Sthapana & Kalparambho", type: "ritual" },
+      { time: "06:30 PM", event: "Devi Bodhon, Amantran & Adhibas Rituals", type: "ritual" },
+      { time: "07:45 PM", event: "Grand Sandhya Aarti with Dhaak Beats", type: "aarti" },
+      { time: "08:30 PM", event: "Prasad & Mishti Distribution", type: "bhog" },
+    ],
+    culturalEvening: {
+      title: "Pratibimb Stage: Dance Extravaganza & Retro Rock",
+      time: "06:30 PM - 10:30 PM",
+      description: "Resident dance showcases followed by the electrifying flagship Retro Rock concert.",
+      pssHeadliner: {
+        title: "🎸 Retro Rock by Fushmontor",
+        time: "08:15 PM Start",
+        duration: "1.5 Hours (90 mins)",
+        genre: "Live Bengali & Bollywood Retro Rock Fusion",
+      },
+      acts: ["Resident Opening Dance Medley (06:30 PM)", "Kids Dance & Vocals (07:15 PM)", "⭐ Retro Rock by Fushmontor (08:15 PM)"],
+      residentSlotsAvailable: 8,
+    },
+  },
+  {
+    id: "saptami",
+    dayName: "Maha Saptami",
+    bengaliName: "মহাসপ্তমী",
+    date: "17 Oct 2026",
+    theme: "Nabapatrika Pravesh & Dance Drama",
+    rituals: [
+      { time: "07:30 AM", event: "Nabapatrika (Kola Bou) Snan & Pravesh", type: "ritual" },
+      { time: "10:30 AM", event: "Maha Saptami Pushpanjali (Batch 1 & 2)", type: "ritual" },
+      { time: "01:00 PM", event: "Maha Bhog Distribution (Khichuri, Labra, Payesh)", type: "bhog" },
+      { time: "07:00 PM", event: "Sandhya Aarti & Deepam Seva", type: "aarti" },
+    ],
+    culturalEvening: {
+      title: "Pratibimb: Dance Drama & Musical Melodies",
+      time: "06:30 PM - 10:30 PM",
+      description: "Resident band performances followed by the signature PSS Dance Drama production.",
+      pssHeadliner: {
+        title: "💃 Dance Drama Production by PBEL Sanskritik Samiti",
+        time: "07:45 PM Start",
+        duration: "1.0 Hour (60 mins)",
+        genre: "Thematic Bengali Cultural Dance Drama (Nritya Natya)",
+      },
+      acts: ["Resident Classical Vocals (06:30 PM)", "⭐ Dance Drama Production by PSS (07:45 PM)", "Township Acoustic Band Set (09:00 PM)"],
+      residentSlotsAvailable: 8,
+    },
+  },
+  {
+    id: "ashtami",
+    dayName: "Maha Ashtami",
+    bengaliName: "মহাষ্টমী",
+    date: "18 Oct 2026",
+    theme: "Sandhi Pujo & Grand Bangla Drama",
+    rituals: [
+      { time: "09:30 AM", event: "Maha Ashtami Pujo & Special Pushpanjali", type: "ritual" },
+      { time: "11:30 AM", event: "Sacred Kumari Puja", type: "ritual" },
+      { time: "01:30 PM", event: "Maha Bhog Feast for All Residents", type: "bhog" },
+      { time: "04:15 PM", event: "Sandhi Pujo (Offering of 108 Lotuses & 108 Deepam)", type: "ritual" },
+      { time: "07:30 PM", event: "Grand Maha Aarti & Dhunuchi Naach showcase", type: "aarti" },
+    ],
+    culturalEvening: {
+      title: "Pratibimb: Grand Bangla Drama & Dhaak Jugalbandi",
+      time: "06:30 PM - 11:00 PM",
+      description: "The peak evening featuring Dhaak beats and the acclaimed annual PSS Bangla Natok.",
+      pssHeadliner: {
+        title: "🎭 Grand Bangla Theatrical Drama (Natok) by PSS",
+        time: "07:45 PM Start",
+        duration: "1.0 Hour (60 mins)",
+        genre: "Full-Length Bengali Theatrical Play / Natok",
+      },
+      acts: ["Township Dhunuchi Dance Face-off (06:45 PM)", "⭐ Grand Bangla Drama by PSS (07:45 PM)", "Dhaak Jugalbandi Battle (09:15 PM)"],
+      residentSlotsAvailable: 8,
+    },
+  },
+  {
+    id: "nabami",
+    dayName: "Maha Nabami",
+    bengaliName: "মহানবমী",
+    date: "19 Oct 2026",
+    theme: "Maha Yajna & Grand Cultural Finale",
+    rituals: [
+      { time: "09:30 AM", event: "Maha Nabami Pujo & Pushpanjali", type: "ritual" },
+      { time: "11:00 AM", event: "Maha Navami Maha Yajna & Havan", type: "ritual" },
+      { time: "01:30 PM", event: "Special Navami Maha Bhog Feast", type: "bhog" },
+      { time: "07:30 PM", event: "Maha Aarti & Dhunuchi Dance Competition", type: "aarti" },
+    ],
+    culturalEvening: {
+      title: "Pratibimb: Cultural Grand Finale & Awards",
+      time: "07:00 PM - 11:00 PM",
+      description: "Resident awards ceremony, community talent grand finale, and festive dandiya/dhaak beats.",
+      acts: ["Anandamela & Sports Prize Distribution", "Resident Talent Champions Encore", "Festive Garba & Dandiya Beats"],
+      residentSlotsAvailable: 12,
+    },
+  },
+  {
+    id: "dashami",
+    dayName: "Vijaya Dashami",
+    bengaliName: "বিজয়াদশমী",
+    date: "20 Oct 2026",
+    theme: "Sindoor Khela, Visarjan & Subho Bijoya",
+    rituals: [
+      { time: "09:00 AM", event: "Darpan Visarjan (Mirror Immersion Ceremony)", type: "ritual" },
+      { time: "10:30 AM", event: "Devi Baran & Traditional Sindoor Khela", type: "ritual" },
+      { time: "04:30 PM", event: "Maa Durga Visarjan Shobha Yatra (Procession)", type: "ritual" },
+      { time: "08:00 PM", event: "Shanti Jal Sprinkling & Subho Bijoya Kolakoli", type: "ritual" },
+    ],
+    culturalEvening: {
+      title: "Subho Bijoya Sammilani & Dhunuchi Master Finale",
+      time: "06:30 PM - 09:30 PM",
+      description: "Traditional blessings, sweet distribution, and celebrating the triumph of good over evil.",
+      acts: ["Dhunuchi Master Showcase", "Subho Bijoya Choral Melodies", "Sweet & Mishti Sharing Gathering"],
+      residentSlotsAvailable: 6,
+    },
+  },
+];
+
+export default function ProgramsPage() {
+  const [selectedDay, setSelectedDay] = useState<string>("sashti");
+  const [formData, setFormData] = useState({
+    eveningDate: "2026-10-16",
+    performanceType: "Song",
+    format: "Solo (3-5 mins)",
+    songName: "",
+    participantNames: "",
+    contactName: "",
+    phone: "",
+    flatNumber: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // Sync selected day with URL query param ?day=... (e.g. from Homepage cards)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const dayParam = params.get("day");
+      if (dayParam && pujoSchedule.some((s) => s.id === dayParam)) {
+        setSelectedDay(dayParam);
+        const dayDates: Record<string, string> = {
+          panchami: "2026-10-15",
+          sashti: "2026-10-16",
+          saptami: "2026-10-17",
+          ashtami: "2026-10-18",
+          nabami: "2026-10-19",
+          dashami: "2026-10-20",
+        };
+        setFormData((prev) => ({
+          ...prev,
+          eveningDate: dayDates[dayParam] || "2026-10-16",
+        }));
+      }
+    }
+  }, []);
+
+  const currentSchedule = pujoSchedule.find((s) => s.id === selectedDay) || pujoSchedule[1];
+
+  const handleRegisterPerformance = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    try {
+      // 1. Get or create cultural evening
+      let { data: eveningData } = await supabase
+        .from("cultural_evenings")
+        .select("id")
+        .eq("evening_date", formData.eveningDate)
+        .single();
+
+      if (!eveningData) {
+        const { data: newEvening } = await supabase
+          .from("cultural_evenings")
+          .insert({ evening_date: formData.eveningDate, total_slots: 25 })
+          .select("id")
+          .single();
+        eveningData = newEvening;
+      }
+
+      // 2. Insert performance
+      const { error } = await supabase.from("cultural_performances").insert({
+        evening_id: eveningData?.id,
+        performance_type: formData.performanceType,
+        format: formData.format,
+        song_name: formData.songName,
+        participant_names: formData.participantNames,
+        contact_name: formData.contactName,
+        phone: formData.phone,
+        flat_number: formData.flatNumber,
+      });
+
+      if (error) throw error;
+      setIsSuccess(true);
+    } catch (err) {
+      console.error("Error submitting performance:", err);
+      alert("Submission failed. Please check database connection.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center w-full min-h-screen">
+      
+      {/* 1. ROYAL FESTIVE HERO BANNER */}
+      <section className="w-full bg-festive-hero text-white relative overflow-hidden py-14 md:py-20 px-4 sm:px-6 lg:px-8 border-b border-amber-500/20 text-center">
+        <div className="absolute -top-24 -right-24 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-80 h-80 bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="max-w-4xl mx-auto relative z-10">
+          <div className="inline-flex items-center gap-2 px-4 py-1 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs font-semibold uppercase tracking-wider mb-4 backdrop-blur-md">
+            <Calendar size={14} className="text-amber-400" />
+            <span>6 Days of Divine Celebration: 15 - 20 Oct 2026</span>
+          </div>
+
+          <h1 className="font-heading text-4xl sm:text-6xl font-bold tracking-tight text-white mb-4 leading-tight">
+            Pujo Nirghanto & <span className="text-gold-gradient">Pratibimb Stage</span>
+          </h1>
+
+          <p className="text-sm sm:text-base text-amber-100/90 max-w-2xl mx-auto font-normal leading-relaxed mb-6">
+            Explore daily ritual timings, sacred pushpanjali batches, community bhog feasts, and our dazzling Pratibimb cultural stage headliners.
+          </p>
+
+          {/* Quick Highlight Chips */}
+          <div className="flex flex-wrap justify-center gap-3 text-xs text-amber-200">
+            <div className="bg-black/30 border border-amber-400/20 px-4 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md">
+              <Sparkles size={14} className="text-amber-400" />
+              <span>Kumari Puja: 18 Oct 11:30 AM</span>
+            </div>
+            <div className="bg-black/30 border border-amber-400/20 px-4 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md">
+              <Flame size={14} className="text-amber-400" />
+              <span>Sandhi Pujo: 18 Oct 04:15 PM</span>
+            </div>
+            <div className="bg-black/30 border border-amber-400/20 px-4 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md">
+              <Music size={14} className="text-amber-400" />
+              <span>3 Flagship PSS Headliners</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. INTERACTIVE 6-DAY TIMELINE SWITCHER */}
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
+        <div className="flex items-center justify-start md:justify-center gap-2.5 overflow-x-auto pb-4 pt-2 no-scrollbar">
+          {pujoSchedule.map((day) => (
+            <button
+              key={day.id}
+              onClick={() => {
+                setSelectedDay(day.id);
+                setFormData((prev) => ({
+                  ...prev,
+                  eveningDate: `2026-10-${day.id === "panchami" ? "15" : day.id === "sashti" ? "16" : day.id === "saptami" ? "17" : day.id === "ashtami" ? "18" : day.id === "nabami" ? "19" : "20"}`,
+                }));
+              }}
+              className={`px-4 sm:px-6 py-3 rounded-2xl transition-all shrink-0 flex flex-col items-center border ${
+                selectedDay === day.id
+                  ? "bg-primary text-white border-amber-400 shadow-lg scale-105 golden-glow"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:bg-amber-50/50"
+              }`}
+            >
+              <span className="text-[11px] uppercase font-bold opacity-80">{day.date}</span>
+              <span className="font-heading text-base sm:text-lg font-bold">{day.dayName}</span>
+              <span className="text-[11px] opacity-75">{day.bengaliName}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 3. DUAL-COLUMN SCHEDULE VIEW */}
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+        
+        {/* Day Header Banner */}
+        <div className="bg-gradient-to-r from-[#FFFDF9] to-[#FDF8F0] border border-amber-300/80 rounded-3xl p-6 mb-8 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+              <Sparkles size={13} className="text-primary" />
+              <span>{currentSchedule.date} • {currentSchedule.bengaliName}</span>
+            </div>
+            <h2 className="font-heading text-2xl sm:text-3xl text-gray-900 font-bold">
+              {currentSchedule.dayName}: <span className="text-primary">{currentSchedule.theme}</span>
+            </h2>
+          </div>
+
+          <a
+            href="#register-performance"
+            className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-5 py-2.5 rounded-full transition shadow-sm self-start md:self-auto flex items-center gap-1.5"
+          >
+            <Music size={14} /> Register for Open Stage Slots
+          </a>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* COLUMN 1: SACRED PUJO NIRGHANTO (7 Cols) */}
+          <div className="lg:col-span-7 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-amber-900/10">
+              <h3 className="font-heading text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Flame size={20} className="text-primary" />
+                <span>Sacred Pujo Nirghanto (Rituals)</span>
+              </h3>
+              <span className="text-xs text-amber-800 font-semibold bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                Purohit Guided
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              {currentSchedule.rituals.map((ritual, idx) => (
+                <div
+                  key={idx}
+                  className="bg-white rounded-2xl p-4 sm:p-5 border border-amber-900/10 shadow-xs hover:border-amber-400 transition-all flex items-start gap-4"
+                >
+                  <div className="bg-amber-100/70 text-primary px-3 py-2 rounded-xl text-center shrink-0 border border-amber-200">
+                    <Clock size={16} className="mx-auto mb-1 text-primary" />
+                    <span className="text-[11px] font-bold block whitespace-nowrap">{ritual.time}</span>
+                  </div>
+
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                        ritual.type === "ritual"
+                          ? "bg-red-100 text-red-800"
+                          : ritual.type === "bhog"
+                          ? "bg-amber-100 text-amber-900"
+                          : ritual.type === "aarti"
+                          ? "bg-orange-100 text-orange-800"
+                          : "bg-purple-100 text-purple-800"
+                      }`}>
+                        {ritual.type}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-sm sm:text-base text-gray-900">{ritual.event}</h4>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* COLUMN 2: PRATIBIMB CULTURAL EVENING (5 Cols) */}
+          <div className="lg:col-span-5 space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-amber-900/10">
+              <h3 className="font-heading text-xl font-bold text-gray-900 flex items-center gap-2">
+                <Music size={20} className="text-primary" />
+                <span>Pratibimb Cultural Stage</span>
+              </h3>
+              <span className="text-xs text-amber-800 font-semibold bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
+                Live Evening
+              </span>
+            </div>
+
+            <div className="bg-gradient-to-br from-[#FFFDF9] to-[#FDF7EE] rounded-3xl p-6 border border-amber-400/60 shadow-md space-y-5">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-amber-900 bg-amber-100 px-3 py-0.5 rounded-full uppercase">
+                    Stage Time: {currentSchedule.culturalEvening.time}
+                  </span>
+                  <span className="text-[11px] font-bold text-primary">
+                    {currentSchedule.culturalEvening.residentSlotsAvailable} Open Slots
+                  </span>
+                </div>
+                <h4 className="font-heading text-xl font-bold text-gray-900 mb-2">
+                  {currentSchedule.culturalEvening.title}
+                </h4>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  {currentSchedule.culturalEvening.description}
+                </p>
+              </div>
+
+              {/* ⭐ PSS SPECIAL FLAGSHIP HEADLINER CARD */}
+              {currentSchedule.culturalEvening.pssHeadliner && (
+                <div className="bg-gradient-to-r from-[#850E1F] to-[#5C0A15] text-white p-5 rounded-2xl shadow-lg border border-amber-400/40 relative overflow-hidden">
+                  <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/20 rounded-full blur-xl" />
+                  
+                  <div className="flex items-center gap-1.5 text-amber-300 text-[10px] font-bold uppercase tracking-wider mb-1">
+                    <Star size={12} className="fill-amber-300" />
+                    <span>PBEL Sanskritik Samiti Flagship Show</span>
+                  </div>
+
+                  <h5 className="font-heading text-lg font-bold text-white mb-1">
+                    {currentSchedule.culturalEvening.pssHeadliner.title}
+                  </h5>
+
+                  <p className="text-xs text-amber-100/90 mb-3">
+                    {currentSchedule.culturalEvening.pssHeadliner.genre}
+                  </p>
+
+                  <div className="flex items-center justify-between text-xs pt-2 border-t border-white/15 text-amber-200">
+                    <span className="font-bold flex items-center gap-1">
+                      <Clock size={13} /> {currentSchedule.culturalEvening.pssHeadliner.time}
+                    </span>
+                    <span className="bg-black/30 px-2 py-0.5 rounded-md font-mono text-[11px]">
+                      Duration: {currentSchedule.culturalEvening.pssHeadliner.duration}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Other Acts Lineup */}
+              <div>
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-700 block mb-2">
+                  Featured Acts of the Evening:
+                </span>
+                <ul className="space-y-2">
+                  {currentSchedule.culturalEvening.acts.map((act, i) => (
+                    <li key={i} className="text-xs text-gray-700 flex items-start gap-2">
+                      <ChevronRight size={14} className="text-primary shrink-0 mt-0.5" />
+                      <span className="font-semibold">{act}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="pt-2 border-t border-amber-900/10">
+                <a
+                  href="#register-performance"
+                  className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 rounded-2xl font-bold text-xs transition shadow-md golden-glow flex items-center justify-center gap-2"
+                >
+                  <Music size={15} />
+                  <span>Apply for Resident Performance Slot</span>
+                </a>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* 4. PRATIBIMB PERFORMANCE REGISTRATION FORM */}
+        <div id="register-performance" className="mt-16 bg-white rounded-3xl p-6 sm:p-10 border border-amber-900/15 shadow-xl">
+          
+          <div className="text-center max-w-2xl mx-auto mb-8">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100/60 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+              <Users size={14} /> Pratibimb Resident Artist Portal
+            </span>
+            <h3 className="font-heading text-3xl text-gray-900 font-bold">
+              Register for Pratibimb Cultural Stage
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-500 mt-2">
+              PBEL City residents can apply for solo (3-5 min) or group (5-8 min) performance slots in Song, Dance, Drama, or Instrumental.
+            </p>
+          </div>
+
+          {isSuccess ? (
+            <div className="p-8 bg-green-50 rounded-2xl border border-green-200 text-center max-w-md mx-auto">
+              <CheckCircle2 size={48} className="text-green-600 mx-auto mb-3" />
+              <h4 className="font-heading text-xl font-bold text-gray-900 mb-1">Registration Submitted!</h4>
+              <p className="text-xs text-gray-600 mb-4">
+                Thank you, <strong>{formData.contactName}</strong>. The Pratibimb cultural committee will review your act and confirm your stage slot time!
+              </p>
+              <button
+                onClick={() => setIsSuccess(false)}
+                className="bg-primary text-white text-xs font-semibold px-6 py-2 rounded-full"
+              >
+                Submit Another Act
+              </button>
+            </div>
+          ) : (
+            <form onSubmit={handleRegisterPerformance} className="max-w-3xl mx-auto space-y-6 text-xs sm:text-sm">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Preferred Cultural Evening *</label>
+                  <select
+                    value={formData.eveningDate}
+                    onChange={(e) => setFormData({ ...formData, eveningDate: e.target.value })}
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  >
+                    <option value="2026-10-15">15 Oct (Panchami Evening - Agomoni)</option>
+                    <option value="2026-10-16">16 Oct (Sashti Evening - Retro Rock Night)</option>
+                    <option value="2026-10-17">17 Oct (Saptami Evening - Dance Drama)</option>
+                    <option value="2026-10-18">18 Oct (Ashtami Evening - Grand Drama)</option>
+                    <option value="2026-10-19">19 Oct (Nabami Evening - Finale & Awards)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Performance Genre *</label>
+                  <select
+                    value={formData.performanceType}
+                    onChange={(e) => setFormData({ ...formData, performanceType: e.target.value })}
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  >
+                    <option value="Song">Song / Vocals (Classical / Folk / Bollywood)</option>
+                    <option value="Dance">Dance (Classical / Contemporary / Fusion)</option>
+                    <option value="Skit">Skit / Short Play (Natok)</option>
+                    <option value="Instrumental">Instrumental (Guitar, Keyboard, Flute)</option>
+                    <option value="Recitation">Recitation / Poetry (Kobita)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Format & Slot Duration *</label>
+                  <select
+                    value={formData.format}
+                    onChange={(e) => setFormData({ ...formData, format: e.target.value })}
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  >
+                    <option value="Solo (3-5 mins)">Solo Performance (3-5 mins)</option>
+                    <option value="Duet (4-6 mins)">Duet Performance (4-6 mins)</option>
+                    <option value="Group (5-8 mins)">Group Performance (5-8 mins)</option>
+                    <option value="Drama (15-20 mins)">Drama / Natok (15-20 mins)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Song / Track / Act Name</label>
+                  <input
+                    type="text"
+                    value={formData.songName}
+                    onChange={(e) => setFormData({ ...formData, songName: e.target.value })}
+                    placeholder="e.g. Dhitang Dhitang Bole / Kathak Fusion"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Participant Names & Age Groups *</label>
+                <textarea
+                  rows={2}
+                  required
+                  value={formData.participantNames}
+                  onChange={(e) => setFormData({ ...formData, participantNames: e.target.value })}
+                  placeholder="e.g. Suman (Adult), Rahul (10 yrs), Ananya (8 yrs)"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Contact Lead Person *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.contactName}
+                    onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
+                    placeholder="Your Full Name"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Flat Number *</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.flatNumber}
+                    onChange={(e) => setFormData({ ...formData, flatNumber: e.target.value })}
+                    placeholder="e.g. Tower B - 1204"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone *</label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    placeholder="10-digit number"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] text-white font-bold text-base py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2"
+              >
+                <Music size={20} />
+                <span>{isSubmitting ? "Submitting Registration..." : "Submit Performance Slot Application"}</span>
+              </button>
+
+            </form>
+          )}
+
+        </div>
+
+      </div>
+
+    </div>
+  );
+}

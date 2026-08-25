@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FCFAF7; /* Warm festive ivory */
+  --foreground: #1E1715; /* Rich dark charcoal */
+  --primary: #850E1F; /* Deep Royal Crimson */
+  --primary-hover: #690A17;
+  --primary-light: #FDE8EB;
+  --secondary: #D99B26; /* Radiant Festive Gold */
+  --secondary-hover: #B8801C;
+  --secondary-light: #FEF3C7;
+  --accent-gold: #F59E0B;
+  --card: #FFFFFF;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-secondary-light: var(--secondary-light);
+  --color-card: var(--card);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-heading);
+}
+
+/* Custom Luxury Gradients and Visual Styles */
+.bg-festive-hero {
+  background: radial-gradient(circle at 50% 20%, #A31229 0%, #700B1A 45%, #42040E 85%, #290208 100%);
+}
+
+.bg-gold-metallic {
+  background: linear-gradient(135deg, #FDE68A 0%, #D99B26 40%, #B8801C 75%, #FDE68A 100%);
+}
+
+.text-gold-gradient {
+  background: linear-gradient(135deg, #FDF0CD 0%, #F59E0B 50%, #D97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-crimson-gradient {
+  background: linear-gradient(135deg, #850E1F 0%, #B81932 50%, #690A17 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(217, 155, 38, 0.2);
+}
+
+.glass-card-dark {
+  background: rgba(41, 2, 8, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.golden-border {
+  border: 1px solid rgba(217, 155, 38, 0.35);
+}
+
+.golden-glow {
+  box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.3);
+}
+
+.crimson-glow {
+  box-shadow: 0 10px 30px -10px rgba(133, 14, 31, 0.4);
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Custom smooth scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #FDF9F3;
+}
+::-webkit-scrollbar-thumb {
+  background: #D99B26;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #B8801C;
+}
