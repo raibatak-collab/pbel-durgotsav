@@ -2,16 +2,28 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import { Home, CalendarDays, HeartHandshake, Users, ShieldCheck } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+
+  useEffect(() => {
+    try {
+      const session = localStorage.getItem("pbel_admin_session") || sessionStorage.getItem("pbel_admin_session");
+      setIsAdminLoggedIn(!!session);
+    } catch (_) {
+      setIsAdminLoggedIn(false);
+    }
+  }, [pathname]);
 
   const navItems = [
     { name: "Home", href: "/", icon: Home },
     { name: "Schedule", href: "/programs", icon: CalendarDays },
     { name: "Contribute", href: "/contribute", icon: HeartHandshake, isHighlight: true },
     { name: "Volunteer", href: "/volunteer", icon: Users },
+    { name: "Admin", href: "/admin", icon: ShieldCheck, isAdmin: true },
   ];
 
   return (
@@ -40,11 +52,16 @@ export function BottomNav() {
             <Link
               key={item.name}
               href={item.href}
-              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors ${
+              className={`flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors relative ${
                 isActive ? "text-primary font-semibold" : "text-gray-500 hover:text-gray-900"
               }`}
             >
-              <Icon size={19} className={isActive ? "stroke-[2.5] text-primary" : "stroke-2"} />
+              <div className="relative">
+                <Icon size={19} className={isActive ? "stroke-[2.5] text-primary" : item.isAdmin && isAdminLoggedIn ? "text-amber-700 stroke-2" : "stroke-2"} />
+                {item.isAdmin && isAdminLoggedIn && (
+                  <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                )}
+              </div>
               <span className={`text-[10px] ${isActive ? "text-primary font-bold" : "font-medium"}`}>
                 {item.name}
               </span>

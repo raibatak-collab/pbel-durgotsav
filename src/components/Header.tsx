@@ -1,30 +1,60 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin, Lock } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loggedInAdmin, setLoggedInAdmin] = useState<any>(null);
   const pathname = usePathname();
+
+  // Check if admin is currently logged in on this browser
+  useEffect(() => {
+    try {
+      const session = localStorage.getItem("pbel_admin_session") || sessionStorage.getItem("pbel_admin_session");
+      if (session) {
+        setLoggedInAdmin(JSON.parse(session));
+      } else {
+        setLoggedInAdmin(null);
+      }
+    } catch (_) {
+      setLoggedInAdmin(null);
+    }
+  }, [pathname]);
 
   const navLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Pujo & Cultural Schedule", href: "/programs", icon: Calendar },
     { name: "Volunteer Seva", href: "/volunteer", icon: Users },
     { name: "Contribute & E-Seva", href: "/contribute", icon: HeartHandshake },
+    { name: "Admin Portal", href: "/admin", icon: ShieldCheck },
   ];
 
   return (
     <>
-      {/* Top Notification Announcement Bar */}
-      <div className="bg-gradient-to-r from-[#5E0A16] via-[#850E1F] to-[#5E0A16] text-[#FDE68A] text-xs font-medium py-1.5 px-4 text-center border-b border-amber-500/20 shadow-inner flex items-center justify-center gap-2">
-        <Sparkles size={13} className="text-amber-400 animate-pulse" />
-        <span>PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)</span>
-        <span className="hidden sm:inline bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-          Hyderabad
-        </span>
+      {/* Top Notification Announcement Bar with Admin Active Indicator */}
+      <div className="bg-gradient-to-r from-[#5E0A16] via-[#850E1F] to-[#5E0A16] text-[#FDE68A] text-xs font-medium py-1.5 px-4 text-center border-b border-amber-500/20 shadow-inner flex items-center justify-between sm:justify-center gap-2">
+        <div className="flex items-center gap-1.5 mx-auto">
+          <Sparkles size={13} className="text-amber-400 animate-pulse" />
+          <span>PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)</span>
+          <span className="hidden sm:inline bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+            Hyderabad
+          </span>
+        </div>
+
+        {/* Quick Admin Return Link if Authenticated */}
+        {loggedInAdmin && pathname !== "/admin" && (
+          <Link
+            href="/admin"
+            className="shrink-0 bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-400/40 text-[10px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 transition animate-pulse"
+            title="Return to Admin Control Center"
+          >
+            <ShieldCheck size={11} className="text-amber-300" />
+            <span>Admin Active</span>
+          </Link>
+        )}
       </div>
 
       <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-amber-900/10 shadow-sm transition-all">
@@ -50,6 +80,8 @@ export function Header() {
             <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
               {navLinks.map((link) => {
                 const isActive = pathname === link.href;
+                const isSpecialAdmin = link.href === "/admin";
+                
                 return (
                   <Link
                     key={link.name}
@@ -57,9 +89,12 @@ export function Header() {
                     className={`px-3.5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
                       isActive
                         ? "bg-primary-light text-primary font-semibold shadow-xs"
+                        : isSpecialAdmin && loggedInAdmin
+                        ? "bg-amber-100/80 text-amber-950 hover:bg-amber-200/80 font-bold border border-amber-300"
                         : "text-gray-700 hover:text-primary hover:bg-gray-50"
                     }`}
                   >
+                    {isSpecialAdmin && loggedInAdmin && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
                     <span>{link.name}</span>
                   </Link>
                 );
@@ -106,6 +141,8 @@ export function Header() {
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
+              const isSpecialAdmin = link.href === "/admin";
+
               return (
                 <Link
                   key={link.name}
@@ -114,11 +151,18 @@ export function Header() {
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
                     isActive
                       ? "bg-primary text-white font-semibold shadow-sm"
+                      : isSpecialAdmin && loggedInAdmin
+                      ? "bg-amber-100 text-amber-950 font-bold border border-amber-300"
                       : "text-gray-700 hover:bg-amber-50/60 hover:text-primary"
                   }`}
                 >
-                  <Icon size={18} className={isActive ? "text-amber-300" : "text-amber-700"} />
+                  <Icon size={18} className={isActive ? "text-amber-300" : isSpecialAdmin && loggedInAdmin ? "text-green-600" : "text-amber-700"} />
                   <span>{link.name}</span>
+                  {isSpecialAdmin && loggedInAdmin && (
+                    <span className="ml-auto text-[10px] bg-green-200 text-green-900 font-bold px-2 py-0.5 rounded-full">
+                      Active
+                    </span>
+                  )}
                 </Link>
               );
             })}
