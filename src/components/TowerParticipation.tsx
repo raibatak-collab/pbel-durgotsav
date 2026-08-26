@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Building2, Heart, Sparkles, ArrowRight, TrendingUp } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
-import { PBEL_TOWERS, TowerDefinition } from "@/config/towers";
+import { getStoredTowers, TowerDefinition } from "@/config/towers";
 
 interface TowerInfo {
   id: string;
@@ -16,28 +16,20 @@ interface TowerInfo {
 }
 
 export function TowerParticipation() {
-  const [towerData, setTowerData] = useState<TowerInfo[]>(
-    PBEL_TOWERS.map((t) => ({
-      id: t.id,
-      tower: t.tower,
-      name: t.name,
-      fullName: t.fullName,
-      familyCount: 0,
-      totalAmount: 0,
-    }))
-  );
+  const [towerData, setTowerData] = useState<TowerInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadLiveTowerData() {
       try {
+        const currentTowers = getStoredTowers();
         const { data: contribs } = await supabase
           .from("contributions")
           .select("flat_number, amount, status")
           .eq("status", "Success");
 
         const counts: Record<string, { families: Set<string>; amount: number }> = {};
-        PBEL_TOWERS.forEach((t) => {
+        currentTowers.forEach((t) => {
           counts[t.id] = { families: new Set<string>(), amount: 0 };
         });
 
@@ -49,8 +41,14 @@ export function TowerParticipation() {
             if (!flatStr) return;
 
             let matched = false;
-            for (const t of PBEL_TOWERS) {
-              if (t.regex.test(flatStr) || flatStr.toLowerCase().includes(t.name.toLowerCase())) {
+            for (const t of currentTowers) {
+              if (
+                (t.regex && t.regex.test(flatStr)) ||
+                flatStr.toLowerCase().includes(t.name.toLowerCase()) ||
+                flatStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+                flatStr.toLowerCase().includes(t.fullName.toLowerCase())
+              ) {
+                if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
                 counts[t.id].families.add(flatStr);
                 counts[t.id].amount += amt;
                 matched = true;
@@ -58,15 +56,18 @@ export function TowerParticipation() {
               }
             }
 
-            // If not explicitly matched, match first tower that appears or default to C
-            if (!matched && flatStr) {
-              counts["C"].families.add(flatStr);
-              counts["C"].amount += amt;
+            // If not explicitly matched and we have towers, attribute to first tower or general
+            if (!matched && flatStr && currentTowers.length > 0) {
+              const defaultKey = currentTowers[0].id;
+              if (counts[defaultKey]) {
+                counts[defaultKey].families.add(flatStr);
+                counts[defaultKey].amount += amt;
+              }
             }
           });
         }
 
-        const updated = PBEL_TOWERS.map((t) => ({
+        const updated = currentTowers.map((t) => ({
           id: t.id,
           tower: t.tower,
           name: t.name,
@@ -84,6 +85,14 @@ export function TowerParticipation() {
     }
 
     loadLiveTowerData();
+
+    const handleTowersUpdate = () => {
+      loadLiveTowerData();
+    };
+    window.addEventListener("pbel_towers_updated", handleTowersUpdate);
+    return () => {
+      window.removeEventListener("pbel_towers_updated", handleTowersUpdate);
+    };
   }, []);
 
   const totalContributingFamilies = towerData.reduce((acc, t) => acc + t.familyCount, 0);

@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <!-- Background Radial Gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="45%" r="65%" fx="50%" fy="40%">
+      <stop offset="0%" stop-color="#4A000E"/>
+      <stop offset="45%" stop-color="#2D0208"/>
+      <stop offset="80%" stop-color="#140103"/>
+      <stop offset="100%" stop-color="#080002"/>
+    </radialGradient>
+
+    <!-- Golden Glow Gradient -->
+    <radialGradient id="goldGlow" cx="50%" cy="42%" r="45%">
+      <stop offset="0%" stop-color="#FFD700" stop-opacity="0.35"/>
+      <stop offset="40%" stop-color="#FF9900" stop-opacity="0.18"/>
+      <stop offset="80%" stop-color="#B8860B" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#800000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Sholar Saaj Silver/White Gradient -->
+    <linearGradient id="sholaGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF8DC"/>
+      <stop offset="50%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#D4AF37"/>
+    </linearGradient>
+
+    <!-- Crimson Sacred Gradient -->
+    <linearGradient id="crimsonGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#C41E3A"/>
+      <stop offset="100%" stop-color="#800020"/>
+    </linearGradient>
+
+    <!-- Sholar Saaj Floral Filigree Pattern -->
+    <pattern id="sholaPattern" width="60" height="60" patternUnits="userSpaceOnUse">
+      <circle cx="30" cy="30" r="12" fill="none" stroke="#FFD700" stroke-width="1.2" stroke-opacity="0.25"/>
+      <path d="M30 10 Q35 25 45 30 Q35 35 30 50 Q25 35 15 30 Q25 25 30 10 Z" fill="#FFEAA7" fill-opacity="0.15"/>
+      <circle cx="30" cy="30" r="4" fill="#FFD700" fill-opacity="0.3"/>
+    </pattern>
+  </defs>
+
+  <!-- Base Dark Velvet Canvas -->
+  <rect width="1920" height="1080" fill="url(#bgGrad)"/>
+  <rect width="1920" height="1080" fill="url(#sholaPattern)"/>
+
+  <!-- Divine Golden Aura Behind Ekchala -->
+  <circle cx="960" cy="460" r="520" fill="url(#goldGlow)"/>
+
+  <!-- GRAND TRADITIONAL EKCHALA ARCH (CHALA) -->
+  <!-- Outer Arch Border -->
+  <path d="M 460 780 C 460 220, 1460 220, 1460 780" fill="none" stroke="#D4AF37" stroke-width="14" stroke-linecap="round"/>
+  <path d="M 480 780 C 480 250, 1440 250, 1440 780" fill="none" stroke="#FFF8DC" stroke-width="3" stroke-dasharray="8 6"/>
+  <path d="M 500 780 C 500 280, 1420 280, 1420 780" fill="none" stroke="#B8860B" stroke-width="6"/>
+
+  <!-- Sholar Saaj Arch Crown Spire (Chala Top Kalash & Mukut) -->
+  <path d="M 960 160 Q 940 210 930 240 L 990 240 Q 980 210 960 160 Z" fill="url(#sholaGold)"/>
+  <circle cx="960" cy="150" r="14" fill="#FFD700" stroke="#FFF8DC" stroke-width="3"/>
+  <path d="M 945 240 Q 960 225 975 240 Q 960 255 945 240 Z" fill="#C41E3A"/>
+
+  <!-- Arch Ornamental Leaf Scallops (Sholar Saaj) -->
+  <g fill="#FFFDD0" fill-opacity="0.25" stroke="#FFD700" stroke-width="1.5">
+    <circle cx="560" cy="620" r="24"/>
+    <circle cx="640" cy="490" r="26"/>
+    <circle cx="740" cy="380" r="28"/>
+    <circle cx="850" cy="300" r="30"/>
+    <circle cx="960" cy="270" r="34"/>
+    <circle cx="1070" cy="300" r="30"/>
+    <circle cx="1180" cy="380" r="28"/>
+    <circle cx="1280" cy="490" r="26"/>
+    <circle cx="1360" cy="620" r="24"/>
+  </g>
+
+  <!-- SACRED TRINETRA & DIVINE MAA DURGA FACE (CENTRAL ICONOGRAPHY) -->
+  <g transform="translate(960, 470)">
+    <!-- Golden Mukut (Diadem Crown) -->
+    <path d="M -110 -160 L -130 -90 L 0 -130 L 130 -90 L 110 -160 L 0 -220 Z" fill="url(#sholaGold)" stroke="#FFF8DC" stroke-width="2.5"/>
+    <circle cx="0" cy="-170" r="12" fill="#C41E3A" stroke="#FFD700" stroke-width="2"/>
+    <path d="M -70 -130 Q 0 -100 70 -130" stroke="#FFF8DC" stroke-width="2" fill="none"/>
+    <circle cx="-50" cy="-140" r="6" fill="#FFD700"/>
+    <circle cx="50" cy="-140" r="6" fill="#FFD700"/>
+    <circle cx="0" cy="-115" r="7" fill="#FFD700"/>
+
+    <!-- Auspicious Chandan & Sindoor Kolka (Forehead Filigree) -->
+    <path d="M -65 -60 C -45 -85, -20 -85, 0 -65 C 20 -85, 45 -85, 65 -60" fill="none" stroke="#FFF8DC" stroke-width="3"/>
+    <circle cx="-50" cy="-70" r="3" fill="#FFF8DC"/>
+    <circle cx="-35" cy="-76" r="3" fill="#FFF8DC"/>
+    <circle cx="-20" cy="-78" r="3" fill="#FFF8DC"/>
+    <circle cx="20" cy="-78" r="3" fill="#FFF8DC"/>
+    <circle cx="35" cy="-76" r="3" fill="#FFF8DC"/>
+    <circle cx="50" cy="-70" r="3" fill="#FFF8DC"/>
+
+    <!-- Divine Vertical Third Eye (Trinetra) in Sacred Crimson -->
+    <path d="M 0 -85 C -18 -55, -18 -35, 0 -10 C 18 -35, 18 -55, 0 -85 Z" fill="#C41E3A" stroke="#FFD700" stroke-width="2.5"/>
+    <circle cx="0" cy="-45" r="7" fill="#FFD700"/>
+    <circle cx="0" cy="-45" r="3" fill="#000000"/>
+
+    <!-- Beautiful Curved Left Eye (Almond-Shaped Patachitra Eyes) -->
+    <path d="M -110 -15 C -80 -45, -35 -40, -15 -15 C -35 10, -85 5, -110 -15 Z" fill="#FFFDF0" stroke="#1A0003" stroke-width="3.5"/>
+    <circle cx="-58" cy="-15" r="15" fill="#1A0507" stroke="#3A080D" stroke-width="2"/>
+    <circle cx="-54" cy="-19" r="4.5" fill="#FFFFFF"/>
+    <!-- Upper Eyelid Kajal Wing -->
+    <path d="M -125 -22 Q -70 -52 -10 -14" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round"/>
+
+    <!-- Beautiful Curved Right Eye -->
+    <path d="M 110 -15 C 80 -45, 35 -40, 15 -15 C 35 10, 85 5, 110 -15 Z" fill="#FFFDF0" stroke="#1A0003" stroke-width="3.5"/>
+    <circle cx="58" cy="-15" r="15" fill="#1A0507" stroke="#3A080D" stroke-width="2"/>
+    <circle cx="54" cy="-19" r="4.5" fill="#FFFFFF"/>
+    <!-- Upper Eyelid Kajal Wing -->
+    <path d="M 125 -22 Q 70 -52 10 -14" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round"/>
+
+    <!-- Sacred Golden Nose Ring (Nolak) -->
+    <path d="M 0 5 Q 0 35 10 45" fill="none" stroke="#D4AF37" stroke-width="2.5"/>
+    <circle cx="28" cy="52" r="18" fill="none" stroke="#FFD700" stroke-width="3"/>
+    <circle cx="28" cy="70" r="4" fill="#C41E3A"/>
+
+    <!-- Divine Smiling Crimson Lips -->
+    <path d="M -40 90 Q 0 82 40 90 Q 0 125 -40 90 Z" fill="#C41E3A" stroke="#800020" stroke-width="2"/>
+    <path d="M -38 90 Q 0 98 38 90" stroke="#FFD700" stroke-width="1.5" fill="none"/>
+  </g>
+
+  <!-- 10 DIVINE WEAPONS SILHOUETTES IN GOLDEN RADIANCE -->
+  <g stroke="#D4AF37" stroke-width="3" fill="none" opacity="0.65">
+    <!-- Trishula (Trident in Center-Right) -->
+    <g transform="translate(1180, 420) rotate(15)">
+      <line x1="0" y1="-140" x2="0" y2="180" stroke="#FFD700" stroke-width="5"/>
+      <path d="M 0 -140 L 0 -220" stroke="#FFD700" stroke-width="7"/>
+      <path d="M -40 -150 Q -35 -190 0 -200 Q 35 -190 40 -150" stroke="#FFD700" stroke-width="5" fill="none"/>
+    </g>
+    <!-- Sudarshana Chakra (Left Upper) -->
+    <g transform="translate(740, 360)">
+      <circle cx="0" cy="0" r="38" stroke="#FFD700" stroke-width="4"/>
+      <path d="M 0 -45 L 0 45 M -45 0 L 45 0 M -32 -32 L 32 32 M -32 32 L 32 -32" stroke="#FFD700" stroke-width="2.5"/>
+      <circle cx="0" cy="0" r="12" fill="#FFD700"/>
+    </g>
+    <!-- Sacred Lotus (Padma) -->
+    <g transform="translate(720, 520)">
+      <path d="M 0 0 C -25 -30 -30 -60 0 -80 C 30 -60 25 -30 0 0 Z" fill="#C41E3A" fill-opacity="0.4" stroke="#FFD700" stroke-width="2"/>
+      <path d="M -20 -10 C -45 -35 -40 -65 -15 -70 C 5 -55 0 -25 -20 -10 Z" fill="#C41E3A" fill-opacity="0.3" stroke="#FFD700" stroke-width="2"/>
+      <path d="M 20 -10 C 45 -35 40 -65 15 -70 C -5 -55 0 -25 20 -10 Z" fill="#C41E3A" fill-opacity="0.3" stroke="#FFD700" stroke-width="2"/>
+    </g>
+    <!-- Sacred Conch (Shankha) -->
+    <g transform="translate(1200, 560)">
+      <path d="M 0 0 Q -25 -40 0 -70 Q 35 -40 25 10 Q 0 35 0 0 Z" stroke="#FFD700" stroke-width="3" fill="#FFF8DC" fill-opacity="0.2"/>
+    </g>
+  </g>
+
+  <!-- Bottom Sacred Red & Gold Border Trim -->
+  <rect x="0" y="1040" width="1920" height="40" fill="#2A0208"/>
+  <line x1="0" y1="1040" x2="1920" y2="1040" stroke="#D4AF37" stroke-width="4"/>
+  <line x1="0" y1="1048" x2="1920" y2="1048" stroke="#FFD700" stroke-width="1.5" stroke-dasharray="12 8"/>
+</svg>

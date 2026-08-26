@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <!-- Royal Crimson Pandal Velvet Gradient -->
+    <radialGradient id="mandalaBg" cx="50%" cy="48%" r="70%">
+      <stop offset="0%" stop-color="#5B0515"/>
+      <stop offset="45%" stop-color="#36020B"/>
+      <stop offset="80%" stop-color="#190004"/>
+      <stop offset="100%" stop-color="#080001"/>
+    </radialGradient>
+
+    <!-- Golden Alpana Glow -->
+    <radialGradient id="alpanaGlow" cx="50%" cy="48%" r="45%">
+      <stop offset="0%" stop-color="#FFD700" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#FF8C00" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#800000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Marigold Garland Repeating Segment Pattern -->
+    <pattern id="marigoldPattern" width="40" height="40" patternUnits="userSpaceOnUse">
+      <circle cx="20" cy="20" r="14" fill="#FFA500" stroke="#FF4500" stroke-width="1.5"/>
+      <circle cx="20" cy="20" r="8" fill="#FFD700"/>
+    </pattern>
+
+    <!-- Bengali Alpana White Rice Paste Style Gradient -->
+    <linearGradient id="ricePaste" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#FFF8DC"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#mandalaBg)"/>
+
+  <!-- Golden Radiant Core -->
+  <circle cx="960" cy="480" r="520" fill="url(#alpanaGlow)"/>
+
+  <!-- GRAND BENGALI ALPANA MANDALA SACRED GEOMETRY -->
+  <g transform="translate(960, 480)" stroke="#FFD700" stroke-width="2.5" fill="none" opacity="0.75">
+    <!-- Concentric Sacred Rings -->
+    <circle cx="0" cy="0" r="440" stroke-width="6" stroke-dasharray="14 10"/>
+    <circle cx="0" cy="0" r="400" stroke-width="2"/>
+    <circle cx="0" cy="0" r="360" stroke-width="4" stroke-dasharray="4 6"/>
+    <circle cx="0" cy="0" r="300" stroke-width="3"/>
+    <circle cx="0" cy="0" r="220" stroke-width="5"/>
+    <circle cx="0" cy="0" r="140" stroke-width="2.5" stroke-dasharray="8 8"/>
+
+    <!-- 16-Petal Intricate Lotus Mandala -->
+    <!-- 8 Primary Petals -->
+    <g fill="#C41E3A" fill-opacity="0.3" stroke="#FFF8DC" stroke-width="2">
+      <path d="M 0 0 C -40 -120, -50 -260, 0 -300 C 50 -260, 40 -120, 0 0 Z"/>
+      <path d="M 0 0 C -40 -120, -50 -260, 0 -300 C 50 -260, 40 -120, 0 0 Z" transform="rotate(45)"/>
+      <path d="M 0 0 C -40 -120, -50 -260, 0 -300 C 50 -260, 40 -120, 0 0 Z" transform="rotate(90)"/>
+      <path d="M 0 0 C -40 -120, -50 -260, 0 -300 C 50 -260, 40 -120, 0 0 Z" transform="rotate(135)"/>
+      <path d="M 0 0 C -40 -120, -50 -260, 0 -300 C 50 -260, 40 -120, 0 0 Z" transform="rotate(180)"/>
+      <path d="M 0 0 C -40 -120, -50 -260, 0 -300 C 50 -260, 40 -120, 0 0 Z" transform="rotate(225)"/>
+      <path d="M 0 0 C -40 -120, -50 -260, 0 -300 C 50 -260, 40 -120, 0 0 Z" transform="rotate(270)"/>
+      <path d="M 0 0 C -40 -120, -50 -260, 0 -300 C 50 -260, 40 -120, 0 0 Z" transform="rotate(315)"/>
+    </g>
+
+    <!-- Auspicious Kalash & Conch Petal Ornaments -->
+    <circle cx="0" cy="-350" r="16" fill="#FFD700"/>
+    <circle cx="247" cy="-247" r="16" fill="#FFD700"/>
+    <circle cx="350" cy="0" r="16" fill="#FFD700"/>
+    <circle cx="247" cy="247" r="16" fill="#FFD700"/>
+    <circle cx="0" cy="350" r="16" fill="#FFD700"/>
+    <circle cx="-247" cy="247" r="16" fill="#FFD700"/>
+    <circle cx="-350" cy="0" r="16" fill="#FFD700"/>
+    <circle cx="-247" cy="-247" r="16" fill="#FFD700"/>
+  </g>
+
+  <!-- CENTRAL SACRED TRINETRA WITH GOLDEN RADIANCE -->
+  <g transform="translate(960, 480)">
+    <!-- Trinetra Eye -->
+    <path d="M 0 -70 C -18 -45, -18 -25, 0 0 C 18 -25, 18 -45, 0 -70 Z" fill="#C41E3A" stroke="#FFD700" stroke-width="3"/>
+    <circle cx="0" cy="-35" r="7" fill="#FFD700"/>
+    <circle cx="0" cy="-35" r="3" fill="#000000"/>
+
+    <!-- Left Almond Eye -->
+    <path d="M -100 -8 C -75 -35, -30 -30, -12 -8 C -30 14, -75 10, -100 -8 Z" fill="#FFFDF0" stroke="#000000" stroke-width="3.5"/>
+    <circle cx="-54" cy="-8" r="14" fill="#1A0507"/>
+    <circle cx="-50" cy="-12" r="4" fill="#FFFFFF"/>
+    <path d="M -115 -15 Q -65 -45 -8 -8" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round"/>
+
+    <!-- Right Almond Eye -->
+    <path d="M 100 -8 C 75 -35, 30 -30, 12 -8 C 30 14, 75 10, 100 -8 Z" fill="#FFFDF0" stroke="#000000" stroke-width="3.5"/>
+    <circle cx="54" cy="-8" r="14" fill="#1A0507"/>
+    <circle cx="50" cy="-12" r="4" fill="#FFFFFF"/>
+    <path d="M 115 -15 Q 65 -45 8 -8" fill="none" stroke="#000000" stroke-width="4.5" stroke-linecap="round"/>
+
+    <!-- Auspicious Golden Nolak -->
+    <circle cx="25" cy="48" r="16" fill="none" stroke="#FFD700" stroke-width="3"/>
+    <circle cx="25" cy="64" r="4" fill="#C41E3A"/>
+
+    <!-- Smiling Crimson Lips -->
+    <path d="M -36 85 Q 0 76 36 85 Q 0 115 -36 85 Z" fill="#C41E3A" stroke="#FFD700" stroke-width="2"/>
+  </g>
+
+  <!-- LUSH MARIGOLD (GENDA PHOOL) BORDER AT TOP & BOTTOM -->
+  <g fill="#FFA500" stroke="#D35400" stroke-width="1">
+    <!-- Top Garlands -->
+    <rect x="0" y="0" width="1920" height="28" fill="#D35400"/>
+    <path d="M 0 28 Q 120 70 240 28 Q 360 70 480 28 Q 600 70 720 28 Q 840 70 960 28 Q 1080 70 1200 28 Q 1320 70 1440 28 Q 1560 70 1680 28 Q 1800 70 1920 28" fill="none" stroke="#FFA500" stroke-width="12" stroke-linecap="round"/>
+    <path d="M 0 28 Q 120 70 240 28 Q 360 70 480 28 Q 600 70 720 28 Q 840 70 960 28 Q 1080 70 1200 28 Q 1320 70 1440 28 Q 1560 70 1680 28 Q 1800 70 1920 28" fill="none" stroke="#FFD700" stroke-width="6" stroke-dasharray="8 12"/>
+  </g>
+</svg>

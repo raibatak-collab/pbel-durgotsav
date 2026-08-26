@@ -1,5 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 
 // Official Config to Verify
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
@@ -867,6 +869,82 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.strictEqual(isValidImageUri(sampleBase64), true);
       assert.strictEqual(isValidImageUri("https://images.unsplash.com/photo-1601614275039"), true);
       assert.strictEqual(isValidImageUri("/PBEL_Logo.png"), true);
+    });
+  });
+
+  describe('25. Universal In-Place Editing for Members, Wings, and Towers', () => {
+    it('should edit member details in-place without altering other records', () => {
+      let members = [
+        { id: "mem-1", name: "Sourav Ganguly", tower: "Tower A (Emerald)", flatNumber: "802", headcount: 4 },
+        { id: "mem-2", name: "Anirban Mukherjee", tower: "Tower B (Sapphire)", flatNumber: "1104", headcount: 4 },
+      ];
+
+      // Edit member 1 headcount & flat
+      members = members.map((m) =>
+        m.id === "mem-1"
+          ? { ...m, flatNumber: "804", headcount: 5 }
+          : m
+      );
+
+      assert.strictEqual(members[0].flatNumber, "804");
+      assert.strictEqual(members[0].headcount, 5);
+      assert.strictEqual(members[1].flatNumber, "1104"); // unchanged
+    });
+
+    it('should edit wing lead role and affiliation seamlessly', () => {
+      let wings = [
+        {
+          id: "w-cul",
+          category: "Cultural Directorate",
+          members: [{ id: "m-1", name: "Anirban", role: "Stage Lead", tower: "Tower A" }],
+        },
+      ];
+
+      wings = wings.map((w) =>
+        w.id === "w-cul"
+          ? {
+              ...w,
+              members: w.members.map((m) =>
+                m.id === "m-1" ? { ...m, role: "Pratibimb Stage Director", tower: "Tower C (Pearl)" } : m
+              ),
+            }
+          : w
+      );
+
+      assert.strictEqual(wings[0].members[0].role, "Pratibimb Stage Director");
+      assert.strictEqual(wings[0].members[0].tower, "Tower C (Pearl)");
+    });
+  });
+
+  describe('26. Bundled Authentic SVG Wallpaper Assets Verification', () => {
+    it('should verify all 4 bundled wallpaper SVG files exist and are valid SVGs', () => {
+      const wallpapers = [
+        "durga_ekchala.svg",
+        "durga_sandhi_deepam.svg",
+        "durga_kumartuli.svg",
+        "durga_festive_mandala.svg",
+      ];
+
+      wallpapers.forEach((wp) => {
+        const filePath = path.join(process.cwd(), "public", "images", "wallpapers", wp);
+        assert.ok(fs.existsSync(filePath), `Wallpaper file must exist: ${wp}`);
+        const content = fs.readFileSync(filePath, "utf-8");
+        assert.ok(content.includes("<svg"), `File must be valid SVG: ${wp}`);
+        assert.ok(content.includes("</svg>"), `File must close SVG tag: ${wp}`);
+      });
+    });
+  });
+
+  describe('27. Frictionless Tower Contribution String Formatting', () => {
+    it('should format Tower + Flat input canonically for database regex matching', () => {
+      const formatFlat = (tower, unit) => {
+        if (tower === "Other" || !tower) return unit.trim() || "Guest Devotee";
+        return `${tower} - ${unit.trim()}`;
+      };
+
+      assert.strictEqual(formatFlat("Tower A (Emerald)", "402"), "Tower A (Emerald) - 402");
+      assert.strictEqual(formatFlat("Tower B (Sapphire)", "1204"), "Tower B (Sapphire) - 1204");
+      assert.strictEqual(formatFlat("Other", "DLF Resident"), "DLF Resident");
     });
   });
 

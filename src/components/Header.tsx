@@ -1,17 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin, Lock, Award, Utensils, Compass } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { 
+  HeartHandshake, 
+  Menu, 
+  X, 
+  Sparkles, 
+  Calendar, 
+  Users, 
+  ShieldCheck, 
+  MapPin, 
+  Award, 
+  Utensils, 
+  Compass,
+  ChevronDown
+} from "lucide-react";
 import { usePathname } from "next/navigation";
 import { getStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [moreDropdownOpen, setMoreDropdownOpen] = useState(false);
   const [loggedInAdmin, setLoggedInAdmin] = useState<any>(null);
   const [customAnnouncement, setCustomAnnouncement] = useState<string>("");
   const [branding, setBranding] = useState<SamitiBrandingConfig>(DEFAULT_BRANDING);
   const pathname = usePathname();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setMoreDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Check if admin is currently logged in on this browser & load announcement & branding
   useEffect(() => {
@@ -45,16 +71,20 @@ export function Header() {
     }
   }, [pathname]);
 
-  const navLinks = [
+  // Primary High-Frequency Desktop Links
+  const primaryLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Pujo Schedule", href: "/programs", icon: Calendar },
     { name: "Anandamela", href: "/anandamela", icon: Utensils },
-    { name: "Pandal Guide", href: "/guide", icon: Compass },
-    { name: "Organizing Committee", href: "/committee", icon: Users },
-    { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake },
-    { name: "Corporate Sponsors", href: "/sponsors", icon: Award },
-    { name: "Contribute & E-Seva", href: "/contribute", icon: HeartHandshake },
-    { name: "Admin Portal", href: "/admin", icon: ShieldCheck },
+  ];
+
+  // Secondary Links for Accessible "More ▾" Dropdown
+  const moreLinks = [
+    { name: "Pandal & Facilities Guide", href: "/guide", icon: Compass, desc: "Pandal map, emergency contacts & zones" },
+    { name: "Organizing Committee", href: "/committee", icon: Users, desc: "Executive wings, leads & volunteer teams" },
+    { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake, desc: "Join kitchen, crowd or stage seva shifts" },
+    { name: "Corporate Sponsors", href: "/sponsors", icon: Award, desc: "Brand partnerships & 25MB official brochure" },
+    { name: "Admin Portal", href: "/admin", icon: ShieldCheck, desc: "Committee CRM, budget, tickets & branding", isSpecial: true },
   ];
 
   return (
@@ -63,7 +93,9 @@ export function Header() {
       <div className="bg-gradient-to-r from-[#5E0A16] via-[#850E1F] to-[#5E0A16] text-[#FDE68A] text-xs font-medium py-1.5 px-4 text-center border-b border-amber-500/20 shadow-inner flex items-center justify-between sm:justify-center gap-2">
         <div className="flex items-center gap-1.5 mx-auto">
           <Sparkles size={13} className="text-amber-400 animate-pulse" />
-          <span>{customAnnouncement || "PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)"}</span>
+          <span className="truncate max-w-[280px] sm:max-w-none">
+            {customAnnouncement || "PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)"}
+          </span>
           <span className="hidden sm:inline bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
             Hyderabad
           </span>
@@ -82,12 +114,12 @@ export function Header() {
         )}
       </div>
 
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-amber-900/10 shadow-sm transition-all">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-amber-900/10 shadow-xs transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             
             {/* Brand Logo & Name */}
-            <Link href="/" className="flex items-center gap-3 group">
+            <Link href="/" className="flex items-center gap-3 group shrink-0">
               {branding.pssLogoUrl || branding.durgotsavLogoUrl ? (
                 <img
                   src={branding.pssLogoUrl || branding.durgotsavLogoUrl}
@@ -100,7 +132,7 @@ export function Header() {
                 </div>
               )}
               <div className="flex flex-col">
-                <span className="font-heading text-xl md:text-2xl font-bold tracking-tight text-primary leading-tight">
+                <span className="font-heading text-lg sm:text-xl font-bold tracking-tight text-primary leading-tight">
                   {branding.festivalName || "PBEL City Durgotsav"}
                 </span>
                 <span className="text-[11px] text-gray-500 font-medium tracking-wide flex items-center gap-1">
@@ -109,12 +141,11 @@ export function Header() {
               </div>
             </Link>
 
-            {/* Desktop Navigation */}
+            {/* Desktop Navigation: Clutter-Free Primary Links + More Dropdown */}
             <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2">
-              {navLinks.map((link) => {
+              {primaryLinks.map((link) => {
                 const isActive = pathname === link.href;
-                const isSpecialAdmin = link.href === "/admin";
-                
+                const Icon = link.icon;
                 return (
                   <Link
                     key={link.name}
@@ -122,23 +153,64 @@ export function Header() {
                     className={`px-3.5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
                       isActive
                         ? "bg-primary-light text-primary font-semibold shadow-xs"
-                        : isSpecialAdmin && loggedInAdmin
-                        ? "bg-amber-100/80 text-amber-950 hover:bg-amber-200/80 font-bold border border-amber-300"
                         : "text-gray-700 hover:text-primary hover:bg-gray-50"
                     }`}
                   >
-                    {isSpecialAdmin && loggedInAdmin && <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />}
+                    <Icon size={15} />
                     <span>{link.name}</span>
                   </Link>
                 );
               })}
+
+              {/* Accessible "Explore More ▾" Dropdown */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  type="button"
+                  onClick={() => setMoreDropdownOpen(!moreDropdownOpen)}
+                  className={`px-3.5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1 ${
+                    moreLinks.some((l) => pathname === l.href)
+                      ? "bg-primary-light text-primary font-semibold"
+                      : "text-gray-700 hover:text-primary hover:bg-gray-50"
+                  }`}
+                >
+                  <span>Explore More</span>
+                  <ChevronDown size={14} className={`transition-transform duration-200 ${moreDropdownOpen ? "rotate-180" : ""}`} />
+                </button>
+
+                {moreDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl border border-gray-200 shadow-xl py-2 z-50 animate-fadeIn">
+                    {moreLinks.map((link) => {
+                      const isActive = pathname === link.href;
+                      const Icon = link.icon;
+                      return (
+                        <Link
+                          key={link.name}
+                          href={link.href}
+                          onClick={() => setMoreDropdownOpen(false)}
+                          className={`px-4 py-2.5 flex items-start gap-3 transition hover:bg-amber-50/60 ${
+                            isActive ? "bg-amber-50/80 text-primary font-bold" : "text-gray-800"
+                          }`}
+                        >
+                          <div className="p-1.5 rounded-lg bg-amber-100 text-primary mt-0.5">
+                            <Icon size={15} />
+                          </div>
+                          <div>
+                            <span className="text-xs font-bold block">{link.name}</span>
+                            <span className="text-[10px] text-gray-500 line-clamp-1">{link.desc}</span>
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </nav>
 
-            {/* Desktop Action Buttons */}
+            {/* Desktop Golden CTA Button */}
             <div className="hidden lg:flex items-center gap-3">
               <Link
                 href="/contribute"
-                className="flex items-center gap-2 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white px-5 py-2.5 rounded-full font-semibold text-sm transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 golden-glow"
+                className="flex items-center gap-2 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white px-5 py-2.5 rounded-full font-bold text-sm transition-all shadow-md hover:shadow-lg hover:-translate-y-0.5 golden-glow"
               >
                 <HeartHandshake size={17} />
                 <span>Contribute / E-Seva</span>
@@ -149,62 +221,82 @@ export function Header() {
             <div className="flex lg:hidden items-center gap-2">
               <Link
                 href="/contribute"
-                className="bg-gradient-to-r from-[#D99B26] to-[#B8801C] text-white text-xs px-3.5 py-2 rounded-full font-semibold flex items-center gap-1.5 shadow-sm"
+                className="bg-gradient-to-r from-[#D99B26] to-[#B8801C] text-white text-xs px-3.5 py-2 rounded-full font-bold flex items-center gap-1.5 shadow-sm"
               >
                 <HeartHandshake size={14} />
-                <span>Contribute</span>
+                <span>E-Seva</span>
               </Link>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="p-2 text-gray-700 hover:text-primary hover:bg-gray-100 rounded-xl transition"
                 aria-label="Toggle Menu"
               >
-                {mobileMenuOpen ? <X size={26} /> : <Menu size={26} />}
+                {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
             </div>
+
           </div>
         </div>
 
-        {/* Mobile Dropdown Drawer */}
+        {/* Mobile Fullscreen Slide-Down Menu */}
         {mobileMenuOpen && (
-          <div className="lg:hidden bg-white/98 backdrop-blur-xl border-b border-amber-900/15 shadow-xl px-4 pt-2 pb-6 space-y-2 animate-in slide-in-from-top-3 duration-200">
-            <div className="text-xs font-semibold text-amber-800 uppercase tracking-wider px-3 pt-2 pb-1">
-              Navigation Menu
+          <div className="lg:hidden bg-white border-b border-gray-200 shadow-xl px-4 pt-3 pb-6 space-y-2 animate-fadeIn max-h-[80vh] overflow-y-auto">
+            <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-3 pb-1">
+              Festive Navigation
             </div>
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const isActive = pathname === link.href;
-              const isSpecialAdmin = link.href === "/admin";
 
+            {primaryLinks.map((link) => {
+              const isActive = pathname === link.href;
+              const Icon = link.icon;
               return (
                 <Link
                   key={link.name}
                   href={link.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition ${
-                    isActive
-                      ? "bg-primary text-white font-semibold shadow-sm"
-                      : isSpecialAdmin && loggedInAdmin
-                      ? "bg-amber-100 text-amber-950 font-bold border border-amber-300"
-                      : "text-gray-700 hover:bg-amber-50/60 hover:text-primary"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition ${
+                    isActive ? "bg-primary-light text-primary" : "text-gray-800 hover:bg-gray-50"
                   }`}
                 >
-                  <Icon size={18} className={isActive ? "text-amber-300" : isSpecialAdmin && loggedInAdmin ? "text-green-600" : "text-amber-700"} />
+                  <Icon size={18} className="text-primary" />
                   <span>{link.name}</span>
-                  {isSpecialAdmin && loggedInAdmin && (
-                    <span className="ml-auto text-[10px] bg-green-200 text-green-900 font-bold px-2 py-0.5 rounded-full">
-                      Active
-                    </span>
-                  )}
                 </Link>
               );
             })}
 
-            <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 px-3">
-              <span className="flex items-center gap-1">
-                <MapPin size={13} className="text-primary" /> PBEL City, Hyderabad
-              </span>
-              <span className="text-amber-700 font-semibold">Oct 15 - 20, 2026</span>
+            <div className="text-[11px] font-bold text-gray-400 uppercase tracking-wider px-3 pt-2 pb-1">
+              Community &amp; Services
+            </div>
+
+            {moreLinks.map((link) => {
+              const isActive = pathname === link.href;
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-semibold transition ${
+                    isActive ? "bg-primary-light text-primary" : "text-gray-800 hover:bg-gray-50"
+                  }`}
+                >
+                  <Icon size={18} className="text-primary" />
+                  <div>
+                    <span>{link.name}</span>
+                    <span className="block text-[10px] text-gray-500 font-normal">{link.desc}</span>
+                  </div>
+                </Link>
+              );
+            })}
+
+            <div className="pt-3">
+              <Link
+                href="/contribute"
+                onClick={() => setMobileMenuOpen(false)}
+                className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-[#D99B26] to-[#B8801C] text-white py-3 rounded-2xl font-bold text-sm shadow-md"
+              >
+                <HeartHandshake size={18} />
+                <span>Sponsor Seva Offering / Contribute</span>
+              </Link>
             </div>
           </div>
         )}

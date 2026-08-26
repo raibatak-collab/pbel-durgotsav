@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <radialGradient id="deepamDarkBg" cx="50%" cy="50%" r="75%">
+      <stop offset="0%" stop-color="#380D00"/>
+      <stop offset="40%" stop-color="#210500"/>
+      <stop offset="75%" stop-color="#120200"/>
+      <stop offset="100%" stop-color="#050000"/>
+    </radialGradient>
+
+    <!-- Warm Diya Flame Gradient -->
+    <radialGradient id="diyaGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF3A8"/>
+      <stop offset="25%" stop-color="#FFB300" stop-opacity="0.8"/>
+      <stop offset="60%" stop-color="#FF4500" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#8B0000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Dhunuchi Fire Gradient -->
+    <linearGradient id="flameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#FF2200"/>
+      <stop offset="50%" stop-color="#FFAA00"/>
+      <stop offset="100%" stop-color="#FFFFE0"/>
+    </linearGradient>
+
+    <!-- Earthen Clay Pot Gradient -->
+    <linearGradient id="terracotta" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C85A32"/>
+      <stop offset="60%" stop-color="#8D3214"/>
+      <stop offset="100%" stop-color="#551C08"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Dark Midnight Sanctum Canvas -->
+  <rect width="1920" height="1080" fill="url(#deepamDarkBg)"/>
+
+  <!-- Glowing Aura of 108 Deepam -->
+  <circle cx="960" cy="500" r="600" fill="url(#diyaGlow)"/>
+  <circle cx="480" cy="700" r="380" fill="url(#diyaGlow)" opacity="0.6"/>
+  <circle cx="1440" cy="700" r="380" fill="url(#diyaGlow)" opacity="0.6"/>
+
+  <!-- SACRED 108 RED LOTUSES (SANDHI PUJO 108 NEELPADMA & RAKTAPADMA) -->
+  <g fill="#D2143A" fill-opacity="0.35" stroke="#FFD700" stroke-width="1.5">
+    <path d="M 960 300 C 930 250, 930 210, 960 180 C 990 210, 990 250, 960 300 Z" fill="#E60026"/>
+    <path d="M 935 290 C 895 255, 900 215, 935 195 C 955 225, 955 260, 935 290 Z"/>
+    <path d="M 985 290 C 1025 255, 1020 215, 985 195 C 965 225, 965 260, 985 290 Z"/>
+  </g>
+
+  <!-- BURNING DHUNUCHI WITH AROMATIC DHUNO SMOKE SPIRALS -->
+  <!-- Left Dhunuchi -->
+  <g transform="translate(420, 680)">
+    <!-- Terracotta Base & Stem -->
+    <path d="M -40 180 L 40 180 L 25 230 L -25 230 Z" fill="url(#terracotta)" stroke="#FFD700" stroke-width="2"/>
+    <path d="M -15 80 L 15 80 L 20 180 L -20 180 Z" fill="url(#terracotta)"/>
+    <path d="M -70 80 Q 0 110 70 80 L 60 20 Q 0 -10 -60 20 Z" fill="url(#terracotta)" stroke="#FFD700" stroke-width="3"/>
+    <!-- Burning Charcoal Embers -->
+    <ellipse cx="0" cy="25" rx="55" ry="18" fill="#FF3300"/>
+    <ellipse cx="0" cy="25" rx="35" ry="10" fill="#FFCC00"/>
+    <!-- Dhunuchi Fire Flames -->
+    <path d="M -25 20 Q -40 -40 0 -90 Q 30 -50 20 20 Q 0 0 -25 20 Z" fill="url(#flameGrad)"/>
+    <path d="M 10 15 Q 40 -35 15 -75 Q -5 -40 10 15 Z" fill="#FFFFCC" opacity="0.8"/>
+  </g>
+
+  <!-- Right Dhunuchi -->
+  <g transform="translate(1500, 680)">
+    <path d="M -40 180 L 40 180 L 25 230 L -25 230 Z" fill="url(#terracotta)" stroke="#FFD700" stroke-width="2"/>
+    <path d="M -15 80 L 15 80 L 20 180 L -20 180 Z" fill="url(#terracotta)"/>
+    <path d="M -70 80 Q 0 110 70 80 L 60 20 Q 0 -10 -60 20 Z" fill="url(#terracotta)" stroke="#FFD700" stroke-width="3"/>
+    <ellipse cx="0" cy="25" rx="55" ry="18" fill="#FF3300"/>
+    <ellipse cx="0" cy="25" rx="35" ry="10" fill="#FFCC00"/>
+    <path d="M -20 20 Q -30 -50 0 -90 Q 40 -40 25 20 Q 0 0 -20 20 Z" fill="url(#flameGrad)"/>
+    <path d="M -5 15 Q -30 -35 -10 -75 Q 10 -40 -5 15 Z" fill="#FFFFCC" opacity="0.8"/>
+  </g>
+
+  <!-- CENTRAL SACRED TRINETRA IN GOLDEN RADIANCE -->
+  <g transform="translate(960, 480)">
+    <!-- Aura Corona -->
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#FF9900" stroke-width="2" stroke-dasharray="6 8" opacity="0.6"/>
+    <!-- Trinetra Eye -->
+    <path d="M 0 -60 C -15 -35, -15 -20, 0 0 C 15 -20, 15 -35, 0 -60 Z" fill="#E60026" stroke="#FFD700" stroke-width="2.5"/>
+    <circle cx="0" cy="-28" r="5" fill="#FFD700"/>
+    <!-- Left Eye -->
+    <path d="M -90 -5 C -65 -30, -25 -25, -10 -5 C -25 15, -65 10, -90 -5 Z" fill="#FFFDF0" stroke="#1A0003" stroke-width="3"/>
+    <circle cx="-48" cy="-5" r="12" fill="#1A0507"/>
+    <circle cx="-45" cy="-8" r="3.5" fill="#FFFFFF"/>
+    <!-- Right Eye -->
+    <path d="M 90 -5 C 65 -30, 25 -25, 10 -5 C 25 15, 65 10, 90 -5 Z" fill="#FFFDF0" stroke="#1A0003" stroke-width="3"/>
+    <circle cx="48" cy="-5" r="12" fill="#1A0507"/>
+    <circle cx="45" cy="-8" r="3.5" fill="#FFFFFF"/>
+    <!-- Divine Nose Ring -->
+    <circle cx="20" cy="42" r="14" fill="none" stroke="#FFD700" stroke-width="2.5"/>
+    <circle cx="20" cy="56" r="3" fill="#E60026"/>
+    <!-- Crimson Lips -->
+    <path d="M -30 75 Q 0 68 30 75 Q 0 100 -30 75 Z" fill="#E60026" stroke="#FFD700" stroke-width="1.5"/>
+  </g>
+
+  <!-- 108 ILLUMINATED EARTHEN DIYAS ARRAY (ROW OF PRADEEP) -->
+  <g transform="translate(0, 880)">
+    <!-- Stepped Sacred Diya Platform -->
+    <rect x="0" y="80" width="1920" height="120" fill="#1C0600" stroke="#8D3214" stroke-width="2"/>
+    
+    <!-- Repeated Golden Glowing Diyas -->
+    <g fill="url(#terracotta)" stroke="#FFD700" stroke-width="1.5">
+      <!-- Diya 1 -->
+      <g transform="translate(240, 70)">
+        <path d="M -30 10 Q 0 25 30 10 Q 0 -5 -30 10 Z"/>
+        <path d="M 0 5 Q -10 -25 0 -45 Q 10 -25 0 5 Z" fill="url(#flameGrad)" stroke="none"/>
+        <circle cx="0" cy="-20" r="18" fill="url(#diyaGlow)"/>
+      </g>
+      <!-- Diya 2 -->
+      <g transform="translate(480, 70)">
+        <path d="M -30 10 Q 0 25 30 10 Q 0 -5 -30 10 Z"/>
+        <path d="M 0 5 Q -10 -25 0 -45 Q 10 -25 0 5 Z" fill="url(#flameGrad)" stroke="none"/>
+        <circle cx="0" cy="-20" r="18" fill="url(#diyaGlow)"/>
+      </g>
+      <!-- Diya 3 -->
+      <g transform="translate(720, 70)">
+        <path d="M -30 10 Q 0 25 30 10 Q 0 -5 -30 10 Z"/>
+        <path d="M 0 5 Q -10 -25 0 -45 Q 10 -25 0 5 Z" fill="url(#flameGrad)" stroke="none"/>
+        <circle cx="0" cy="-20" r="18" fill="url(#diyaGlow)"/>
+      </g>
+      <!-- Diya 4 (Center Big) -->
+      <g transform="translate(960, 60)">
+        <path d="M -40 15 Q 0 35 40 15 Q 0 -5 -40 15 Z"/>
+        <path d="M 0 8 Q -14 -35 0 -60 Q 14 -35 0 8 Z" fill="url(#flameGrad)" stroke="none"/>
+        <circle cx="0" cy="-25" r="26" fill="url(#diyaGlow)"/>
+      </g>
+      <!-- Diya 5 -->
+      <g transform="translate(1200, 70)">
+        <path d="M -30 10 Q 0 25 30 10 Q 0 -5 -30 10 Z"/>
+        <path d="M 0 5 Q -10 -25 0 -45 Q 10 -25 0 5 Z" fill="url(#flameGrad)" stroke="none"/>
+        <circle cx="0" cy="-20" r="18" fill="url(#diyaGlow)"/>
+      </g>
+      <!-- Diya 6 -->
+      <g transform="translate(1440, 70)">
+        <path d="M -30 10 Q 0 25 30 10 Q 0 -5 -30 10 Z"/>
+        <path d="M 0 5 Q -10 -25 0 -45 Q 10 -25 0 5 Z" fill="url(#flameGrad)" stroke="none"/>
+        <circle cx="0" cy="-20" r="18" fill="url(#diyaGlow)"/>
+      </g>
+      <!-- Diya 7 -->
+      <g transform="translate(1680, 70)">
+        <path d="M -30 10 Q 0 25 30 10 Q 0 -5 -30 10 Z"/>
+        <path d="M 0 5 Q -10 -25 0 -45 Q 10 -25 0 5 Z" fill="url(#flameGrad)" stroke="none"/>
+        <circle cx="0" cy="-20" r="18" fill="url(#diyaGlow)"/>
+      </g>
+    </g>
+  </g>
+</svg>

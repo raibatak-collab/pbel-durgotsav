@@ -271,6 +271,7 @@ export default function AdminDashboard() {
     headcount: 4,
     status: "Active",
   });
+  const [editingMember, setEditingMember] = useState<any | null>(null);
   const [adminPassModal, setAdminPassModal] = useState<any | null>(null);
 
   // Self-Service Branding, Logo & Wallpaper State
@@ -300,6 +301,7 @@ export default function AdminDashboard() {
   // Organizing Committee CMS State
   const [committeeWings, setCommitteeWings] = useState<CommitteeWing[]>(DEFAULT_COMMITTEE_WINGS);
   const [editingWing, setEditingWing] = useState<CommitteeWing | null>(null);
+  const [editingWingLead, setEditingWingLead] = useState<{ wingId: string; member: CommitteeMember } | null>(null);
   const [newWingForm, setNewWingForm] = useState({ category: "", icon: "🌺", tagline: "" });
   const [newWingMember, setNewWingMember] = useState({ name: "", role: "", tower: "PBEL Sanskritik Samiti", phone: "" });
 
@@ -307,6 +309,9 @@ export default function AdminDashboard() {
   const [towerList, setTowerList] = useState<TowerDefinition[]>(PBEL_TOWERS);
   const [editingTower, setEditingTower] = useState<TowerDefinition | null>(null);
   const [newTowerForm, setNewTowerForm] = useState({ id: "", tower: "", name: "", fullName: "" });
+
+  // Gallery Edit State
+  const [editingPhoto, setEditingPhoto] = useState<any | null>(null);
 
   // Emcee Run-Sheet Modal State
   const [isEmceeModalOpen, setIsEmceeModalOpen] = useState(false);
@@ -797,6 +802,75 @@ export default function AdminDashboard() {
       setPssMembers(updated);
       localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
     }
+  };
+
+  // MEMBER EDITING HANDLER
+  const handleSaveEditedMember = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMember) return;
+    const updated = pssMembers.map((m) =>
+      m.id === editingMember.id ? { ...editingMember, headcount: Math.min(Math.max(Number(editingMember.headcount) || 4, 1), 6) } : m
+    );
+    setPssMembers(updated);
+    localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
+    setEditingMember(null);
+    alert("Member details updated successfully!");
+  };
+
+  // COMMITTEE WING EDITING HANDLER
+  const handleSaveEditedWing = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWing) return;
+    const updated = committeeWings.map((w) =>
+      w.id === editingWing.id ? { ...w, category: editingWing.category, icon: editingWing.icon, tagline: editingWing.tagline } : w
+    );
+    handleSaveCommittee(updated);
+    setEditingWing(null);
+    alert("Committee Wing updated successfully!");
+  };
+
+  // COMMITTEE WING LEAD EDITING HANDLER
+  const handleSaveEditedWingLead = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingWingLead) return;
+    const { wingId, member } = editingWingLead;
+    const updated = committeeWings.map((w) =>
+      w.id === wingId
+        ? {
+            ...w,
+            members: w.members.map((m) => (m.id === member.id ? { ...member } : m)),
+          }
+        : w
+    );
+    handleSaveCommittee(updated);
+    setEditingWingLead(null);
+    alert("Wing Lead details updated successfully!");
+  };
+
+  // TOWER EDITING HANDLER
+  const handleSaveEditedTower = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTower) return;
+    const updated = towerList.map((t) =>
+      t.id === editingTower.id ? { ...editingTower } : t
+    );
+    handleSaveTowers(updated);
+    setEditingTower(null);
+    alert("Tower details updated successfully!");
+  };
+
+  // GALLERY EDITING HANDLER
+  const handleSaveEditedPhoto = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingPhoto) return;
+    const updated = galleryList.map((p) =>
+      p.id === editingPhoto.id ? { ...editingPhoto } : p
+    );
+    setGalleryList(updated);
+    localStorage.setItem("pbel_custom_gallery", JSON.stringify(updated));
+    window.dispatchEvent(new Event("pbel_gallery_updated"));
+    setEditingPhoto(null);
+    alert("Gallery photo updated successfully!");
   };
 
   const handleGenerateMemberPass = (member: any, dayName: string = "All 4 Pujo Days") => {
@@ -1372,35 +1446,96 @@ function decodeCategoryDescription(desc?: string) {
             </div>
           </div>
 
-          {/* Admin Module Tabs */}
-          <div className="flex flex-wrap items-center gap-2 pb-3 mb-6">
-            {[
-              { id: "overview", label: "📊 Overview" },
-              { id: "contributions", label: "💰 Contributions CRM" },
-              { id: "pss_members", label: "👥 Members & Daily Bhog Passes" },
-              { id: "committee", label: "👥 Organizing Committee Wings" },
-              { id: "towers", label: "🏢 Towers Roster" },
-              { id: "categories", label: "🌺 Seva Catalog CMS" },
-              { id: "schedule", label: "📅 Schedule & Pratibimb Stage" },
-              { id: "volunteers", label: "🤝 Volunteers & WhatsApp Dispatch" },
-              { id: "sponsors", label: "🏢 Corporate Sponsors" },
-              { id: "budget", label: "📊 Budget & Expenses Ledger" },
-              { id: "branding", label: "🎨 Branding & Wallpaper CMS" },
-              { id: "gallery", label: "🖼️ Gallery Carousel CMS" },
-              { id: "users", label: "🔒 User Management" },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 ${
-                  activeTab === tab.id
-                    ? "bg-primary text-white shadow-sm ring-2 ring-primary/30"
-                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Admin Module Tabs: Clean Categorized Navigation */}
+          <div className="bg-gray-100/80 p-2 rounded-3xl border border-gray-200 mb-8 space-y-2">
+            
+            {/* Domain Groups */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              
+              {/* Group 1: Finance & CRM */}
+              <div className="bg-white p-2 rounded-2xl border border-gray-200/80 shadow-xs space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-green-800 px-2 flex items-center gap-1">
+                  💰 Finance, CRM &amp; Pass Desk
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { id: "overview", label: "📊 Overview" },
+                    { id: "contributions", label: "💰 Contributions" },
+                    { id: "pss_members", label: "👥 Member Passes" },
+                    { id: "sponsors", label: "🏢 Sponsors" },
+                    { id: "budget", label: "📊 Budget Ledger" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                        activeTab === tab.id
+                          ? "bg-primary text-white shadow-xs font-bold"
+                          : "bg-gray-50 text-gray-700 hover:bg-amber-50 hover:text-amber-900"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Group 2: Festival Ops */}
+              <div className="bg-white p-2 rounded-2xl border border-gray-200/80 shadow-xs space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-900 px-2 flex items-center gap-1">
+                  🌺 Pujo Rituals &amp; Stage Ops
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { id: "categories", label: "🌺 Seva Catalog" },
+                    { id: "schedule", label: "📅 Pujo Nirghanto" },
+                    { id: "volunteers", label: "🤝 Volunteer Roster" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                        activeTab === tab.id
+                          ? "bg-primary text-white shadow-xs font-bold"
+                          : "bg-gray-50 text-gray-700 hover:bg-amber-50 hover:text-amber-900"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Group 3: Governance & CMS */}
+              <div className="bg-white p-2 rounded-2xl border border-gray-200/80 shadow-xs space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-primary px-2 flex items-center gap-1">
+                  👥 Governance, CMS &amp; Security
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {[
+                    { id: "committee", label: "👥 Committee Wings" },
+                    { id: "towers", label: "🏢 Towers" },
+                    { id: "branding", label: "🎨 Branding & Theme" },
+                    { id: "gallery", label: "🖼️ Gallery" },
+                    { id: "users", label: "🔒 Users" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id as any)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
+                        activeTab === tab.id
+                          ? "bg-primary text-white shadow-xs font-bold"
+                          : "bg-gray-50 text-gray-700 hover:bg-amber-50 hover:text-amber-900"
+                      }`}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+
           </div>
 
       {/* TAB CONTENT: 1. OVERVIEW */}
@@ -2998,13 +3133,22 @@ function decodeCategoryDescription(desc?: string) {
                         <span className="text-xs text-gray-500">{wing.tagline}</span>
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteWing(wing.id)}
-                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                      title="Delete Entire Wing"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setEditingWing({ ...wing })}
+                        className="p-1.5 text-gray-400 hover:text-primary hover:bg-amber-50 rounded-lg transition"
+                        title="Edit Wing Info"
+                      >
+                        <Edit2 size={15} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteWing(wing.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Delete Entire Wing"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Members inside this wing */}
@@ -3024,13 +3168,22 @@ function decodeCategoryDescription(desc?: string) {
                               <span className="text-[11px] text-amber-800 font-semibold">{m.role}</span>
                               <span className="text-[10px] text-gray-500 block">{m.tower}</span>
                             </div>
-                            <button
-                              onClick={() => handleDeleteMemberFromWing(wing.id, m.id)}
-                              className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition"
-                              title="Remove Member"
-                            >
-                              <Trash2 size={13} />
-                            </button>
+                            <div className="flex items-center gap-0.5">
+                              <button
+                                onClick={() => setEditingWingLead({ wingId: wing.id, member: { ...m } })}
+                                className="p-1 text-gray-400 hover:text-primary rounded-lg transition"
+                                title="Edit Lead Details"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteMemberFromWing(wing.id, m.id)}
+                                className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition"
+                                title="Remove Member"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -3097,6 +3250,148 @@ function decodeCategoryDescription(desc?: string) {
             </div>
 
           </div>
+
+          {/* EDIT WING MODAL */}
+          {editingWing && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-amber-300 relative">
+                <button
+                  onClick={() => setEditingWing(null)}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
+                >
+                  <X size={18} />
+                </button>
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <Edit2 size={20} className="text-primary" />
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Edit Committee Wing
+                  </h3>
+                </div>
+                <form onSubmit={handleSaveEditedWing} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Wing Title / Department *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingWing.category}
+                      onChange={(e) => setEditingWing({ ...editingWing, category: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Icon / Emoji</label>
+                      <input
+                        type="text"
+                        value={editingWing.icon}
+                        onChange={(e) => setEditingWing({ ...editingWing, icon: e.target.value })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl text-center text-base focus:ring-2 focus:ring-primary outline-none"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block font-semibold text-gray-700 mb-1">Wing Tagline / Scope</label>
+                      <input
+                        type="text"
+                        value={editingWing.tagline}
+                        onChange={(e) => setEditingWing({ ...editingWing, tagline: e.target.value })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingWing(null)}
+                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-xs transition"
+                    >
+                      Save Wing Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* EDIT WING LEAD MODAL */}
+          {editingWingLead && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-amber-300 relative">
+                <button
+                  onClick={() => setEditingWingLead(null)}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
+                >
+                  <X size={18} />
+                </button>
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <Edit2 size={20} className="text-primary" />
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Edit Wing Lead Member
+                  </h3>
+                </div>
+                <form onSubmit={handleSaveEditedWingLead} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Lead Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingWingLead.member.name}
+                      onChange={(e) => setEditingWingLead({
+                        ...editingWingLead,
+                        member: { ...editingWingLead.member, name: e.target.value }
+                      })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Assigned Role *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingWingLead.member.role}
+                      onChange={(e) => setEditingWingLead({
+                        ...editingWingLead,
+                        member: { ...editingWingLead.member, role: e.target.value }
+                      })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Tower / Flat Affiliation</label>
+                    <input
+                      type="text"
+                      value={editingWingLead.member.tower}
+                      onChange={(e) => setEditingWingLead({
+                        ...editingWingLead,
+                        member: { ...editingWingLead.member, tower: e.target.value }
+                      })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingWingLead(null)}
+                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-xs transition"
+                    >
+                      Save Lead Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
         </div>
       )}
@@ -3213,7 +3508,14 @@ function decodeCategoryDescription(desc?: string) {
                         <td className="p-3 font-semibold text-gray-900">{t.tower}</td>
                         <td className="p-3 text-gray-700">{t.name}</td>
                         <td className="p-3 font-medium text-amber-900">{t.fullName}</td>
-                        <td className="p-3 text-right">
+                        <td className="p-3 text-right space-x-1">
+                          <button
+                            onClick={() => setEditingTower({ ...t })}
+                            className="p-1 text-gray-400 hover:text-primary rounded-lg transition"
+                            title="Edit Tower"
+                          >
+                            <Edit2 size={13} />
+                          </button>
                           <button
                             onClick={() => handleDeleteTower(t.id)}
                             className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition"
@@ -3230,6 +3532,97 @@ function decodeCategoryDescription(desc?: string) {
             </div>
 
           </div>
+
+          {/* EDIT TOWER MODAL */}
+          {editingTower && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-amber-300 relative">
+                <button
+                  onClick={() => setEditingTower(null)}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
+                >
+                  <X size={18} />
+                </button>
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <Edit2 size={20} className="text-primary" />
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Edit Tower Details
+                  </h3>
+                </div>
+                <form onSubmit={handleSaveEditedTower} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Tower Code / Letter *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingTower.id}
+                      onChange={(e) => setEditingTower({ ...editingTower, id: e.target.value.toUpperCase() })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl uppercase font-mono font-bold focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Tower Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingTower.tower}
+                      onChange={(e) => {
+                        const nextTower = e.target.value;
+                        setEditingTower({
+                          ...editingTower,
+                          tower: nextTower,
+                          fullName: `${nextTower} (${editingTower.name || ""})`,
+                        });
+                      }}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Building / Wing Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingTower.name}
+                      onChange={(e) => {
+                        const nextName = e.target.value;
+                        setEditingTower({
+                          ...editingTower,
+                          name: nextName,
+                          fullName: `${editingTower.tower} (${nextName})`,
+                        });
+                      }}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Full Display Label</label>
+                    <input
+                      type="text"
+                      value={editingTower.fullName}
+                      onChange={(e) => setEditingTower({ ...editingTower, fullName: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-amber-900 font-semibold"
+                    />
+                  </div>
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingTower(null)}
+                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-xs transition"
+                    >
+                      Save Tower Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 
@@ -3666,17 +4059,98 @@ function decodeCategoryDescription(desc?: string) {
                       <span className="text-xs text-amber-800 font-semibold">{p.category} ({p.year})</span>
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleDeletePhoto(p.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                    title="Delete Photo"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setEditingPhoto({ ...p })}
+                      className="p-2 text-gray-400 hover:text-primary hover:bg-amber-50 rounded-lg transition"
+                      title="Edit Photo"
+                    >
+                      <Edit2 size={15} />
+                    </button>
+                    <button
+                      onClick={() => handleDeletePhoto(p.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Delete Photo"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
+
+          {/* EDIT GALLERY PHOTO MODAL */}
+          {editingPhoto && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl border border-amber-300 relative">
+                <button
+                  onClick={() => setEditingPhoto(null)}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
+                >
+                  <X size={18} />
+                </button>
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <Edit2 size={20} className="text-primary" />
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Edit Gallery Photo
+                  </h3>
+                </div>
+                <form onSubmit={handleSaveEditedPhoto} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Photo Title / Caption *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingPhoto.title}
+                      onChange={(e) => setEditingPhoto({ ...editingPhoto, title: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Pujo Year</label>
+                      <select
+                        value={editingPhoto.year}
+                        onChange={(e) => setEditingPhoto({ ...editingPhoto, year: e.target.value })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      >
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Category / Tag</label>
+                      <input
+                        type="text"
+                        value={editingPhoto.category}
+                        onChange={(e) => setEditingPhoto({ ...editingPhoto, category: e.target.value })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingPhoto(null)}
+                      className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-xs transition"
+                    >
+                      Save Photo Changes
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
         </div>
       )}
@@ -4154,7 +4628,14 @@ function decodeCategoryDescription(desc?: string) {
                                   </button>
                                 </div>
                               </td>
-                              <td className="p-3.5 text-right">
+                              <td className="p-3.5 text-right space-x-1">
+                                <button
+                                  onClick={() => setEditingMember({ ...m })}
+                                  className="p-1.5 text-gray-500 hover:text-primary hover:bg-amber-50 rounded-lg transition"
+                                  title="Edit Member Details"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
                                 <button
                                   onClick={() => handleDeleteMember(m.id)}
                                   className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
@@ -4175,6 +4656,105 @@ function decodeCategoryDescription(desc?: string) {
                   </div>
                 )}
               </div>
+
+              {/* EDIT MEMBER MODAL */}
+              {editingMember && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+                  <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-amber-300 relative">
+                    <button
+                      onClick={() => setEditingMember(null)}
+                      className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
+                    >
+                      <X size={18} />
+                    </button>
+
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                      <Edit2 size={20} className="text-primary" />
+                      <h3 className="font-heading text-lg font-bold text-gray-900">
+                        Edit Member Family Details
+                      </h3>
+                    </div>
+
+                    <form onSubmit={handleSaveEditedMember} className="space-y-4 text-xs">
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Head of Family Name *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editingMember.name}
+                          onChange={(e) => setEditingMember({ ...editingMember, name: e.target.value })}
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-semibold text-gray-700 mb-1">Tower</label>
+                          <select
+                            value={editingMember.tower}
+                            onChange={(e) => setEditingMember({ ...editingMember, tower: e.target.value })}
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                          >
+                            {PBEL_TOWER_NAMES.map((t) => (
+                              <option key={t} value={t}>{t}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block font-semibold text-gray-700 mb-1">Flat / Unit *</label>
+                          <input
+                            type="text"
+                            required
+                            value={editingMember.flatNumber}
+                            onChange={(e) => setEditingMember({ ...editingMember, flatNumber: e.target.value })}
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp</label>
+                          <input
+                            type="tel"
+                            value={editingMember.phone}
+                            onChange={(e) => setEditingMember({ ...editingMember, phone: e.target.value })}
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-semibold text-gray-700 mb-1">Headcount (Max 6)</label>
+                          <select
+                            value={editingMember.headcount}
+                            onChange={(e) => setEditingMember({ ...editingMember, headcount: Number(e.target.value) })}
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                          >
+                            {[1, 2, 3, 4, 5, 6].map((num) => (
+                              <option key={num} value={num}>{num} Members</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingMember(null)}
+                          className="px-4 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="submit"
+                          className="px-5 py-2 text-xs font-bold text-white bg-primary hover:bg-primary-hover rounded-xl shadow-xs transition"
+                        >
+                          Save Changes
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}

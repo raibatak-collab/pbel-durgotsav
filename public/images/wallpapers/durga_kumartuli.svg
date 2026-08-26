@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1920 1080" width="100%" height="100%">
+  <defs>
+    <!-- Terracotta Clay Textured Gradient -->
+    <radialGradient id="clayBg" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#3A1C0E"/>
+      <stop offset="45%" stop-color="#241108"/>
+      <stop offset="85%" stop-color="#140803"/>
+      <stop offset="100%" stop-color="#080301"/>
+    </radialGradient>
+
+    <!-- Warm Artisan Lamp Light -->
+    <radialGradient id="artisanGlow" cx="50%" cy="45%" r="50%">
+      <stop offset="0%" stop-color="#FFDE7A" stop-opacity="0.3"/>
+      <stop offset="50%" stop-color="#E67E22" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Clay Sculpting Straw/Jute Texture -->
+    <pattern id="jutePattern" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 0 20 L 40 20 M 20 0 L 20 40" stroke="#D35400" stroke-width="0.75" stroke-opacity="0.15"/>
+      <path d="M 0 0 L 40 40 M 0 40 L 40 0" stroke="#F39C12" stroke-width="0.5" stroke-opacity="0.1"/>
+    </pattern>
+
+    <!-- Terracotta Clay Tone -->
+    <linearGradient id="clayGanga" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D27D46"/>
+      <stop offset="50%" stop-color="#A04000"/>
+      <stop offset="100%" stop-color="#6E2C00"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1920" height="1080" fill="url(#clayBg)"/>
+  <rect width="1920" height="1080" fill="url(#jutePattern)"/>
+
+  <!-- Warm Artisan Studio Spotlight -->
+  <circle cx="960" cy="460" r="500" fill="url(#artisanGlow)"/>
+
+  <!-- KUMARTULI STRAW & CLAY ARMATURE SCULPTURE FRAME -->
+  <g stroke="#E67E22" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.4">
+    <!-- Chala Bamboo Framework Grid -->
+    <path d="M 400 800 C 400 200, 1520 200, 1520 800" stroke-width="8"/>
+    <path d="M 460 800 C 460 260, 1460 260, 1460 800" stroke-width="5"/>
+    <path d="M 520 800 C 520 320, 1400 320, 1400 800" stroke-width="3"/>
+    <!-- Radiating Bamboo Ties -->
+    <line x1="960" y1="200" x2="960" y2="800" stroke-width="4"/>
+    <line x1="960" y1="200" x2="600" y2="800" stroke-width="3"/>
+    <line x1="960" y1="200" x2="1320" y2="800" stroke-width="3"/>
+  </g>
+
+  <!-- THE SACRED MOMENT OF CHOKKHUDAN (PAINTING THE DIVINE EYES ON MAHALAYA) -->
+  <g transform="translate(960, 460)">
+    <!-- Sculpted Clay Face Oval -->
+    <path d="M -150 -100 C -150 -200, 150 -200, 150 -100 C 150 120, 0 200, 0 200 C 0 200, -150 120, -150 -100 Z" fill="url(#clayGanga)" stroke="#FFD700" stroke-width="2.5" opacity="0.85"/>
+
+    <!-- Artisan Fine Paint Brush (Tuli) Painting the Divine Eye -->
+    <g transform="translate(60, -20) rotate(-25)">
+      <!-- Slender Wooden Handle -->
+      <path d="M 80 -180 L 95 -180 L 15 15 L 0 15 Z" fill="#873600" stroke="#5D6D7E" stroke-width="1"/>
+      <path d="M 0 15 L 15 15 L 5 45 L 0 50 Z" fill="#17202A"/>
+      <!-- Paint Drop on Brush Tip -->
+      <circle cx="2" cy="48" r="4" fill="#000000"/>
+    </g>
+
+    <!-- Divine Vertical Trinetra with Crimson Paint Accent -->
+    <path d="M 0 -95 C -20 -65, -20 -40, 0 -15 C 20 -40, 20 -65, 0 -95 Z" fill="#900C3F" stroke="#FFD700" stroke-width="2.5"/>
+    <circle cx="0" cy="-55" r="7" fill="#FFC300"/>
+    <circle cx="0" cy="-55" r="3" fill="#000000"/>
+
+    <!-- Left Almond Eye (Chokkhu) with Intricate Kajal Stroke -->
+    <path d="M -115 -25 C -85 -55, -35 -50, -15 -25 C -35 5, -85 0, -115 -25 Z" fill="#FCF3CF" stroke="#000000" stroke-width="4"/>
+    <circle cx="-62" cy="-25" r="16" fill="#1C2833"/>
+    <circle cx="-57" cy="-29" r="5" fill="#FFFFFF"/>
+    <!-- Kajal Wing Line Extending Beyond Eyelid -->
+    <path d="M -135 -35 Q -75 -65 -10 -22" fill="none" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Right Eye (Being Painted with Precision) -->
+    <path d="M 115 -25 C 85 -55, 35 -50, 15 -25 C 35 5, 85 0, 115 -25 Z" fill="#FCF3CF" stroke="#000000" stroke-width="4"/>
+    <circle cx="62" cy="-25" r="16" fill="#1C2833"/>
+    <circle cx="57" cy="-29" r="5" fill="#FFFFFF"/>
+    <path d="M 135 -35 Q 75 -65 10 -22" fill="none" stroke="#000000" stroke-width="5" stroke-linecap="round"/>
+
+    <!-- Sacred Nose & Golden Nolak -->
+    <path d="M 0 -5 Q 0 40 12 50" fill="none" stroke="#E67E22" stroke-width="3"/>
+    <circle cx="30" cy="58" r="16" fill="none" stroke="#FFD700" stroke-width="3"/>
+    <circle cx="30" cy="74" r="4" fill="#C0392B"/>
+
+    <!-- Serene Smiling Lips in Deep Vermillion Red -->
+    <path d="M -45 105 Q 0 95 45 105 Q 0 140 -45 105 Z" fill="#922B21" stroke="#F1C40F" stroke-width="2"/>
+    <path d="M -42 105 Q 0 115 42 105" stroke="#F9E79F" stroke-width="1.5" fill="none"/>
+  </g>
+
+  <!-- ARTISAN WORKSHOP TERRACOTTA POTS & INCENSE CUPS AT BASE -->
+  <g transform="translate(0, 920)" fill="url(#clayGanga)" stroke="#E67E22" stroke-width="2">
+    <path d="M 280 40 Q 340 70 400 40 L 380 120 L 300 120 Z"/>
+    <path d="M 1520 40 Q 1580 70 1640 40 L 1620 120 L 1540 120 Z"/>
+    <!-- Yellow Marigold Flowers in Earthen Bowl -->
+    <circle cx="340" cy="35" r="14" fill="#F1C40F" stroke="#D35400"/>
+    <circle cx="320" cy="40" r="12" fill="#E67E22" stroke="#D35400"/>
+    <circle cx="360" cy="40" r="12" fill="#F39C12" stroke="#D35400"/>
+    <circle cx="1580" cy="35" r="14" fill="#F1C40F" stroke="#D35400"/>
+  </g>
+</svg>
