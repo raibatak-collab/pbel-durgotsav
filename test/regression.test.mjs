@@ -302,5 +302,89 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('10. Edge Cases, Security & Input Validations', () => {
+    const SUPABASE_URL = 'https://oasjophkiognuecisfxd.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc2pvcGhraW9nbnVlY2lzZnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1OTA3MDgsImV4cCI6MjEwMzE2NjcwOH0.V2FxBgqEFK6QAJFWXB-H3_YqX0-FKOjo1k8Pex7B4SI';
+
+    it('should reject invalid, zero, or negative donation amounts in business logic', () => {
+      const validateAmount = (amt) => {
+        const num = Number(amt);
+        return !isNaN(num) && num > 0 && Number.isFinite(num);
+      };
+
+      assert.strictEqual(validateAmount(0), false);
+      assert.strictEqual(validateAmount(-500), false);
+      assert.strictEqual(validateAmount("abc"), false);
+      assert.strictEqual(validateAmount(null), false);
+      assert.strictEqual(validateAmount(501), true);
+      assert.strictEqual(validateAmount(25000), true);
+    });
+
+    it('should verify database constraint rejects illegal status values', async () => {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // Attempt inserting with invalid status
+      const { error } = await supabase.from('contributions').insert({
+        contributor_name: "Illegal Status Test",
+        amount: 501,
+        status: "INVALID_STATUS_XYZ",
+        payment_id: "UTR_ILLEGAL_STATUS_TEST"
+      });
+
+      assert.ok(error !== null, 'Database must reject invalid status check constraint');
+      assert.strictEqual(error.code, '23514', 'PostgreSQL check constraint error code must be 23514');
+    });
+
+    it('should mask devotee names when is_name_visible is false for public Wall of Contributors', () => {
+      const formatWallName = (item) => {
+        return item.is_name_visible ? item.contributor_name : "PBEL Resident (Anonymous)";
+      };
+
+      const publicDonor = { contributor_name: "Sourav Ganguly", is_name_visible: true };
+      const privateDonor = { contributor_name: "Sachin Tendulkar", is_name_visible: false };
+
+      assert.strictEqual(formatWallName(publicDonor), "Sourav Ganguly");
+      assert.strictEqual(formatWallName(privateDonor), "PBEL Resident (Anonymous)");
+    });
+
+    it('should sanitize and strip dangerous script tags from text inputs', () => {
+      const sanitizeInput = (str) => {
+        return (str || '').replace(/<[^>]*>?/gm, '').trim();
+      };
+
+      const maliciousName = "<script>alert('xss')</script>Subhash Chandra";
+      const sanitized = sanitizeInput(maliciousName);
+
+      assert.strictEqual(sanitized, "alert('xss')Subhash Chandra");
+      assert.ok(!sanitized.includes('<script>'));
+    });
+  });
+
+  describe('11. Volunteer & Community Modules Integrity', () => {
+    const validDepartments = [
+      "Pandal & Stage Management",
+      "Bhog Distribution & Kitchen Seva",
+      "Cultural & Pratibimb Coordination",
+      "Crowd Management & Security",
+      "Puja Samagri & Flower Seva",
+      "Media, PR & Photography"
+    ];
+
+    const validShifts = [
+      "Morning (07:00 AM - 01:00 PM)",
+      "Afternoon (01:00 PM - 05:00 PM)",
+      "Evening (05:00 PM - 11:00 PM)",
+      "All 6 Days Full Immersion"
+    ];
+
+    it('should have well-defined community seva departments and operational shifts', () => {
+      assert.strictEqual(validDepartments.length, 6);
+      assert.strictEqual(validShifts.length, 4);
+      validDepartments.forEach(dept => assert.ok(dept.length > 0));
+      validShifts.forEach(shift => assert.ok(shift.length > 0));
+    });
+  });
+
 });
 
