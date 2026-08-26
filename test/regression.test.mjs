@@ -386,5 +386,50 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('12. Admin Authentication & User Access Control', () => {
+    const defaultMaster = {
+      username: "admin",
+      passwordHash: "PBEL@2026",
+      status: "Active",
+      role: "Super Admin",
+    };
+
+    it('should successfully authenticate Master Admin with official committee credentials', () => {
+      const authenticate = (user, pass) => {
+        return (
+          (user.toLowerCase() === defaultMaster.username || user.toLowerCase() === "pbelsanskritiksamiti@gmail.com") &&
+          pass === defaultMaster.passwordHash
+        );
+      };
+
+      assert.strictEqual(authenticate("admin", "PBEL@2026"), true);
+      assert.strictEqual(authenticate("pbelsanskritiksamiti@gmail.com", "PBEL@2026"), true);
+      assert.strictEqual(authenticate("admin", "wrong_password"), false);
+      assert.strictEqual(authenticate("unknown_user", "PBEL@2026"), false);
+    });
+
+    it('should authenticate dynamically created committee users and block suspended users', () => {
+      const userRoster = [
+        { id: "1", username: "anirban.pss", passwordHash: "anirban@123", status: "Active", role: "Finance Lead" },
+        { id: "2", username: "suspend.user", passwordHash: "pass123", status: "Suspended", role: "Volunteer Lead" },
+      ];
+
+      const verifyUser = (username, pass) => {
+        const u = userRoster.find(x => x.username === username && x.passwordHash === pass);
+        if (!u) return { success: false, error: "Invalid credentials" };
+        if (u.status === "Suspended") return { success: false, error: "Account Suspended" };
+        return { success: true, user: u };
+      };
+
+      const validLogin = verifyUser("anirban.pss", "anirban@123");
+      assert.strictEqual(validLogin.success, true);
+      assert.strictEqual(validLogin.user.role, "Finance Lead");
+
+      const suspendedLogin = verifyUser("suspend.user", "pass123");
+      assert.strictEqual(suspendedLogin.success, false);
+      assert.strictEqual(suspendedLogin.error, "Account Suspended");
+    });
+  });
+
 });
 

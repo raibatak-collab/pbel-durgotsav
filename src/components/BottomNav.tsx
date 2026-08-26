@@ -12,7 +12,6 @@ export function BottomNav() {
     { name: "Schedule", href: "/programs", icon: CalendarDays },
     { name: "Contribute", href: "/contribute", icon: HeartHandshake, isHighlight: true },
     { name: "Volunteer", href: "/volunteer", icon: Users },
-    { name: "Admin", href: "/admin", icon: ShieldCheck },
   ];
 
   return (

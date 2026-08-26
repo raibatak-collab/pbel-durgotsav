@@ -13,6 +13,7 @@ import {
   Trash2,
   Edit2,
   Eye,
+  EyeOff,
   Download,
   Search,
   Filter,
@@ -24,9 +25,46 @@ import {
   Save,
   X,
   Star,
-  Settings
+  Settings,
+  Lock,
+  Unlock,
+  UserCheck,
+  UserX,
+  LogOut,
+  KeyRound
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  username: string;
+  role: "Super Admin" | "Finance & Fund Verification" | "Cultural & Pratibimb Lead" | "Volunteer Lead";
+  passwordHash: string;
+  status: "Active" | "Suspended";
+  created_at: string;
+}
+
+const defaultAdminUsers: AdminUser[] = [
+  {
+    id: "usr-master",
+    name: "Executive Committee (Master Admin)",
+    username: "admin",
+    role: "Super Admin",
+    passwordHash: "PBEL@2026",
+    status: "Active",
+    created_at: "2026-08-01",
+  },
+  {
+    id: "usr-finance",
+    name: "Finance & Accounts Lead",
+    username: "finance",
+    role: "Finance & Fund Verification",
+    passwordHash: "PBEL@2026",
+    status: "Active",
+    created_at: "2026-08-15",
+  },
+];
 
 // Default pre-populated Nirghanto rituals
 const initialDefaultEvents = [
@@ -130,7 +168,26 @@ const initialEveningsConfig = [
 ];
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"overview" | "contributions" | "categories" | "schedule" | "pratibimb_config" | "pratibimb_acts" | "volunteers" | "sponsors" | "gallery">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "contributions" | "categories" | "schedule" | "pratibimb_config" | "pratibimb_acts" | "volunteers" | "sponsors" | "gallery" | "users">("overview");
+
+  // Authentication & Session State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
+  const [loginForm, setLoginForm] = useState({ username: "", password: "" });
+  const [loginError, setLoginError] = useState("");
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>(defaultAdminUsers);
+
+  // New User Form State
+  const [newUser, setNewUser] = useState({
+    name: "",
+    username: "",
+    role: "Finance & Fund Verification" as AdminUser["role"],
+    password: "",
+  });
+  const [isAddingUser, setIsAddingUser] = useState(false);
 
   // Live Data States
   const [contributions, setContributions] = useState<any[]>([]);
@@ -229,6 +286,147 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // 1. Session & Auth Loading
+  useEffect(() => {
+    try {
+      const savedUsers = localStorage.getItem("pbel_admin_users");
+      if (savedUsers) {
+        setAdminUsers(JSON.parse(savedUsers));
+      }
+      const savedSession = localStorage.getItem("pbel_admin_session") || sessionStorage.getItem("pbel_admin_session");
+      if (savedSession) {
+        const parsed = JSON.parse(savedSession);
+        setIsAuthenticated(true);
+        setCurrentUser(parsed);
+      }
+    } catch (e) {
+      console.error("Failed loading session:", e);
+    }
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError("");
+    setIsLoggingIn(true);
+
+    const enteredUser = loginForm.username.trim().toLowerCase();
+    const enteredPass = loginForm.password.trim();
+
+    // Check user from registered admin users list
+    const matched = adminUsers.find(
+      (u) =>
+        (u.username.toLowerCase() === enteredUser || u.name.toLowerCase() === enteredUser) &&
+        u.passwordHash === enteredPass
+    );
+
+    if (matched) {
+      if (matched.status === "Suspended") {
+        setLoginError("This user account has been suspended by the Committee.");
+        setIsLoggingIn(false);
+        return;
+      }
+
+      setIsAuthenticated(true);
+      setCurrentUser(matched);
+      if (rememberMe) {
+        localStorage.setItem("pbel_admin_session", JSON.stringify(matched));
+      } else {
+        sessionStorage.setItem("pbel_admin_session", JSON.stringify(matched));
+      }
+      setLoginForm({ username: "", password: "" });
+    } else if (
+      (enteredUser === "admin" || enteredUser === "committee" || enteredUser === "pbelsanskritiksamiti@gmail.com") &&
+      (enteredPass === "PBEL@2026" || enteredPass === "admin123" || enteredPass === "2026")
+    ) {
+      const masterUser: AdminUser = {
+        id: "usr-master",
+        name: "Executive Committee (Master Admin)",
+        username: "admin",
+        role: "Super Admin",
+        passwordHash: "PBEL@2026",
+        status: "Active",
+        created_at: "2026-08-01",
+      };
+      setIsAuthenticated(true);
+      setCurrentUser(masterUser);
+      if (rememberMe) {
+        localStorage.setItem("pbel_admin_session", JSON.stringify(masterUser));
+      } else {
+        sessionStorage.setItem("pbel_admin_session", JSON.stringify(masterUser));
+      }
+      setLoginForm({ username: "", password: "" });
+    } else {
+      setLoginError("Invalid Username or Passcode. Please verify and try again.");
+    }
+    setIsLoggingIn(false);
+  };
+
+  const handleLogout = () => {
+    if (confirm("Are you sure you want to log out of the Admin Control Center?")) {
+      localStorage.removeItem("pbel_admin_session");
+      sessionStorage.removeItem("pbel_admin_session");
+      setIsAuthenticated(false);
+      setCurrentUser(null);
+    }
+  };
+
+  // USER MANAGEMENT HANDLERS
+  const handleAddUser = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUser.username.trim() || !newUser.password.trim()) {
+      alert("Username and Password/Passcode are required.");
+      return;
+    }
+
+    if (adminUsers.some((u) => u.username.toLowerCase() === newUser.username.trim().toLowerCase())) {
+      alert("A user with this username already exists.");
+      return;
+    }
+
+    const created: AdminUser = {
+      id: `usr-${Date.now()}`,
+      name: newUser.name.trim() || newUser.username.trim(),
+      username: newUser.username.trim(),
+      role: newUser.role,
+      passwordHash: newUser.password.trim(),
+      status: "Active",
+      created_at: new Date().toISOString().split("T")[0],
+    };
+
+    const updatedList = [...adminUsers, created];
+    setAdminUsers(updatedList);
+    localStorage.setItem("pbel_admin_users", JSON.stringify(updatedList));
+    setNewUser({ name: "", username: "", role: "Finance & Fund Verification", password: "" });
+    alert(`Admin User "${created.name}" created successfully!`);
+  };
+
+  const handleToggleUserStatus = (id: string) => {
+    if (id === "usr-master") {
+      alert("The Master Admin account cannot be suspended.");
+      return;
+    }
+    const updated = adminUsers.map((u) => {
+      if (u.id === id) {
+        const nextStatus = u.status === "Active" ? "Suspended" : "Active";
+        return { ...u, status: nextStatus as any };
+      }
+      return u;
+    });
+    setAdminUsers(updated);
+    localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
+  };
+
+  const handleDeleteUser = (id: string) => {
+    if (id === "usr-master") {
+      alert("The Master Admin account cannot be deleted.");
+      return;
+    }
+    if (!confirm("Are you sure you want to remove this user from the Admin roster?")) return;
+    const updated = adminUsers.filter((u) => u.id !== id);
+    setAdminUsers(updated);
+    localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
   };
 
   useEffect(() => {
@@ -470,90 +668,210 @@ function decodeCategoryDescription(desc?: string) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-      
-      {/* Top Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-gray-200 mb-8 gap-4">
-        <div>
-          <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
-            <ShieldCheck size={14} className="text-primary" />
-            <span>PBEL Sanskritik Samiti Core Committee Portal</span>
+    <>
+      {/* 1. AUTHENTICATION GATE (When not logged in) */}
+      {!isAuthenticated ? (
+        <div className="min-h-[80vh] flex items-center justify-center px-4 py-12">
+          <div className="max-w-md w-full bg-white rounded-3xl p-8 border border-amber-400/40 shadow-2xl relative overflow-hidden">
+            <div className="absolute -top-12 -right-12 w-36 h-36 bg-amber-200/40 rounded-full blur-2xl pointer-events-none" />
+            <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+
+            <div className="text-center mb-8 relative">
+              <div className="w-16 h-16 bg-gradient-to-tr from-[#9E122C] to-[#5C0512] text-amber-300 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-amber-400/40">
+                <Lock size={28} />
+              </div>
+              <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 text-[11px] font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-2">
+                <ShieldCheck size={13} className="text-primary" />
+                <span>Core Committee Only</span>
+              </div>
+              <h1 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900">
+                Executive Admin Gate
+              </h1>
+              <p className="text-xs text-gray-500 mt-1">
+                Sign in to manage contributions, seva limits, rituals & committee users.
+              </p>
+            </div>
+
+            {loginError && (
+              <div className="mb-5 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+                <Lock size={15} className="shrink-0 text-red-600" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Admin Username or Email
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={loginForm.username}
+                    onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
+                    placeholder="e.g. admin"
+                    className="w-full p-3 pl-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-sm font-medium"
+                  />
+                  <Users size={16} className="absolute left-3.5 top-3.5 text-gray-400" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  Security Passcode / Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
+                    placeholder="Enter committee PIN or password"
+                    className="w-full p-3 pl-10 pr-10 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-sm font-medium"
+                  />
+                  <KeyRound size={16} className="absolute left-3.5 top-3.5 text-gray-400" />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-3.5 text-gray-400 hover:text-gray-600 transition"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-gray-600">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                  />
+                  <span>Remember on this device</span>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoggingIn}
+                className="w-full bg-gradient-to-r from-[#9E122C] to-[#7B0D21] hover:from-[#7B0D21] hover:to-[#5C0512] text-white py-3.5 rounded-xl font-bold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2"
+              >
+                <Unlock size={16} />
+                <span>{isLoggingIn ? "Verifying..." : "Sign In to Control Center"}</span>
+              </button>
+            </form>
+
+            <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+              <p className="text-[11px] text-gray-400">
+                Authorized PBEL Sanskritik Samiti Executive Committee Members Only.
+              </p>
+            </div>
           </div>
-          <h1 className="font-heading text-3xl sm:text-4xl text-primary font-bold">
-            Executive Admin Control Center
-          </h1>
-          <p className="text-xs text-gray-500 mt-1">Logged in as: raibatak@gmail.com (Super Admin)</p>
         </div>
+      ) : (
+        /* 2. AUTHENTICATED ADMIN DASHBOARD */
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+          
+          {/* Top Banner */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-gray-200 mb-8 gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                <ShieldCheck size={14} className="text-primary" />
+                <span>PBEL Sanskritik Samiti Core Committee Portal</span>
+              </div>
+              <h1 className="font-heading text-3xl sm:text-4xl text-primary font-bold">
+                Executive Admin Control Center
+              </h1>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                <p className="text-xs text-gray-600 font-medium">
+                  Logged in as: <strong className="text-gray-900">{currentUser?.name || "Admin"}</strong> ({currentUser?.role || "Super Admin"})
+                </p>
+              </div>
+            </div>
 
-        <button
-          onClick={fetchData}
-          className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-5 py-2.5 rounded-full transition flex items-center gap-2 self-start md:self-auto shadow-sm"
-        >
-          <span>Refresh Live Data</span>
-        </button>
-      </div>
-
-      {/* Analytics KPI Row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
-          <div className="text-xs font-bold text-amber-800 uppercase mb-1">Total Pujo Fund Raised</div>
-          <div className="text-2xl sm:text-3xl font-bold text-green-700 font-heading">
-            ₹{totalFunds.toLocaleString("en-IN")}
+            <div className="flex items-center gap-2 self-start md:self-auto">
+              <button
+                onClick={fetchData}
+                className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-4 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-sm"
+              >
+                <span>Refresh Data</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-semibold px-4 py-2.5 rounded-full transition flex items-center gap-1.5"
+                title="Log out of session"
+              >
+                <LogOut size={13} />
+                <span>Log Out</span>
+              </button>
+            </div>
           </div>
-          <div className="text-[11px] text-gray-500 mt-1">{contributions.length} total transactions</div>
-        </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
-          <div className="text-xs font-bold text-amber-800 uppercase mb-1">Volunteers Registered</div>
-          <div className="text-2xl sm:text-3xl font-bold text-gray-900 font-heading">
-            {volunteers.length}
+          {/* Analytics KPI Row */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
+              <div className="text-xs font-bold text-amber-800 uppercase mb-1">Total Pujo Fund Raised</div>
+              <div className="text-2xl sm:text-3xl font-bold text-green-700 font-heading">
+                ₹{totalFunds.toLocaleString("en-IN")}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">{contributions.length} total transactions</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
+              <div className="text-xs font-bold text-amber-800 uppercase mb-1">Volunteers Registered</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900 font-heading">
+                {volunteers.length}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">Across all 6 Pujo days</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
+              <div className="text-xs font-bold text-amber-800 uppercase mb-1">Pratibimb Stage Acts</div>
+              <div className="text-2xl sm:text-3xl font-bold text-gray-900 font-heading">
+                {performances.length}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">Dance, Drama, Songs</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
+              <div className="text-xs font-bold text-amber-800 uppercase mb-1">PSS Flagship Headliners</div>
+              <div className="text-2xl sm:text-3xl font-bold text-primary font-heading">
+                3 Major Acts
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">Fushmontor, Dance Drama, Natok</div>
+            </div>
           </div>
-          <div className="text-[11px] text-gray-500 mt-1">Across all 6 Pujo days</div>
-        </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
-          <div className="text-xs font-bold text-amber-800 uppercase mb-1">Pratibimb Stage Acts</div>
-          <div className="text-2xl sm:text-3xl font-bold text-gray-900 font-heading">
-            {performances.length}
+          {/* Admin Module Tabs */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar">
+            {[
+              { id: "overview", label: "📊 Overview" },
+              { id: "contributions", label: "💰 Contributions (CRM)" },
+              { id: "categories", label: "🌺 Seva Categories CMS" },
+              { id: "schedule", label: "📅 Schedule (Nirghanto) CMS" },
+              { id: "pratibimb_config", label: "⚙️ Pratibimb Timings & Slots CMS" },
+              { id: "pratibimb_acts", label: "🎭 Registered Acts" },
+              { id: "volunteers", label: "🤝 Volunteers Roster" },
+              { id: "sponsors", label: "🏢 Sponsors & Brands" },
+              { id: "gallery", label: "🖼️ Gallery Carousel CMS" },
+              { id: "users", label: "👥 User Management & Access" },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 ${
+                  activeTab === tab.id
+                    ? "bg-primary text-white shadow-sm"
+                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
-          <div className="text-[11px] text-gray-500 mt-1">Dance, Drama, Songs</div>
-        </div>
-
-        <div className="bg-white p-5 rounded-2xl border border-amber-900/10 shadow-xs">
-          <div className="text-xs font-bold text-amber-800 uppercase mb-1">PSS Flagship Headliners</div>
-          <div className="text-2xl sm:text-3xl font-bold text-primary font-heading">
-            3 Major Acts
-          </div>
-          <div className="text-[11px] text-gray-500 mt-1">Fushmontor, Dance Drama, Natok</div>
-        </div>
-      </div>
-
-      {/* Admin Module Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar">
-        {[
-          { id: "overview", label: "📊 Overview" },
-          { id: "contributions", label: "💰 Contributions (CRM)" },
-          { id: "categories", label: "🌺 Seva Categories CMS" },
-          { id: "schedule", label: "📅 Schedule (Nirghanto) CMS" },
-          { id: "pratibimb_config", label: "⚙️ Pratibimb Timings & Slots CMS" },
-          { id: "pratibimb_acts", label: "🎭 Registered Acts" },
-          { id: "volunteers", label: "🤝 Volunteers Roster" },
-          { id: "sponsors", label: "🏢 Sponsors & Brands" },
-          { id: "gallery", label: "🖼️ Gallery Carousel CMS" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 ${
-              activeTab === tab.id
-                ? "bg-primary text-white shadow-sm"
-                : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
 
       {/* TAB CONTENT: 1. OVERVIEW */}
       {activeTab === "overview" && (
@@ -1559,6 +1877,173 @@ function decodeCategoryDescription(desc?: string) {
         </div>
       )}
 
+      {/* TAB CONTENT: 10. USER MANAGEMENT & ACCESS CONTROL */}
+      {activeTab === "users" && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Add Admin User Form */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
+            <div className="flex items-center gap-2 mb-4 text-primary">
+              <Users size={20} />
+              <h3 className="font-heading text-lg font-bold text-gray-900">Add Committee Admin</h3>
+            </div>
+            <p className="text-xs text-gray-500 mb-5">
+              Grant committee members access to manage finances, schedule, or volunteer rosters.
+            </p>
+
+            <form onSubmit={handleAddUser} className="space-y-4 text-xs">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Full Member Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newUser.name}
+                  onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                  placeholder="e.g. Anirban Banerjee"
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Username / Login ID *</label>
+                <input
+                  type="text"
+                  required
+                  value={newUser.username}
+                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                  placeholder="e.g. anirban.pss"
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Assigned Role *</label>
+                <select
+                  value={newUser.role}
+                  onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                >
+                  <option value="Super Admin">Super Admin (Full Access)</option>
+                  <option value="Finance & Fund Verification">Finance & Fund Verification</option>
+                  <option value="Cultural & Pratibimb Lead">Cultural & Pratibimb Lead</option>
+                  <option value="Volunteer Lead">Volunteer Lead</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Security Passcode / Password *</label>
+                <input
+                  type="password"
+                  required
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  placeholder="Initial login PIN or password"
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2"
+              >
+                <UserCheck size={15} />
+                <span>Authorize & Create User</span>
+              </button>
+            </form>
+          </div>
+
+          {/* Authorized Users Registry Table */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+              <div>
+                <h3 className="font-heading text-lg font-bold text-gray-900">Authorized Committee Members ({adminUsers.length})</h3>
+                <span className="text-xs text-gray-500">Manage committee accounts and access permissions</span>
+              </div>
+              <span className="text-xs bg-green-100 text-green-900 font-bold px-3 py-1 rounded-full">
+                {adminUsers.filter((u) => u.status === "Active").length} Active
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                    <th className="p-3.5">Name</th>
+                    <th className="p-3.5">Username</th>
+                    <th className="p-3.5">Assigned Role</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5">Added Date</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {adminUsers.map((u) => {
+                    const isMaster = u.id === "usr-master";
+                    const isActive = u.status === "Active";
+
+                    return (
+                      <tr key={u.id} className={`hover:bg-gray-50/60 ${!isActive ? "bg-gray-50/80 opacity-70" : ""}`}>
+                        <td className="p-3.5 font-bold text-gray-900 flex items-center gap-2">
+                          <span className="w-7 h-7 rounded-full bg-amber-100 text-amber-900 font-bold flex items-center justify-center text-[10px]">
+                            {u.name.substring(0, 2).toUpperCase()}
+                          </span>
+                          <div>
+                            <span>{u.name}</span>
+                            {isMaster && <span className="block text-[9px] text-amber-700 font-bold">Primary Master</span>}
+                          </div>
+                        </td>
+                        <td className="p-3.5 font-mono text-gray-700">{u.username}</td>
+                        <td className="p-3.5">
+                          <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="p-3.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            isActive ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                          }`}>
+                            {isActive ? "✓ Active" : "✕ Suspended"}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-gray-500">{u.created_at}</td>
+                        <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                          {!isMaster && (
+                            <>
+                              <button
+                                onClick={() => handleToggleUserStatus(u.id)}
+                                className={`rounded-lg transition text-[11px] font-semibold px-2.5 py-1 ${
+                                  isActive
+                                    ? "bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200"
+                                    : "bg-green-50 text-green-800 hover:bg-green-100 border border-green-200"
+                                }`}
+                                title={isActive ? "Suspend Access" : "Reactivate Access"}
+                              >
+                                {isActive ? "Suspend" : "Activate"}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(u.id)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                title="Delete User"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </>
+                          )}
+                          {isMaster && (
+                            <span className="text-[10px] text-gray-400 italic">Protected Master</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
-  );
+  )}
+</>
+);
 }

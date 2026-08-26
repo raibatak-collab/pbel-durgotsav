@@ -14,7 +14,6 @@ export function Header() {
     { name: "Pujo & Cultural Schedule", href: "/programs", icon: Calendar },
     { name: "Volunteer Seva", href: "/volunteer", icon: Users },
     { name: "Contribute & E-Seva", href: "/contribute", icon: HeartHandshake },
-    { name: "Admin Portal", href: "/admin", icon: ShieldCheck },
   ];
 
   return (
