@@ -11,7 +11,8 @@ import {
   Users,
   Award,
   Utensils,
-  Compass
+  Compass,
+  Drama
 } from "lucide-react";
 import {
   getStoredBranding,
@@ -105,7 +106,7 @@ export function FestiveHero() {
         </div>
 
         {/* Primary Action CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-xl mx-auto pt-2">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-2xl mx-auto pt-2">
           <Link
             href="/contribute"
             className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white px-7 py-3.5 rounded-full font-bold text-sm transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 golden-glow"
@@ -114,10 +115,17 @@ export function FestiveHero() {
             <span>Sponsor / E-Seva</span>
           </Link>
           <Link
-            href="/programs"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 border border-white/30 text-white px-7 py-3.5 rounded-full font-semibold text-sm transition-all backdrop-blur-md"
+            href="/programs#pratibimb-registration"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#8B1024] to-[#680A1A] hover:from-[#A5132B] hover:to-[#8B1024] border border-amber-400/40 text-amber-100 hover:text-white px-6 py-3.5 rounded-full font-bold text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
           >
-            <span>View Schedule</span>
+            <Drama size={18} className="text-amber-300" />
+            <span>Cultural Acts (Pratibimb)</span>
+          </Link>
+          <Link
+            href="/programs"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 border border-white/30 text-white px-6 py-3.5 rounded-full font-semibold text-sm transition-all backdrop-blur-md"
+          >
+            <span>Pujo Schedule</span>
             <ArrowRight size={16} />
           </Link>
         </div>
@@ -125,8 +133,15 @@ export function FestiveHero() {
         {/* Dynamic Feature Nav Pills */}
         <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
           <Link
-            href="/anandamela"
+            href="/programs#pratibimb-registration"
             className="inline-flex items-center gap-1.5 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-200 hover:text-white px-4 py-1.5 rounded-full text-xs font-semibold transition backdrop-blur-md"
+          >
+            <Drama size={13} className="text-amber-300" />
+            <span>🎭 5-Day Pratibimb Stage Acts</span>
+          </Link>
+          <Link
+            href="/anandamela"
+            className="inline-flex items-center gap-1.5 bg-black/40 hover:bg-black/60 border border-white/25 text-amber-100 hover:text-white px-4 py-1.5 rounded-full text-xs font-semibold transition backdrop-blur-md"
           >
             <Utensils size={13} className="text-amber-300" />
             <span>🍲 Anandamela Food Fiesta</span>
@@ -143,7 +158,7 @@ export function FestiveHero() {
             className="inline-flex items-center gap-1.5 bg-black/40 hover:bg-black/60 border border-white/25 text-amber-100 hover:text-white px-4 py-1.5 rounded-full text-xs font-semibold transition backdrop-blur-md"
           >
             <Users size={13} className="text-amber-300" />
-            <span>👥 Organizing Committee Wings</span>
+            <span>👥 Organizing Committee</span>
           </Link>
           <Link
             href="/sponsors"

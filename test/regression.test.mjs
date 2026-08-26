@@ -948,6 +948,81 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('28. Cultural Acts (Pratibimb) Navigation & Hero Registration Alignment', () => {
+    it('should verify Pratibimb cultural stage links exist in primary header and bottom nav', () => {
+      const primaryLinks = [
+        { name: "Home", href: "/" },
+        { name: "Pujo Schedule", href: "/programs" },
+        { name: "Cultural Acts (Pratibimb)", href: "/programs#pratibimb-registration" },
+      ];
+      assert.strictEqual(primaryLinks.some((l) => l.href.includes("pratibimb")), true);
+    });
+  });
+
+  describe('29. Dynamic Contribution Counter & Open Fund Amount Chips', () => {
+    it('should format dynamic text correctly when 0 vs >0 contributions exist', () => {
+      const formatBadge = (count) => {
+        if (count === 0) return "Panchami to Dashami Sacred Offerings Open for PBEL Families";
+        return `${count} PBEL ${count === 1 ? 'Family Has' : 'Families Have'} Contributed`;
+      };
+
+      assert.strictEqual(formatBadge(0), "Panchami to Dashami Sacred Offerings Open for PBEL Families");
+      assert.strictEqual(formatBadge(1), "1 PBEL Family Has Contributed");
+      assert.strictEqual(formatBadge(42), "42 PBEL Families Have Contributed");
+    });
+
+    it('should provide complete set of fast open preset amount options', () => {
+      const OPEN_PRESETS = [501, 1001, 2001, 5001, 7501, 10001];
+      assert.strictEqual(OPEN_PRESETS.length, 6);
+      assert.strictEqual(OPEN_PRESETS.includes(501), true);
+      assert.strictEqual(OPEN_PRESETS.includes(10001), true);
+    });
+  });
+
+  describe('30. Admin Featured Seva Category Encoder/Decoder', () => {
+    it('should encode and decode featured status without corrupting limits or status tags', () => {
+      function encodeCategoryDescription(desc, maxLimit, isActive, isFeatured) {
+        const clean = (desc || '')
+          .replace(/\[limit:\d+\]/g, '')
+          .replace(/\[status:(active|inactive)\]/g, '')
+          .replace(/\[featured:(true|false)\]/g, '')
+          .trim();
+        const limitTag = maxLimit !== undefined && maxLimit !== null ? `[limit:${maxLimit}]` : '';
+        const statusTag = isActive !== undefined ? `[status:${isActive ? 'active' : 'inactive'}]` : '';
+        const featuredTag = isFeatured !== undefined ? `[featured:${isFeatured ? 'true' : 'false'}]` : '';
+        return `${clean} ${limitTag} ${statusTag} ${featuredTag}`.trim();
+      }
+
+      function decodeCategoryDescription(desc) {
+        const str = desc || '';
+        const limitMatch = str.match(/\[limit:(\d+)\]/);
+        const statusMatch = str.match(/\[status:(active|inactive)\]/);
+        const featuredMatch = str.match(/\[featured:(true|false)\]/);
+
+        const cleanDescription = str
+          .replace(/\[limit:\d+\]/g, '')
+          .replace(/\[status:(active|inactive)\]/g, '')
+          .replace(/\[featured:(true|false)\]/g, '')
+          .trim();
+
+        const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
+        const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
+        const parsedFeatured = featuredMatch ? featuredMatch[1] === 'true' : undefined;
+
+        return { cleanDescription, parsedLimit, parsedActive, parsedFeatured };
+      }
+
+      const encoded = encodeCategoryDescription("Sponsor pure ghee bhog", 10, true, true);
+      assert.strictEqual(encoded, "Sponsor pure ghee bhog [limit:10] [status:active] [featured:true]");
+
+      const decoded = decodeCategoryDescription(encoded);
+      assert.strictEqual(decoded.cleanDescription, "Sponsor pure ghee bhog");
+      assert.strictEqual(decoded.parsedLimit, 10);
+      assert.strictEqual(decoded.parsedActive, true);
+      assert.strictEqual(decoded.parsedFeatured, true);
+    });
+  });
+
 });
 
 

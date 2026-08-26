@@ -14,7 +14,8 @@ import {
   Award, 
   Utensils, 
   Compass,
-  ChevronDown
+  ChevronDown,
+  Drama
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { getStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
@@ -28,13 +29,13 @@ export function Header() {
   const pathname = usePathname();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on click outside
+  // Close dropdown on outside click
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setMoreDropdownOpen(false);
       }
-    }
+    };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
@@ -71,15 +72,16 @@ export function Header() {
     }
   }, [pathname]);
 
-  // Primary High-Frequency Desktop Links
+  // Primary High-Frequency Desktop Links (Featuring 5-Day Pratibimb Stage)
   const primaryLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Pujo Schedule", href: "/programs", icon: Calendar },
-    { name: "Anandamela", href: "/anandamela", icon: Utensils },
+    { name: "Cultural Acts (Pratibimb)", href: "/programs#pratibimb-registration", icon: Drama },
   ];
 
   // Secondary Links for Accessible "More ▾" Dropdown
   const moreLinks = [
+    { name: "Anandamela Food Fiesta", href: "/anandamela", icon: Utensils, desc: "Panchami evening home chef stalls & dishes" },
     { name: "Pandal & Facilities Guide", href: "/guide", icon: Compass, desc: "Pandal map, emergency contacts & zones" },
     { name: "Organizing Committee", href: "/committee", icon: Users, desc: "Executive wings, leads & volunteer teams" },
     { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake, desc: "Join kitchen, crowd or stage seva shifts" },

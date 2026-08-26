@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
-import { Home, CalendarDays, HeartHandshake, Utensils, ShieldCheck } from "lucide-react";
+import { Home, CalendarDays, HeartHandshake, Drama, ShieldCheck } from "lucide-react";
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -22,7 +22,7 @@ export function BottomNav() {
     { name: "Home", href: "/", icon: Home },
     { name: "Schedule", href: "/programs", icon: CalendarDays },
     { name: "Contribute", href: "/contribute", icon: HeartHandshake, isHighlight: true },
-    { name: "Anandamela", href: "/anandamela", icon: Utensils },
+    { name: "Pratibimb", href: "/programs#pratibimb-registration", icon: Drama },
     { name: "Admin", href: "/admin", icon: ShieldCheck, isAdmin: true },
   ];
 

@@ -240,7 +240,8 @@ export default function AdminDashboard() {
     fixed_amount: 1001, 
     description: "", 
     max_limit: 5, 
-    is_active: true 
+    is_active: true,
+    is_featured: false,
   });
   const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
@@ -1053,28 +1054,36 @@ export default function AdminDashboard() {
     }
   };
 
-// Category limit & status metadata helpers for reliable backwards compatibility
-function encodeCategoryDescription(desc: string, maxLimit?: number, isActive?: boolean) {
-  const clean = (desc || '').replace(/\[limit:\d+\]/g, '').replace(/\[status:(active|inactive)\]/g, '').trim();
+// Category limit, status & featured metadata helpers for reliable backwards compatibility
+function encodeCategoryDescription(desc: string, maxLimit?: number, isActive?: boolean, isFeatured?: boolean) {
+  const clean = (desc || '')
+    .replace(/\[limit:\d+\]/g, '')
+    .replace(/\[status:(active|inactive)\]/g, '')
+    .replace(/\[featured:(true|false)\]/g, '')
+    .trim();
   const limitTag = maxLimit !== undefined && maxLimit !== null ? `[limit:${maxLimit}]` : '';
   const statusTag = isActive !== undefined ? `[status:${isActive ? 'active' : 'inactive'}]` : '';
-  return `${clean} ${limitTag} ${statusTag}`.trim();
+  const featuredTag = isFeatured !== undefined ? `[featured:${isFeatured ? 'true' : 'false'}]` : '';
+  return `${clean} ${limitTag} ${statusTag} ${featuredTag}`.trim();
 }
 
 function decodeCategoryDescription(desc?: string) {
   const str = desc || '';
   const limitMatch = str.match(/\[limit:(\d+)\]/);
   const statusMatch = str.match(/\[status:(active|inactive)\]/);
+  const featuredMatch = str.match(/\[featured:(true|false)\]/);
 
   const cleanDescription = str
     .replace(/\[limit:\d+\]/g, '')
     .replace(/\[status:(active|inactive)\]/g, '')
+    .replace(/\[featured:(true|false)\]/g, '')
     .trim();
 
   const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
   const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
+  const parsedFeatured = featuredMatch ? featuredMatch[1] === 'true' : undefined;
 
-  return { cleanDescription, parsedLimit, parsedActive };
+  return { cleanDescription, parsedLimit, parsedActive, parsedFeatured };
 }
 
   // 1. Overview Calculations
@@ -1091,7 +1100,8 @@ function decodeCategoryDescription(desc?: string) {
       const encodedDesc = encodeCategoryDescription(
         newCategory.description, 
         newCategory.max_limit, 
-        newCategory.is_active
+        newCategory.is_active,
+        newCategory.is_featured
       );
 
       const payload: any = {
@@ -1124,14 +1134,30 @@ function decodeCategoryDescription(desc?: string) {
         }
         alert("New Seva Category added successfully!");
       }
-      setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true });
+      setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false });
       setIsEditingCategory(false);
+      window.dispatchEvent(new Event("pbel_categories_updated"));
       await fetchData();
     } catch (err: any) {
       console.error("Error saving category:", err);
       alert(`Unexpected error: ${err.message || err}`);
     } finally {
       setIsSubmittingCategory(false);
+    }
+  };
+
+  const handleToggleFeaturedCategory = async (cat: any) => {
+    const decoded = decodeCategoryDescription(cat.description);
+    const currentFeatured = decoded.parsedFeatured ?? false;
+    const nextFeatured = !currentFeatured;
+    const newDesc = encodeCategoryDescription(decoded.cleanDescription, decoded.parsedLimit, decoded.parsedActive, nextFeatured);
+    try {
+      await supabase.from("contribution_categories").update({ description: newDesc }).eq("id", cat.id);
+      window.dispatchEvent(new Event("pbel_categories_updated"));
+      await fetchData();
+      alert(`"${cat.name}" is now ${nextFeatured ? "⭐ Featured on Homepage" : "Standard catalog item"}.`);
+    } catch (err) {
+      console.error("Error toggling featured status:", err);
     }
   };
 
@@ -1798,7 +1824,7 @@ function decodeCategoryDescription(desc?: string) {
                 <button
                   onClick={() => {
                     setIsEditingCategory(false);
-                    setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true });
+                    setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false });
                   }}
                   className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1"
                 >
@@ -1859,6 +1885,20 @@ function decodeCategoryDescription(desc?: string) {
                 </select>
               </div>
 
+              {/* Homepage Feature Toggle */}
+              <div className="flex items-center gap-2.5 p-3 bg-amber-50/80 rounded-xl border border-amber-300/80">
+                <input
+                  type="checkbox"
+                  id="cat_featured_cb"
+                  checked={newCategory.is_featured}
+                  onChange={(e) => setNewCategory({ ...newCategory, is_featured: e.target.checked })}
+                  className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer"
+                />
+                <label htmlFor="cat_featured_cb" className="font-bold text-gray-800 cursor-pointer select-none text-xs">
+                  ⭐ Feature in Homepage Quick Contribute Showcase
+                </label>
+              </div>
+
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">Description / Details</label>
                 <textarea
@@ -1901,7 +1941,8 @@ function decodeCategoryDescription(desc?: string) {
                     <th className="p-3.5">Max Limit</th>
                     <th className="p-3.5">Booked</th>
                     <th className="p-3.5">Remaining</th>
-                    <th className="p-3.5">Public Status</th>
+                    <th className="p-3.5">Homepage</th>
+                    <th className="p-3.5">Status</th>
                     <th className="p-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
@@ -1920,6 +1961,8 @@ function decodeCategoryDescription(desc?: string) {
                       ? (cat.is_active !== false) 
                       : (decoded.parsedActive !== undefined ? decoded.parsedActive : true);
 
+                    const isFeatured = decoded.parsedFeatured ?? false;
+
                     const remaining = Math.max(0, max - booked);
                     const isFull = remaining <= 0;
 
@@ -1935,6 +1978,19 @@ function decodeCategoryDescription(desc?: string) {
                           </span>
                         </td>
                         <td className="p-3.5">
+                          <button
+                            onClick={() => handleToggleFeaturedCategory(cat)}
+                            className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition flex items-center gap-1 ${
+                              isFeatured
+                                ? "bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs hover:bg-amber-200"
+                                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                            }`}
+                            title="Click to toggle Homepage feature status"
+                          >
+                            {isFeatured ? "⭐ Featured" : "☆ Standard"}
+                          </button>
+                        </td>
+                        <td className="p-3.5">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             !isActive 
                               ? "bg-gray-200 text-gray-700" 
@@ -1942,7 +1998,7 @@ function decodeCategoryDescription(desc?: string) {
                               ? "bg-red-100 text-red-800" 
                               : "bg-green-100 text-green-800"
                           }`}>
-                            {!isActive ? "Inactive" : isFull ? "🔒 Full / Greyed Out" : "✓ Active"}
+                            {!isActive ? "Inactive" : isFull ? "🔒 Full" : "✓ Active"}
                           </span>
                         </td>
                         <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
@@ -1955,6 +2011,7 @@ function decodeCategoryDescription(desc?: string) {
                                 description: decoded.cleanDescription,
                                 max_limit: max,
                                 is_active: isActive,
+                                is_featured: isFeatured,
                               });
                               setIsEditingCategory(true);
                             }}
