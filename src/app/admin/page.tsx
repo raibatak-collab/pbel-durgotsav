@@ -41,10 +41,12 @@ import {
   Printer,
   Copy,
   TrendingUp,
-  AlertCircle
+  AlertCircle,
+  Building
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
-import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower } from "@/config/towers";
+import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, TowerDefinition } from "@/config/towers";
+import { getStoredCommittee, saveStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
 import { 
   AESTHETIC_WALLPAPERS, 
   DEFAULT_BRANDING, 
@@ -189,7 +191,7 @@ const initialEveningsConfig = [
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "contributions" | "pss_members" | "categories" | "schedule" | "volunteers" | "sponsors" | "budget" | "branding" | "gallery" | "users"
+    "overview" | "contributions" | "pss_members" | "categories" | "schedule" | "volunteers" | "sponsors" | "budget" | "committee" | "towers" | "branding" | "gallery" | "users"
   >("overview");
   const [membersSubView, setMembersSubView] = useState<"roster" | "kitchen">("roster");
   const [scheduleSubView, setScheduleSubView] = useState<"schedule" | "pratibimb">("schedule");
@@ -293,6 +295,18 @@ export default function AdminDashboard() {
     paidTo: "",
     status: "Allocated",
   });
+  const [editingExpense, setEditingExpense] = useState<any | null>(null);
+
+  // Organizing Committee CMS State
+  const [committeeWings, setCommitteeWings] = useState<CommitteeWing[]>(DEFAULT_COMMITTEE_WINGS);
+  const [editingWing, setEditingWing] = useState<CommitteeWing | null>(null);
+  const [newWingForm, setNewWingForm] = useState({ category: "", icon: "🌺", tagline: "" });
+  const [newWingMember, setNewWingMember] = useState({ name: "", role: "", tower: "PBEL Sanskritik Samiti", phone: "" });
+
+  // Custom Towers CMS State
+  const [towerList, setTowerList] = useState<TowerDefinition[]>(PBEL_TOWERS);
+  const [editingTower, setEditingTower] = useState<TowerDefinition | null>(null);
+  const [newTowerForm, setNewTowerForm] = useState({ id: "", tower: "", name: "", fullName: "" });
 
   // Emcee Run-Sheet Modal State
   const [isEmceeModalOpen, setIsEmceeModalOpen] = useState(false);
@@ -390,6 +404,16 @@ export default function AdminDashboard() {
         const parsed = JSON.parse(savedMembers);
         if (Array.isArray(parsed) && parsed.length > 0) setPssMembers(parsed);
       }
+
+      setBranding(getStoredBranding());
+      setCommitteeWings(getStoredCommittee());
+      setTowerList(getStoredTowers());
+
+      const savedExpenses = localStorage.getItem("pbel_budget_expenses");
+      if (savedExpenses) {
+        const parsed = JSON.parse(savedExpenses);
+        if (Array.isArray(parsed) && parsed.length > 0) setBudgetExpenses(parsed);
+      }
     } catch (e) {
       console.error("Failed loading session:", e);
     }
@@ -413,11 +437,65 @@ export default function AdminDashboard() {
     localStorage.setItem("pbel_bhog_passes", JSON.stringify(updated));
   };
 
-  // Branding & Asset Handlers
+  // Branding & Local Asset Handlers
   const handleSaveBranding = (updated: SamitiBrandingConfig) => {
     setBranding(updated);
     saveStoredBranding(updated);
     alert("Branding, Logos & Hero Wallpaper updated live across the portal!");
+  };
+
+  // Local File Upload for Hero Wallpaper from Computer
+  const handleUploadWallpaperFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const updated = {
+        ...branding,
+        customWallpaperUrl: dataUrl,
+      };
+      setBranding(updated);
+      saveStoredBranding(updated);
+      alert("Custom Maa Durga Wallpaper uploaded & activated across the portal!");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Local File Upload for PSS Logo from Computer
+  const handleUploadPssLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const updated = {
+        ...branding,
+        pssLogoUrl: dataUrl,
+      };
+      setBranding(updated);
+      saveStoredBranding(updated);
+      alert("PBEL Sanskritik Samiti Logo uploaded & updated across Header & Hero!");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Local File Upload for Festival Logo from Computer
+  const handleUploadDurgotsavLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const updated = {
+        ...branding,
+        durgotsavLogoUrl: dataUrl,
+      };
+      setBranding(updated);
+      saveStoredBranding(updated);
+      alert("PBEL Durgotsav Festival Logo uploaded & updated!");
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleUploadPdfFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -478,10 +556,125 @@ export default function AdminDashboard() {
     alert("Expense recorded in Committee Budget Ledger!");
   };
 
+  const handleSaveEditedExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExpense) return;
+    const updated = budgetExpenses.map((exp) =>
+      exp.id === editingExpense.id
+        ? {
+            ...exp,
+            title: sanitizeText(editingExpense.title),
+            category: editingExpense.category,
+            planned: Number(editingExpense.planned) || 0,
+            actual: Number(editingExpense.actual) || 0,
+            paidTo: sanitizeText(editingExpense.paidTo) || "Vendor",
+            status: editingExpense.status,
+          }
+        : exp
+    );
+    setBudgetExpenses(updated);
+    localStorage.setItem("pbel_budget_expenses", JSON.stringify(updated));
+    setEditingExpense(null);
+    alert("Expense updated successfully!");
+  };
+
   const handleDeleteExpense = (id: string) => {
     const updated = budgetExpenses.filter((e) => e.id !== id);
     setBudgetExpenses(updated);
     localStorage.setItem("pbel_budget_expenses", JSON.stringify(updated));
+  };
+
+  // Organizing Committee Handlers
+  const handleSaveCommittee = (wings: CommitteeWing[]) => {
+    setCommitteeWings(wings);
+    saveStoredCommittee(wings);
+    alert("Organizing Committee structure & wings updated live across the portal!");
+  };
+
+  const handleAddWing = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newWingForm.category.trim()) {
+      alert("Please provide Wing Category Title.");
+      return;
+    }
+    const newWing: CommitteeWing = {
+      id: `wing-${Date.now()}`,
+      category: sanitizeText(newWingForm.category),
+      icon: newWingForm.icon || "🌺",
+      tagline: sanitizeText(newWingForm.tagline) || "Festival execution wing",
+      members: [],
+    };
+    const updated = [...committeeWings, newWing];
+    handleSaveCommittee(updated);
+    setNewWingForm({ category: "", icon: "🌺", tagline: "" });
+  };
+
+  const handleDeleteWing = (wingId: string) => {
+    if (!confirm("Are you sure you want to remove this committee wing?")) return;
+    const updated = committeeWings.filter((w) => w.id !== wingId);
+    handleSaveCommittee(updated);
+  };
+
+  const handleAddMemberToWing = (wingId: string) => {
+    if (!newWingMember.name.trim() || !newWingMember.role.trim()) {
+      alert("Please provide Member Name and Role.");
+      return;
+    }
+    const member: CommitteeMember = {
+      id: `m-${Date.now()}`,
+      name: sanitizeText(newWingMember.name),
+      role: sanitizeText(newWingMember.role),
+      tower: sanitizeText(newWingMember.tower) || "PBEL Sanskritik Samiti",
+      phone: sanitizeText(newWingMember.phone),
+    };
+    const updated = committeeWings.map((w) =>
+      w.id === wingId ? { ...w, members: [...w.members, member] } : w
+    );
+    handleSaveCommittee(updated);
+    setNewWingMember({ name: "", role: "", tower: "PBEL Sanskritik Samiti", phone: "" });
+  };
+
+  const handleDeleteMemberFromWing = (wingId: string, memberId: string) => {
+    const updated = committeeWings.map((w) =>
+      w.id === wingId
+        ? { ...w, members: w.members.filter((m) => m.id !== memberId) }
+        : w
+    );
+    handleSaveCommittee(updated);
+  };
+
+  // Towers CMS Handlers
+  const handleSaveTowers = (towers: TowerDefinition[]) => {
+    setTowerList(towers);
+    saveStoredTowers(towers);
+    alert("PBEL Towers updated live across registration & participation forms!");
+  };
+
+  const handleAddTower = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTowerForm.id.trim() || !newTowerForm.tower.trim() || !newTowerForm.name.trim()) {
+      alert("Please provide Tower Code (e.g. L), Tower Name (e.g. Tower L), and Wing (e.g. Amber).");
+      return;
+    }
+    const id = newTowerForm.id.toUpperCase().trim();
+    const fullName = `${newTowerForm.tower.trim()} (${newTowerForm.name.trim()})`;
+    const regex = new RegExp(`tower\\s*${id}|${newTowerForm.name.trim()}|\\b${id}[\\s-]*\\d`, "i");
+    const tower: TowerDefinition = {
+      id,
+      tower: newTowerForm.tower.trim(),
+      name: newTowerForm.name.trim(),
+      fullName,
+      regex,
+    };
+    const updated = [...towerList, tower];
+    handleSaveTowers(updated);
+    setNewTowerForm({ id: "", tower: "", name: "", fullName: "" });
+  };
+
+  const handleDeleteTower = (towerId: string) => {
+    if (!confirm(`Are you sure you want to remove Tower ${towerId}?`)) return;
+    const updated = towerList.filter((t) => t.id !== towerId);
+    handleSaveTowers(updated);
   };
 
   // WhatsApp Volunteer Dispatcher Handler
@@ -1185,6 +1378,8 @@ function decodeCategoryDescription(desc?: string) {
               { id: "overview", label: "📊 Overview" },
               { id: "contributions", label: "💰 Contributions CRM" },
               { id: "pss_members", label: "👥 Members & Daily Bhog Passes" },
+              { id: "committee", label: "👥 Organizing Committee Wings" },
+              { id: "towers", label: "🏢 Towers Roster" },
               { id: "categories", label: "🌺 Seva Catalog CMS" },
               { id: "schedule", label: "📅 Schedule & Pratibimb Stage" },
               { id: "volunteers", label: "🤝 Volunteers & WhatsApp Dispatch" },
@@ -2561,7 +2756,14 @@ function decodeCategoryDescription(desc?: string) {
                             {exp.status}
                           </span>
                         </td>
-                        <td className="p-3 text-right">
+                        <td className="p-3 text-right space-x-1">
+                          <button
+                            onClick={() => setEditingExpense(exp)}
+                            className="p-1 text-gray-400 hover:text-primary rounded-lg transition"
+                            title="Edit Expense"
+                          >
+                            <Edit2 size={14} />
+                          </button>
                           <button
                             onClick={() => handleDeleteExpense(exp.id)}
                             className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition"
@@ -2579,6 +2781,455 @@ function decodeCategoryDescription(desc?: string) {
 
           </div>
 
+          {/* EDIT EXPENSE MODAL */}
+          {editingExpense && (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl border border-amber-300 relative">
+                <button
+                  onClick={() => setEditingExpense(null)}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
+                >
+                  <X size={18} />
+                </button>
+
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <Edit2 size={20} className="text-primary" />
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Edit Budget / Expense Line Item
+                  </h3>
+                </div>
+
+                <form onSubmit={handleSaveEditedExpense} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Department</label>
+                    <select
+                      value={editingExpense.category}
+                      onChange={(e) => setEditingExpense({ ...editingExpense, category: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    >
+                      <option value="Pratima & Purohit">Pratima & Purohit</option>
+                      <option value="Pandal & Lighting">Pandal & Lighting</option>
+                      <option value="Dhaaki & Traditional Samagri">Dhaaki & Traditional Samagri</option>
+                      <option value="Maha Bhog & Kitchen">Maha Bhog & Kitchen</option>
+                      <option value="Sound & Cultural Stage">Sound & Cultural Stage</option>
+                      <option value="Sanitation & Green Pujo">Sanitation & Green Pujo</option>
+                      <option value="Security & Facility Ops">Security & Facility Ops</option>
+                      <option value="General & Miscellaneous">General & Miscellaneous</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Expense Title / Item *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingExpense.title}
+                      onChange={(e) => setEditingExpense({ ...editingExpense, title: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Planned Budget (₹)</label>
+                      <input
+                        type="number"
+                        required
+                        value={editingExpense.planned}
+                        onChange={(e) => setEditingExpense({ ...editingExpense, planned: Number(e.target.value) })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Actual Paid (₹)</label>
+                      <input
+                        type="number"
+                        required
+                        value={editingExpense.actual}
+                        onChange={(e) => setEditingExpense({ ...editingExpense, actual: Number(e.target.value) })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold text-amber-950"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Vendor / Payee</label>
+                      <input
+                        type="text"
+                        value={editingExpense.paidTo}
+                        onChange={(e) => setEditingExpense({ ...editingExpense, paidTo: e.target.value })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Payment Status</label>
+                      <select
+                        value={editingExpense.status}
+                        onChange={(e) => setEditingExpense({ ...editingExpense, status: e.target.value })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-semibold"
+                      >
+                        <option value="Advance Paid">Advance Paid</option>
+                        <option value="Partially Paid">Partially Paid</option>
+                        <option value="Confirmed">Confirmed</option>
+                        <option value="Procured">Procured</option>
+                        <option value="Allocated">Allocated</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingExpense(null)}
+                      className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-bold transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-1.5 golden-glow"
+                    >
+                      <Save size={14} />
+                      <span>Update Expense</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* TAB CONTENT: ORGANIZING COMMITTEE WINGS CMS */}
+      {activeTab === "committee" && (
+        <div className="space-y-6">
+          {/* Header Card */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 rounded-3xl p-6 border border-amber-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
+                <Users size={14} className="text-primary" />
+                <span>Self-Service Committee Management</span>
+              </div>
+              <h2 className="font-heading text-2xl font-bold text-gray-900">
+                Organizing Committee Wings &amp; Member Leads CMS
+              </h2>
+              <p className="text-xs text-gray-600 mt-1 max-w-2xl">
+                Add, edit, or remove executive wings, leads, and operational teams. Changes synchronize live to the public Committee page.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleSaveCommittee(committeeWings)}
+              className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-2xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-start md:self-auto shrink-0 golden-glow"
+            >
+              <Save size={15} />
+              <span>Save Committee Roster</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Add New Committee Wing Form */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                <PlusCircle size={18} className="text-primary" />
+                <h3 className="font-heading text-base font-bold text-gray-900">
+                  Create New Committee Wing
+                </h3>
+              </div>
+
+              <form onSubmit={handleAddWing} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Wing Title / Category *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newWingForm.category}
+                    onChange={(e) => setNewWingForm({ ...newWingForm, category: e.target.value })}
+                    placeholder="e.g. Cultural Directorate & Stage"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Icon / Emoji</label>
+                    <input
+                      type="text"
+                      value={newWingForm.icon}
+                      onChange={(e) => setNewWingForm({ ...newWingForm, icon: e.target.value })}
+                      placeholder="🌺"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl text-center text-base focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block font-semibold text-gray-700 mb-1">Wing Tagline / Scope</label>
+                    <input
+                      type="text"
+                      value={newWingForm.tagline}
+                      onChange={(e) => setNewWingForm({ ...newWingForm, tagline: e.target.value })}
+                      placeholder="Stage acts, audio ops & Natok"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  <PlusCircle size={14} />
+                  <span>Add Committee Wing</span>
+                </button>
+              </form>
+            </div>
+
+            {/* List of Committee Wings & Direct Member Editors */}
+            <div className="lg:col-span-2 space-y-4">
+              {committeeWings.map((wing) => (
+                <div key={wing.id} className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-2xl">{wing.icon}</span>
+                      <div>
+                        <h4 className="font-heading text-base font-bold text-gray-900">{wing.category}</h4>
+                        <span className="text-xs text-gray-500">{wing.tagline}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteWing(wing.id)}
+                      className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                      title="Delete Entire Wing"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  {/* Members inside this wing */}
+                  <div className="space-y-2">
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">
+                      Assigned Leads &amp; Coordinators ({wing.members.length}):
+                    </span>
+                    {wing.members.length > 0 ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {wing.members.map((m) => (
+                          <div
+                            key={m.id}
+                            className="p-2.5 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between"
+                          >
+                            <div>
+                              <span className="font-bold text-gray-900 block">{m.name}</span>
+                              <span className="text-[11px] text-amber-800 font-semibold">{m.role}</span>
+                              <span className="text-[10px] text-gray-500 block">{m.tower}</span>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteMemberFromWing(wing.id, m.id)}
+                              className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition"
+                              title="Remove Member"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-gray-50 rounded-xl text-center text-xs text-gray-400 italic">
+                        No member leads added to this wing yet.
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Add Member inline form */}
+                  <div className="pt-3 border-t border-gray-100 flex flex-wrap gap-2 text-xs items-center">
+                    <input
+                      type="text"
+                      placeholder="Lead / Member Name"
+                      id={`name-${wing.id}`}
+                      className="flex-1 min-w-[140px] p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Role (e.g. Stage Director)"
+                      id={`role-${wing.id}`}
+                      className="flex-1 min-w-[140px] p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Tower / Flat"
+                      id={`tower-${wing.id}`}
+                      defaultValue="PBEL Sanskritik Samiti"
+                      className="w-36 p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary text-[11px]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const nameInput = document.getElementById(`name-${wing.id}`) as HTMLInputElement;
+                        const roleInput = document.getElementById(`role-${wing.id}`) as HTMLInputElement;
+                        const towerInput = document.getElementById(`tower-${wing.id}`) as HTMLInputElement;
+                        if (!nameInput.value.trim() || !roleInput.value.trim()) {
+                          alert("Please enter Name and Role for the member.");
+                          return;
+                        }
+                        const member: CommitteeMember = {
+                          id: `m-${Date.now()}`,
+                          name: sanitizeText(nameInput.value),
+                          role: sanitizeText(roleInput.value),
+                          tower: sanitizeText(towerInput.value) || "PBEL Sanskritik Samiti",
+                        };
+                        const updated = committeeWings.map((w) =>
+                          w.id === wing.id ? { ...w, members: [...w.members, member] } : w
+                        );
+                        handleSaveCommittee(updated);
+                        nameInput.value = "";
+                        roleInput.value = "";
+                      }}
+                      className="bg-primary hover:bg-primary-hover text-white px-3 py-2 rounded-xl font-bold transition flex items-center gap-1 shrink-0"
+                    >
+                      <PlusCircle size={13} />
+                      <span>Add Lead</span>
+                    </button>
+                  </div>
+
+                </div>
+              ))}
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB CONTENT: TOWERS ROSTER CMS */}
+      {activeTab === "towers" && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 rounded-3xl p-6 border border-amber-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
+                <Building size={14} className="text-primary" />
+                <span>Self-Service Tower Registry</span>
+              </div>
+              <h2 className="font-heading text-2xl font-bold text-gray-900">
+                PBEL City Towers &amp; Wings Manager
+              </h2>
+              <p className="text-xs text-gray-600 mt-1 max-w-2xl">
+                Add, rename, or customize tower codes and building names. Updates instantly across Tower Solidarity Leaderboards, Contribution forms, and Member Bhog Passes.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleSaveTowers(towerList)}
+              className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-2xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-start md:self-auto shrink-0 golden-glow"
+            >
+              <Save size={15} />
+              <span>Save Towers Roster</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Add Tower Form */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                <PlusCircle size={18} className="text-primary" />
+                <h3 className="font-heading text-base font-bold text-gray-900">
+                  Add New Tower / Wing
+                </h3>
+              </div>
+
+              <form onSubmit={handleAddTower} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Tower Code / Letter *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTowerForm.id}
+                    onChange={(e) => setNewTowerForm({ ...newTowerForm, id: e.target.value })}
+                    placeholder="e.g. L"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl uppercase font-mono font-bold focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Tower Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTowerForm.tower}
+                    onChange={(e) => setNewTowerForm({ ...newTowerForm, tower: e.target.value })}
+                    placeholder="e.g. Tower L"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Building / Wing Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newTowerForm.name}
+                    onChange={(e) => setNewTowerForm({ ...newTowerForm, name: e.target.value })}
+                    placeholder="e.g. Amber"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  <PlusCircle size={14} />
+                  <span>Register Tower</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Towers Registry Table */}
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+                <div>
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Configured Towers ({towerList.length})
+                  </h3>
+                  <span className="text-xs text-gray-500">Live mapped to resident flat detection</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                      <th className="p-3">Code</th>
+                      <th className="p-3">Tower Name</th>
+                      <th className="p-3">Building Name</th>
+                      <th className="p-3">Full Display Label</th>
+                      <th className="p-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {towerList.map((t) => (
+                      <tr key={t.id} className="hover:bg-gray-50/60">
+                        <td className="p-3 font-mono font-bold text-primary">{t.id}</td>
+                        <td className="p-3 font-semibold text-gray-900">{t.tower}</td>
+                        <td className="p-3 text-gray-700">{t.name}</td>
+                        <td className="p-3 font-medium text-amber-900">{t.fullName}</td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleDeleteTower(t.id)}
+                            className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition"
+                            title="Delete Tower"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
         </div>
       )}
 
@@ -2594,10 +3245,10 @@ function decodeCategoryDescription(desc?: string) {
                 <span>Self-Service First Theme CMS</span>
               </div>
               <h2 className="font-heading text-2xl font-bold text-gray-900">
-                Portal Identity, Aesthetic Wallpapers & Brochure CMS
+                Portal Identity, Aesthetic Wallpapers &amp; Brochure CMS
               </h2>
               <p className="text-xs text-gray-600 mt-1 max-w-2xl">
-                Update festival logos, switch between divine Maa Durga hero wallpapers, or upload the 25MB corporate sponsorship brochure PDF without touching code.
+                Upload custom Maa Durga photos from your computer, update Samiti and Festival logos, switch curated presets, or update the 25MB sponsorship brochure PDF directly.
               </p>
             </div>
 
@@ -2626,7 +3277,7 @@ function decodeCategoryDescription(desc?: string) {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {AESTHETIC_WALLPAPERS.map((wp) => {
-                  const isSelected = branding.activeHeroWallpaperId === wp.id;
+                  const isSelected = branding.activeHeroWallpaperId === wp.id && !branding.customWallpaperUrl;
                   return (
                     <div
                       key={wp.id}
@@ -2666,17 +3317,43 @@ function decodeCategoryDescription(desc?: string) {
                 })}
               </div>
 
-              {/* Custom Wallpaper URL Override */}
-              <div className="pt-4 border-t border-gray-100 space-y-2">
+              {/* Local File Upload for Wallpaper Directly from Computer */}
+              <div className="pt-4 border-t border-gray-100 space-y-3">
                 <label className="block font-semibold text-xs text-gray-700">
-                  Or Provide Custom High-Resolution Wallpaper URL
+                  📁 Upload Custom Wallpaper Photo from Computer (JPEG, PNG, WebP)
                 </label>
-                <div className="flex gap-2">
+                <div className="border-2 border-dashed border-amber-300 hover:border-primary rounded-2xl p-4 text-center bg-amber-50/40 hover:bg-amber-50/70 transition cursor-pointer relative">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadWallpaperFile}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  />
+                  {branding.customWallpaperUrl ? (
+                    <div className="space-y-2">
+                      <img
+                        src={branding.customWallpaperUrl}
+                        alt="Custom Uploaded Wallpaper Preview"
+                        className="w-full h-36 object-cover rounded-xl border border-amber-300 shadow-xs"
+                      />
+                      <span className="text-[11px] text-green-700 font-bold block">✓ Custom Wallpaper Active (Click to replace with new photo)</span>
+                    </div>
+                  ) : (
+                    <div className="py-2">
+                      <ImageIcon size={28} className="mx-auto text-amber-700 mb-1" />
+                      <span className="font-bold text-gray-800 text-xs block">Click or Drop Photo of Maa Durga from Computer</span>
+                      <span className="text-[10px] text-gray-500">Supports high-definition photos up to 15MB</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Or Custom URL Override */}
+                <div className="flex gap-2 pt-1">
                   <input
                     type="url"
                     value={branding.customWallpaperUrl || ""}
                     onChange={(e) => setBranding({ ...branding, customWallpaperUrl: e.target.value })}
-                    placeholder="https://images.unsplash.com/.../durga-idol.jpg"
+                    placeholder="Or enter Image URL: https://example.com/durga.jpg"
                     className="flex-1 p-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary"
                   />
                   <button
@@ -2749,42 +3426,81 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
               </div>
 
-              {/* Samiti & Festival Logos */}
+              {/* Samiti & Festival Logos with Local Uploaders */}
               <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs space-y-4">
                 <h3 className="font-heading text-lg font-bold text-gray-900">
-                  Logos & Festival Identity
+                  Logos &amp; Festival Identity
                 </h3>
 
-                <div className="space-y-3 text-xs">
+                <div className="space-y-4 text-xs">
+                  
+                  {/* PSS Logo Local Upload */}
                   <div>
                     <label className="block font-semibold text-gray-700 mb-1">
-                      PBEL Sanskritik Samiti Logo URL / Image Link
+                      1. PBEL Sanskritik Samiti (PSS) Logo
                     </label>
-                    <input
-                      type="url"
-                      value={branding.pssLogoUrl || ""}
-                      onChange={(e) => setBranding({ ...branding, pssLogoUrl: e.target.value })}
-                      placeholder="https://.../pss-samiti-logo.png"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                    />
+                    <div className="flex items-center gap-3">
+                      {branding.pssLogoUrl ? (
+                        <img
+                          src={branding.pssLogoUrl}
+                          alt="PSS Logo Preview"
+                          className="w-12 h-12 object-contain rounded-xl border border-amber-300 bg-white p-1"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-center text-amber-700 font-bold">
+                          PSS
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <label className="inline-block bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1.5 rounded-xl font-bold cursor-pointer transition">
+                          📁 Upload PSS Logo from Computer
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleUploadPssLogoFile}
+                            className="hidden"
+                          />
+                        </label>
+                        <span className="block text-[10px] text-gray-400 mt-1">PNG, JPG, SVG with transparent background</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Durgotsav Festival Logo Local Upload */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      2. PBEL Durgotsav Festival Logo
+                    </label>
+                    <div className="flex items-center gap-3">
+                      {branding.durgotsavLogoUrl ? (
+                        <img
+                          src={branding.durgotsavLogoUrl}
+                          alt="Festival Logo Preview"
+                          className="w-12 h-12 object-contain rounded-xl border border-amber-300 bg-white p-1"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-300 flex items-center justify-center text-amber-700 font-bold">
+                          🕉️
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <label className="inline-block bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1.5 rounded-xl font-bold cursor-pointer transition">
+                          📁 Upload Festival Logo from Computer
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleUploadDurgotsavLogoFile}
+                            className="hidden"
+                          />
+                        </label>
+                        <span className="block text-[10px] text-gray-400 mt-1">Updates Header and Hero logos</span>
+                      </div>
+                    </div>
                   </div>
 
                   <div>
                     <label className="block font-semibold text-gray-700 mb-1">
-                      PBEL Durgotsav Festival Logo URL
-                    </label>
-                    <input
-                      type="url"
-                      value={branding.durgotsavLogoUrl || ""}
-                      onChange={(e) => setBranding({ ...branding, durgotsavLogoUrl: e.target.value })}
-                      placeholder="https://.../durgotsav-logo.png"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">
-                      Festival Sub-title / Tagline
+                      3. Festival Sub-title / Tagline
                     </label>
                     <input
                       type="text"

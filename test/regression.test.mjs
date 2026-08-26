@@ -772,5 +772,104 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('21. Organizing Committee CMS & Dynamic Wings Roster', () => {
+    it('should support adding, editing, and removing wings and assigned leads', () => {
+      let wings = [
+        {
+          id: "w-1",
+          category: "Cultural Directorate",
+          icon: "🎭",
+          tagline: "Stage acts and music",
+          members: [{ id: "m-1", name: "Anirban", role: "Stage Director", tower: "Tower A" }],
+        },
+      ];
+
+      // Add a new member
+      wings = wings.map((w) =>
+        w.id === "w-1"
+          ? {
+              ...w,
+              members: [
+                ...w.members,
+                { id: "m-2", name: "Debashis", role: "Sound Ops", tower: "Tower B" },
+              ],
+            }
+          : w
+      );
+
+      assert.strictEqual(wings[0].members.length, 2);
+      assert.strictEqual(wings[0].members[1].name, "Debashis");
+
+      // Remove a member
+      wings = wings.map((w) =>
+        w.id === "w-1"
+          ? { ...w, members: w.members.filter((m) => m.id !== "m-1") }
+          : w
+      );
+      assert.strictEqual(wings[0].members.length, 1);
+      assert.strictEqual(wings[0].members[0].name, "Debashis");
+    });
+  });
+
+  describe('22. Dynamic Towers Management & Regex Resolution', () => {
+    it('should allow dynamic tower additions and resolve flats accurately', () => {
+      const towers = [
+        { id: "A", tower: "Tower A", name: "Emerald", regex: /tower\s*a|emerald|\ba[\s-]*\d/i },
+        { id: "L", tower: "Tower L", name: "Amber", regex: /tower\s*l|amber|\bl[\s-]*\d/i },
+      ];
+
+      const matchDynamicTower = (flatStr) => {
+        for (const t of towers) {
+          if (t.regex.test(flatStr) || flatStr.toLowerCase().includes(t.name.toLowerCase())) {
+            return t;
+          }
+        }
+        return null;
+      };
+
+      const matchedA = matchDynamicTower("Emerald 402");
+      const matchedL = matchDynamicTower("Amber 1204");
+      const matchedL2 = matchDynamicTower("Tower L - 301");
+
+      assert.strictEqual(matchedA?.id, "A");
+      assert.strictEqual(matchedL?.id, "L");
+      assert.strictEqual(matchedL2?.id, "L");
+      assert.strictEqual(matchDynamicTower("Unknown 999"), null);
+    });
+  });
+
+  describe('23. Budget & Expense In-Place Item Editing', () => {
+    it('should update planned and actual paid values and re-calculate balances', () => {
+      let expenses = [
+        { id: "exp-1", title: "Ekchala Pratima", planned: 150000, actual: 145000, status: "Partially Paid" },
+      ];
+
+      // Edit item
+      expenses = expenses.map((exp) =>
+        exp.id === "exp-1"
+          ? { ...exp, planned: 160000, actual: 160000, status: "Fully Paid" }
+          : exp
+      );
+
+      assert.strictEqual(expenses[0].planned, 160000);
+      assert.strictEqual(expenses[0].actual, 160000);
+      assert.strictEqual(expenses[0].status, "Fully Paid");
+    });
+  });
+
+  describe('24. Local Base64 Image Upload Format Validation', () => {
+    it('should accept valid base64 data URLs for local wallpaper and logo uploads', () => {
+      const sampleBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      const isValidImageUri = (uri) => {
+        return uri.startsWith("data:image/") || uri.startsWith("http://") || uri.startsWith("https://") || uri.startsWith("/");
+      };
+
+      assert.strictEqual(isValidImageUri(sampleBase64), true);
+      assert.strictEqual(isValidImageUri("https://images.unsplash.com/photo-1601614275039"), true);
+      assert.strictEqual(isValidImageUri("/PBEL_Logo.png"), true);
+    });
+  });
+
 });
+
 

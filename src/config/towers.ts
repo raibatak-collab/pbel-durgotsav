@@ -105,7 +105,39 @@ export function matchTower(input: string): TowerDefinition | null {
   return null;
 }
 
-/**
- * Helper to get an array of all full tower names for select dropdowns
- */
 export const PBEL_TOWER_NAMES: string[] = PBEL_TOWERS.map((t) => t.fullName);
+
+export const TOWERS_STORAGE_KEY = "pbel_custom_towers";
+
+/**
+ * Retrieves the current towers configuration from localStorage with default fallback.
+ */
+export function getStoredTowers(): TowerDefinition[] {
+  if (typeof window === "undefined") return PBEL_TOWERS;
+  try {
+    const raw = localStorage.getItem(TOWERS_STORAGE_KEY);
+    if (!raw) return PBEL_TOWERS;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return PBEL_TOWERS;
+    return parsed.map((t: any) => ({
+      ...t,
+      regex: t.regex ? new RegExp(t.regex.source || t.regex, "i") : new RegExp(`${t.id}|${t.name}|${t.tower}`, "i"),
+    }));
+  } catch {
+    return PBEL_TOWERS;
+  }
+}
+
+/**
+ * Saves updated towers configuration into localStorage and dispatches a live update event.
+ */
+export function saveStoredTowers(towers: TowerDefinition[]): void {
+  if (typeof window === "undefined") return;
+  // Convert RegExp to string for serialization
+  const serializable = towers.map((t) => ({
+    ...t,
+    regex: t.regex ? t.regex.source : "",
+  }));
+  localStorage.setItem(TOWERS_STORAGE_KEY, JSON.stringify(serializable));
+  window.dispatchEvent(new Event("pbel_towers_updated"));
+}

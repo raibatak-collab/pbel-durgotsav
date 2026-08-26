@@ -88,15 +88,23 @@ export function Header() {
             
             {/* Brand Logo & Name */}
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#9E122C] to-[#5C0512] flex items-center justify-center shadow-md border border-amber-400/30 group-hover:scale-105 transition-transform">
-                <span className="font-heading text-xl text-[#FDE68A] font-bold">ॐ</span>
-              </div>
+              {branding.pssLogoUrl || branding.durgotsavLogoUrl ? (
+                <img
+                  src={branding.pssLogoUrl || branding.durgotsavLogoUrl}
+                  alt="PBEL Durgotsav Logo"
+                  className="w-11 h-11 rounded-2xl object-cover shadow-md border border-amber-400/40 group-hover:scale-105 transition-transform bg-white"
+                />
+              ) : (
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#9E122C] to-[#5C0512] flex items-center justify-center shadow-md border border-amber-400/30 group-hover:scale-105 transition-transform">
+                  <span className="font-heading text-xl text-[#FDE68A] font-bold">ॐ</span>
+                </div>
+              )}
               <div className="flex flex-col">
                 <span className="font-heading text-xl md:text-2xl font-bold tracking-tight text-primary leading-tight">
-                  PBEL City Durgotsav
+                  {branding.festivalName || "PBEL City Durgotsav"}
                 </span>
                 <span className="text-[11px] text-gray-500 font-medium tracking-wide flex items-center gap-1">
-                  PBEL Sanskritik Samiti <span className="text-amber-600 font-semibold">• 2026</span>
+                  {branding.samitiName || "PBEL Sanskritik Samiti"} <span className="text-amber-600 font-semibold">• 2026</span>
                 </span>
               </div>
             </Link>
