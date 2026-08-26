@@ -300,6 +300,23 @@ export default function ContributePage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
 
+// Category metadata decoder
+function decodeCategoryDescription(desc?: string) {
+  const str = desc || '';
+  const limitMatch = str.match(/\[limit:(\d+)\]/);
+  const statusMatch = str.match(/\[status:(active|inactive)\]/);
+
+  const cleanDescription = str
+    .replace(/\[limit:\d+\]/g, '')
+    .replace(/\[status:(active|inactive)\]/g, '')
+    .trim();
+
+  const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
+  const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
+
+  return { cleanDescription, parsedLimit, parsedActive };
+}
+
   // Fetch dynamic categories and live contribution counts from Supabase
   const loadData = async () => {
     try {
@@ -316,6 +333,7 @@ export default function ContributePage() {
 
       if (dbCategories && dbCategories.length > 0) {
         const dbItems: SevaItem[] = dbCategories.map((d: any) => {
+          const decoded = decodeCategoryDescription(d.description);
           const matched = defaultSevaCatalog.find(
             (def) => def.title.toLowerCase() === d.name.toLowerCase()
           );
@@ -325,7 +343,13 @@ export default function ContributePage() {
             (c: any) => c.category_id === d.id || c.contribution_categories?.name?.toLowerCase() === d.name.toLowerCase()
           ).length;
 
-          const max = d.max_limit !== undefined && d.max_limit !== null ? Number(d.max_limit) : (matched?.maxLimit || 5);
+          const max = d.max_limit !== undefined && d.max_limit !== null 
+            ? Number(d.max_limit) 
+            : (decoded.parsedLimit !== undefined ? decoded.parsedLimit : (matched?.maxLimit || 5));
+
+          const isActive = d.is_active !== undefined 
+            ? (d.is_active !== false) 
+            : (decoded.parsedActive !== undefined ? decoded.parsedActive : true);
 
           return {
             id: d.id,
@@ -335,11 +359,11 @@ export default function ContributePage() {
             amount: d.fixed_amount ? Number(d.fixed_amount) : (matched?.amount || 1001),
             category: (matched?.category || "rituals") as any,
             icon: matched?.icon || "🌺",
-            description: d.description || matched?.description || "Special seva offering for PBEL City Durgotsav.",
+            description: decoded.cleanDescription || matched?.description || "Special seva offering for PBEL City Durgotsav.",
             badge: matched?.badge || (d.fixed_amount >= 10000 ? "Grand Seva" : undefined),
             maxLimit: max,
             bookedCount: booked,
-            isActive: d.is_active !== false,
+            isActive: isActive,
           };
         });
         setSevaList(dbItems);

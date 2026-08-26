@@ -213,5 +213,57 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('9. Live Database Connection & Category Limits Verification', () => {
+    const SUPABASE_URL = 'https://oasjophkiognuecisfxd.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9hc2pvcGhraW9nbnVlY2lzZnhkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1OTA3MDgsImV4cCI6MjEwMzE2NjcwOH0.V2FxBgqEFK6QAJFWXB-H3_YqX0-FKOjo1k8Pex7B4SI';
+
+    it('should successfully connect to Supabase and query contribution_categories table', async () => {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const { data, error } = await supabase.from('contribution_categories').select('id, name, fixed_amount, description');
+      assert.strictEqual(error, null, `Database query failed: ${error?.message}`);
+      assert.ok(Array.isArray(data), 'Categories data must be an array');
+      assert.ok(data.length > 0, 'Database should contain pre-seeded categories');
+    });
+
+    it('should successfully connect to Supabase and query contributions table', async () => {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const { data, error } = await supabase.from('contributions').select('id, amount, status');
+      assert.strictEqual(error, null, `Contributions query failed: ${error?.message}`);
+      assert.ok(Array.isArray(data), 'Contributions data must be an array');
+    });
+
+    it('should properly encode and decode category limit metadata without schema errors', () => {
+      function encode(desc, maxLimit, isActive) {
+        const clean = (desc || '').replace(/\[limit:\d+\]/g, '').replace(/\[status:(active|inactive)\]/g, '').trim();
+        const limitTag = maxLimit !== undefined && maxLimit !== null ? `[limit:${maxLimit}]` : '';
+        const statusTag = isActive !== undefined ? `[status:${isActive ? 'active' : 'inactive'}]` : '';
+        return `${clean} ${limitTag} ${statusTag}`.trim();
+      }
+
+      function decode(desc) {
+        const str = desc || '';
+        const limitMatch = str.match(/\[limit:(\d+)\]/);
+        const statusMatch = str.match(/\[status:(active|inactive)\]/);
+        const cleanDescription = str.replace(/\[limit:\d+\]/g, '').replace(/\[status:(active|inactive)\]/g, '').trim();
+        const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
+        const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
+        return { cleanDescription, parsedLimit, parsedActive };
+      }
+
+      const originalText = "108 Red Lotuses for Sandhi Pujo";
+      const encoded = encode(originalText, 10, true);
+      assert.strictEqual(encoded, "108 Red Lotuses for Sandhi Pujo [limit:10] [status:active]");
+
+      const decoded = decode(encoded);
+      assert.strictEqual(decoded.cleanDescription, originalText);
+      assert.strictEqual(decoded.parsedLimit, 10);
+      assert.strictEqual(decoded.parsedActive, true);
+    });
+  });
+
 });
 

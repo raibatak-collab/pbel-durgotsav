@@ -254,6 +254,30 @@ export default function AdminDashboard() {
     }
   };
 
+// Category limit & status metadata helpers for reliable backwards compatibility
+function encodeCategoryDescription(desc: string, maxLimit?: number, isActive?: boolean) {
+  const clean = (desc || '').replace(/\[limit:\d+\]/g, '').replace(/\[status:(active|inactive)\]/g, '').trim();
+  const limitTag = maxLimit !== undefined && maxLimit !== null ? `[limit:${maxLimit}]` : '';
+  const statusTag = isActive !== undefined ? `[status:${isActive ? 'active' : 'inactive'}]` : '';
+  return `${clean} ${limitTag} ${statusTag}`.trim();
+}
+
+function decodeCategoryDescription(desc?: string) {
+  const str = desc || '';
+  const limitMatch = str.match(/\[limit:(\d+)\]/);
+  const statusMatch = str.match(/\[status:(active|inactive)\]/);
+
+  const cleanDescription = str
+    .replace(/\[limit:\d+\]/g, '')
+    .replace(/\[status:(active|inactive)\]/g, '')
+    .trim();
+
+  const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
+  const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
+
+  return { cleanDescription, parsedLimit, parsedActive };
+}
+
   // 1. Overview Calculations
   const verifiedContributions = contributions.filter((c) => c.status === "Success");
   const pendingContributions = contributions.filter((c) => c.status === "Pending Verification" || c.status === "Pending");
@@ -265,31 +289,48 @@ export default function AdminDashboard() {
     e.preventDefault();
     setIsSubmittingCategory(true);
     try {
+      const encodedDesc = encodeCategoryDescription(
+        newCategory.description, 
+        newCategory.max_limit, 
+        newCategory.is_active
+      );
+
       const payload: any = {
-        name: newCategory.name,
+        name: newCategory.name.trim(),
         fixed_amount: Number(newCategory.fixed_amount),
-        description: newCategory.description,
-        max_limit: newCategory.max_limit ? Number(newCategory.max_limit) : null,
-        is_active: newCategory.is_active,
+        description: encodedDesc,
       };
 
       if (isEditingCategory && newCategory.id) {
-        await supabase
+        const { error } = await supabase
           .from("contribution_categories")
           .update(payload)
           .eq("id", newCategory.id);
-        alert("Seva Category updated successfully!");
+        
+        if (error) {
+          console.error("Error updating category:", error);
+          alert(`Error updating category: ${error.message}`);
+          return;
+        }
+        alert("Seva Category & Limits updated successfully!");
       } else {
-        await supabase
+        const { error } = await supabase
           .from("contribution_categories")
           .insert(payload);
-        alert("New Seva Category added!");
+        
+        if (error) {
+          console.error("Error creating category:", error);
+          alert(`Error adding category: ${error.message}`);
+          return;
+        }
+        alert("New Seva Category added successfully!");
       }
       setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true });
       setIsEditingCategory(false);
-      fetchData();
-    } catch (err) {
+      await fetchData();
+    } catch (err: any) {
       console.error("Error saving category:", err);
+      alert(`Unexpected error: ${err.message || err}`);
     } finally {
       setIsSubmittingCategory(false);
     }
@@ -823,13 +864,21 @@ export default function AdminDashboard() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {categoriesList.map((cat) => {
+                    const decoded = decodeCategoryDescription(cat.description);
                     const booked = contributions.filter(
-                      (c) => (c.category_id === cat.id || c.contribution_categories?.name === cat.name) && c.status !== "Rejected"
+                      (c) => (c.category_id === cat.id || c.contribution_categories?.name?.toLowerCase() === cat.name?.toLowerCase()) && c.status !== "Rejected"
                     ).length;
-                    const max = cat.max_limit !== undefined && cat.max_limit !== null ? Number(cat.max_limit) : 5;
+                    
+                    const max = cat.max_limit !== undefined && cat.max_limit !== null 
+                      ? Number(cat.max_limit) 
+                      : (decoded.parsedLimit !== undefined ? decoded.parsedLimit : 5);
+                      
+                    const isActive = cat.is_active !== undefined 
+                      ? (cat.is_active !== false) 
+                      : (decoded.parsedActive !== undefined ? decoded.parsedActive : true);
+
                     const remaining = Math.max(0, max - booked);
                     const isFull = remaining <= 0;
-                    const isActive = cat.is_active !== false;
 
                     return (
                       <tr key={cat.id} className={`hover:bg-gray-50/60 ${isFull || !isActive ? "bg-gray-50/70" : ""}`}>
@@ -860,7 +909,7 @@ export default function AdminDashboard() {
                                 id: cat.id,
                                 name: cat.name,
                                 fixed_amount: cat.fixed_amount ? Number(cat.fixed_amount) : 1001,
-                                description: cat.description || "",
+                                description: decoded.cleanDescription,
                                 max_limit: max,
                                 is_active: isActive,
                               });
