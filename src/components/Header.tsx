@@ -35,8 +35,7 @@ export function Header() {
   const navLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Pujo Schedule", href: "/programs", icon: Calendar },
-    { name: "Daily Lunch Pass", href: "/bhog-pass", icon: Utensils },
-    { name: "PSS Members & Committee", href: "/committee", icon: Users },
+    { name: "Organizing Committee", href: "/committee", icon: Users },
     { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake },
     { name: "Corporate Sponsors", href: "/sponsors", icon: Award },
     { name: "Contribute & E-Seva", href: "/contribute", icon: HeartHandshake },

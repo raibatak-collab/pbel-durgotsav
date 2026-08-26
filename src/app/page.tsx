@@ -200,21 +200,14 @@ export default async function Home() {
             </Link>
           </div>
 
-          {/* Member & Quick Pass Access Pills */}
+          {/* Committee & Quick Deck Access Pills */}
           <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
             <Link
               href="/committee"
               className="inline-flex items-center gap-1.5 bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/35 text-amber-200 hover:text-white px-4 py-1.5 rounded-full text-xs font-semibold transition"
             >
               <Users size={13} className="text-amber-400" />
-              <span>👥 PSS Members & Committee</span>
-            </Link>
-            <Link
-              href="/bhog-pass"
-              className="inline-flex items-center gap-1.5 bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/35 text-amber-200 hover:text-white px-4 py-1.5 rounded-full text-xs font-semibold transition"
-            >
-              <Utensils size={13} className="text-amber-400" />
-              <span>🍛 Daily Lunch Pass (Max 6)</span>
+              <span>👥 Organizing Committee Wings</span>
             </Link>
             <Link
               href="/sponsors"
@@ -532,7 +525,7 @@ export default async function Home() {
         </div>
       </section>
 
-      {/* 6.8 PSS ANNUAL MEMBERS & ORGANIZING COMMITTEE SPOTLIGHT */}
+      {/* 6.8 PBEL SANSKRITIK SAMITI ORGANIZING COMMITTEE SPOTLIGHT */}
       <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="bg-gradient-to-br from-[#FFFDF9] via-[#FFF8ED] to-[#FFF4DF] rounded-3xl p-6 sm:p-10 border-2 border-amber-300 shadow-md relative overflow-hidden">
           
@@ -540,32 +533,31 @@ export default async function Home() {
             <div className="space-y-2 max-w-2xl">
               <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 bg-amber-200/80 px-3 py-1 rounded-full uppercase tracking-wider">
                 <Users size={13} className="text-primary" />
-                <span>PSS Member Families & Organizing Committee</span>
+                <span>PBEL Sanskritik Samiti (PSS) • Core Organizing Wings</span>
               </div>
               <h2 className="font-heading text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-                Honoring Our Patron Members (₹7,500 Annual Seva)
+                Dedicated Resident Leadership Behind Durgotsav 2026
               </h2>
               <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                Durga Pujo at PBEL City is organized by dedicated resident volunteer wings and sustained by over 
-                <strong> 100+ member families</strong> contributing the yearly ₹7,500 membership. 
-                Claim your family's daily lunch passes or explore the committee directory.
+                Durga Pujo at PBEL City is organized by dedicated resident volunteer wings across Executive Leadership, 
+                Cultural Directorate, Pure Ghee Maha Bhog Kitchen, Vedic Rites &amp; Pandal Production.
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row lg:flex-col gap-2.5 shrink-0">
               <Link
-                href="/bhog-pass"
+                href="/committee"
                 className="bg-primary hover:bg-primary-hover text-white text-center py-3 px-6 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 golden-glow"
               >
-                <Utensils size={16} />
-                <span>Claim Daily Lunch Pass (Max 6)</span>
+                <Users size={16} />
+                <span>Meet the Organizing Wings →</span>
               </Link>
               <Link
-                href="/committee"
+                href="/volunteer"
                 className="bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-center py-2.5 px-6 rounded-2xl font-semibold text-xs transition flex items-center justify-center gap-1.5 shadow-2xs"
               >
-                <Users size={14} />
-                <span>View Committee & Members Directory →</span>
+                <HeartHandshake size={14} />
+                <span>Join Volunteer Seva Team</span>
               </Link>
             </div>
           </div>

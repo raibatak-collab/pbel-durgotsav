@@ -36,6 +36,7 @@ import {
   Utensils
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower } from "@/config/towers";
 
 export interface AdminUser {
   id: string;
@@ -171,8 +172,10 @@ const initialEveningsConfig = [
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "contributions" | "pss_members" | "bhog_passes" | "categories" | "schedule" | "pratibimb_config" | "pratibimb_acts" | "volunteers" | "sponsors" | "gallery" | "users"
+    "overview" | "contributions" | "pss_members" | "categories" | "schedule" | "volunteers" | "sponsors" | "gallery" | "users"
   >("overview");
+  const [membersSubView, setMembersSubView] = useState<"roster" | "kitchen">("roster");
+  const [scheduleSubView, setScheduleSubView] = useState<"schedule" | "pratibimb">("schedule");
 
   // Authentication & Session State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -237,19 +240,13 @@ export default function AdminDashboard() {
   const [sponsorLeads, setSponsorLeads] = useState<any[]>([]);
   const [bhogPasses, setBhogPasses] = useState<any[]>([]);
 
-  // PSS Members Roster State
-  const [pssMembers, setPssMembers] = useState<any[]>([
-    { id: "M-1", name: "Raibatak Banerjee", tower: "Tower C (Coral)", flatNumber: "402", phone: "9845000000", headcount: 4, status: "Active" },
-    { id: "M-2", name: "Anirban Mukherjee", tower: "Tower B (Sapphire)", flatNumber: "1104", phone: "9845000001", headcount: 4, status: "Active" },
-    { id: "M-3", name: "Sourav Ganguly & Family", tower: "Tower A (Emerald)", flatNumber: "802", phone: "9845000002", headcount: 5, status: "Active" },
-    { id: "M-4", name: "Debashis & Sharmila Roy", tower: "Tower F (Pearl)", flatNumber: "1401", phone: "9845000003", headcount: 4, status: "Active" },
-    { id: "M-5", name: "Kalyan & Rupa Sengupta", tower: "Tower D (Topaz)", flatNumber: "603", phone: "9845000004", headcount: 3, status: "Active" },
-  ]);
+  // PSS Members Roster State - Initialized empty until Admin uploads CSV or adds members
+  const [pssMembers, setPssMembers] = useState<any[]>([]);
   const [csvText, setCsvText] = useState("");
   const [memberSearchQuery, setMemberSearchQuery] = useState("");
   const [newMemberForm, setNewMemberForm] = useState({
     name: "",
-    tower: "Tower C (Coral)",
+    tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
     flatNumber: "",
     phone: "",
     headcount: 4,
@@ -379,19 +376,6 @@ export default function AdminDashboard() {
     const lines = csvText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
     const parsedNewMembers: any[] = [];
 
-    const towerRegexes = [
-      { id: "Tower A (Emerald)", regex: /tower\s*a|emerald|\ba[\s-]*\d/i },
-      { id: "Tower B (Sapphire)", regex: /tower\s*b|sapphire|\bb[\s-]*\d/i },
-      { id: "Tower C (Coral)", regex: /tower\s*c|coral|\bc[\s-]*\d/i },
-      { id: "Tower D (Topaz)", regex: /tower\s*d|topaz|\bd[\s-]*\d/i },
-      { id: "Tower E (Ruby)", regex: /tower\s*e|ruby|\be[\s-]*\d/i },
-      { id: "Tower F (Pearl)", regex: /tower\s*f|pearl|\bf[\s-]*\d/i },
-      { id: "Tower G (Jade)", regex: /tower\s*g|jade|\bg[\s-]*\d/i },
-      { id: "Tower H (Diamond)", regex: /tower\s*h|diamond|\bh[\s-]*\d/i },
-      { id: "Tower J (Aquamarine)", regex: /tower\s*j|aquamarine|\bj[\s-]*\d/i },
-      { id: "Tower K (Opal)", regex: /tower\s*k|opal|\bk[\s-]*\d/i },
-    ];
-
     lines.forEach((line, idx) => {
       // Skip header line if present
       if (idx === 0 && (line.toLowerCase().includes("name") || line.toLowerCase().includes("flat"))) {
@@ -407,14 +391,9 @@ export default function AdminDashboard() {
         const rawHeadcount = parts[3] ? Number(parts[3]) : 4;
         const headcount = Math.min(Math.max(isNaN(rawHeadcount) ? 4 : rawHeadcount, 1), 6);
 
-        // Auto-detect tower from flat
-        let matchedTower = "Tower C (Coral)";
-        for (const t of towerRegexes) {
-          if (t.regex.test(flatNumber) || t.regex.test(line)) {
-            matchedTower = t.id;
-            break;
-          }
-        }
+        // Auto-detect tower from flat using centralized config
+        const matched = matchTower(flatNumber) || matchTower(line);
+        const matchedTower = matched ? matched.fullName : (PBEL_TOWER_NAMES[2] || "Tower C (Coral)");
 
         parsedNewMembers.push({
           id: `M-${Date.now()}-${idx}`,
@@ -464,7 +443,7 @@ export default function AdminDashboard() {
     localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
     setNewMemberForm({
       name: "",
-      tower: "Tower C (Coral)",
+      tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
       flatNumber: "",
       phone: "",
       headcount: 4,
@@ -1055,28 +1034,25 @@ function decodeCategoryDescription(desc?: string) {
           </div>
 
           {/* Admin Module Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 no-scrollbar">
+          <div className="flex flex-wrap items-center gap-2 pb-3 mb-6">
             {[
               { id: "overview", label: "📊 Overview" },
-              { id: "contributions", label: "💰 Contributions (CRM)" },
-              { id: "pss_members", label: "👥 PSS Members (₹7,500 Roster & CSV Import)" },
-              { id: "bhog_passes", label: "🍽️ Daily Bhog Lunch Passes & Kitchen Headcount" },
-              { id: "categories", label: "🌺 Seva Categories CMS" },
-              { id: "schedule", label: "📅 Schedule (Nirghanto) CMS" },
-              { id: "pratibimb_config", label: "⚙️ Pratibimb Timings & Slots CMS" },
-              { id: "pratibimb_acts", label: "🎭 Registered Acts" },
+              { id: "contributions", label: "💰 Contributions CRM" },
+              { id: "pss_members", label: "👥 Members & Daily Bhog Passes" },
+              { id: "categories", label: "🌺 Seva Catalog CMS" },
+              { id: "schedule", label: "📅 Schedule & Pratibimb Stage" },
               { id: "volunteers", label: "🤝 Volunteers Roster" },
-              { id: "sponsors", label: "🏢 Sponsors & Brands" },
+              { id: "sponsors", label: "🏢 Corporate Sponsors" },
               { id: "gallery", label: "🖼️ Gallery Carousel CMS" },
-              { id: "users", label: "👥 User Management & Access" },
+              { id: "users", label: "🔒 User Management" },
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition shrink-0 ${
                   activeTab === tab.id
-                    ? "bg-primary text-white shadow-sm"
-                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                    ? "bg-primary text-white shadow-sm ring-2 ring-primary/30"
+                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 hover:border-gray-300"
                 }`}
               >
                 {tab.label}
@@ -1528,196 +1504,316 @@ function decodeCategoryDescription(desc?: string) {
         </div>
       )}
 
-      {/* TAB CONTENT: 4. SCHEDULE (PUJO NIRGHANTO) CMS */}
+      {/* TAB CONTENT: 4. SCHEDULE & PRATIBIMB STAGE CMS */}
       {activeTab === "schedule" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Add / Edit Event Form */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-              <div className="flex items-center gap-2">
-                <PlusCircle size={18} className="text-primary" />
-                <h3 className="font-heading text-lg font-bold text-gray-900">
-                  {isEditingEvent ? "Edit Schedule Item" : "Add Schedule Ritual"}
-                </h3>
-              </div>
-              {isEditingEvent && (
-                <button onClick={() => { setIsEditingEvent(false); setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: "2026-10-15", time: "10:00 AM", description: "" }); }} className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1">
-                  <X size={14} /> Cancel
-                </button>
-              )}
-            </div>
-
-            <form onSubmit={handleSaveEvent} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Ritual / Event Title *</label>
-                <input
-                  type="text"
-                  required
-                  value={newEvent.title}
-                  onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                  placeholder="e.g. Kola Bou Snan / Sandhi Pujo"
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Date</label>
-                  <select
-                    value={newEvent.date}
-                    onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                  >
-                    <option value="2026-10-15">15 Oct (Panchami)</option>
-                    <option value="2026-10-16">16 Oct (Sashti)</option>
-                    <option value="2026-10-17">17 Oct (Saptami)</option>
-                    <option value="2026-10-18">18 Oct (Ashtami)</option>
-                    <option value="2026-10-19">19 Oct (Nabami)</option>
-                    <option value="2026-10-20">20 Oct (Dashami)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Timing (e.g. 10:30 AM)</label>
-                  <input
-                    type="text"
-                    required
-                    value={newEvent.time}
-                    onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                    placeholder="10:30 AM"
-                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Description / Details</label>
-                <textarea
-                  rows={3}
-                  value={newEvent.description}
-                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  placeholder="Ritual guidelines or details..."
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmittingEvent}
-                className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2"
-              >
-                <Save size={15} />
-                <span>{isSubmittingEvent ? "Saving..." : isEditingEvent ? "Update Schedule Ritual" : "Publish to Pujo Schedule"}</span>
-              </button>
-            </form>
-          </div>
-
-          {/* Current Schedule Rituals List with Edit & Delete */}
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="font-heading text-lg font-bold text-gray-900">
-                Pujo Nirghanto Rituals ({eventsList.length})
-              </h3>
-              <span className="text-xs text-gray-500">Live sync with `/programs` schedule</span>
-            </div>
-
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200 sticky top-0 bg-gray-100">
-                    <th className="p-3.5">Date / Time</th>
-                    <th className="p-3.5">Ritual Title</th>
-                    <th className="p-3.5">Description</th>
-                    <th className="p-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {eventsList.map((evt) => (
-                    <tr key={evt.id} className="hover:bg-gray-50/60">
-                      <td className="p-3.5">
-                        <span className="font-bold text-gray-900 block">{evt.date}</span>
-                        <span className="text-primary font-semibold text-[11px]">{evt.time}</span>
-                      </td>
-                      <td className="p-3.5 font-bold text-gray-900">{evt.title}</td>
-                      <td className="p-3.5 text-gray-500 max-w-xs truncate">{evt.description || "N/A"}</td>
-                      <td className="p-3.5 text-right space-x-2">
-                        <button onClick={() => handleEditEvent(evt)} className="p-1.5 text-amber-700 hover:bg-amber-50 rounded-lg transition" title="Edit Ritual"><Edit2 size={14} /></button>
-                        <button onClick={() => handleDeleteEvent(evt.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition" title="Delete Ritual"><Trash2 size={14} /></button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      )}
-
-      {/* TAB CONTENT: 5. PRATIBIMB EVENINGS TIMINGS & CAPACITY CMS */}
-      {activeTab === "pratibimb_config" && (
         <div className="space-y-6">
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-6">
-              <div>
-                <h3 className="font-heading text-xl font-bold text-primary">
-                  Pratibimb Evening Slots & Timings Configuration
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Set daily evening start/end timings, maximum resident slot capacities, and manage PSS Flagship Headliners.
-                </p>
-              </div>
-            </div>
+          
+          {/* Sub Switcher */}
+          <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-2xl w-fit border border-gray-200">
+            <button
+              onClick={() => setScheduleSubView("schedule")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                scheduleSubView === "schedule"
+                  ? "bg-white text-primary shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Calendar size={14} />
+              <span>1. Pujo Nirghanto Schedule CMS</span>
+            </button>
+            <button
+              onClick={() => setScheduleSubView("pratibimb")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                scheduleSubView === "pratibimb"
+                  ? "bg-white text-primary shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Music size={14} />
+              <span>2. Pratibimb Stage Slots & Registered Acts ({performances.length})</span>
+            </button>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {eveningsConfig.map((ev) => (
-                <div key={ev.id} className="bg-gray-50/80 rounded-2xl p-5 border border-gray-200 flex flex-col justify-between relative group hover:border-amber-400 transition">
+          {scheduleSubView === "schedule" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              
+              {/* Add / Edit Event Form */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <PlusCircle size={18} className="text-primary" />
+                    <h3 className="font-heading text-lg font-bold text-gray-900">
+                      {isEditingEvent ? "Edit Schedule Item" : "Add Schedule Ritual"}
+                    </h3>
+                  </div>
+                  {isEditingEvent && (
+                    <button onClick={() => { setIsEditingEvent(false); setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: "2026-10-15", time: "10:00 AM", description: "" }); }} className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1">
+                      <X size={14} /> Cancel
+                    </button>
+                  )}
+                </div>
+
+                <form onSubmit={handleSaveEvent} className="space-y-4 text-xs">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full uppercase">
-                        {ev.day} ({ev.date})
-                      </span>
-                      {ev.hasPssFlagship && (
-                        <span className="text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Star size={10} className="fill-amber-600 text-amber-600" /> PSS Headliner
-                        </span>
-                      )}
+                    <label className="block font-semibold text-gray-700 mb-1">Ritual / Event Title *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newEvent.title}
+                      onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                      placeholder="e.g. Kola Bou Snan / Sandhi Pujo"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Date</label>
+                      <select
+                        value={newEvent.date}
+                        onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      >
+                        <option value="2026-10-15">15 Oct (Panchami)</option>
+                        <option value="2026-10-16">16 Oct (Shashthi)</option>
+                        <option value="2026-10-17">17 Oct (Saptami)</option>
+                        <option value="2026-10-18">18 Oct (Ashtami)</option>
+                        <option value="2026-10-19">19 Oct (Nabami)</option>
+                        <option value="2026-10-20">20 Oct (Dashami)</option>
+                      </select>
                     </div>
 
-                    <h4 className="font-heading text-lg font-bold text-gray-900 mb-1">{ev.theme}</h4>
-                    
-                    <div className="space-y-1.5 text-xs text-gray-600 mt-3 pt-3 border-t border-gray-200">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-500">Evening Timings:</span>
-                        <span className="font-bold text-gray-900">{ev.startTime} - {ev.endTime}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-500">Max Resident Slots:</span>
-                        <span className="font-bold text-primary">{ev.maxResidentSlots} Slots</span>
-                      </div>
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Time</label>
+                      <input
+                        type="text"
+                        required
+                        value={newEvent.time}
+                        onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+                        placeholder="e.g. 08:30 AM"
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      />
                     </div>
+                  </div>
 
-                    {/* PSS Flagship Details */}
-                    {ev.hasPssFlagship && (
-                      <div className="mt-3 p-3 bg-amber-100/70 rounded-xl border border-amber-300 text-xs">
-                        <span className="text-[10px] font-bold text-amber-900 uppercase block mb-0.5">⭐ Flagship Show:</span>
-                        <p className="font-bold text-gray-900">{ev.pssEventTitle}</p>
-                        <span className="text-amber-800 font-semibold text-[11px]">{ev.pssEventTime} ({ev.pssDuration})</span>
-                      </div>
-                    )}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Category / Type</label>
+                    <select
+                      value={newEvent.event_type}
+                      onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    >
+                      <option value="Nirghanto">Pujo Ritual / Puja Nirghanto</option>
+                      <option value="Bhog">Maha Bhog / Food Offering</option>
+                      <option value="Aarti">Dhunuchi &amp; Sandhya Aarti</option>
+                      <option value="Pratibimb">Pratibimb Cultural Night</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Short Description</label>
+                    <textarea
+                      rows={3}
+                      value={newEvent.description}
+                      onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                      placeholder="Details about rituals, purohit timings..."
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
                   </div>
 
                   <button
-                    onClick={() => setEditingEvening({ ...ev })}
-                    className="mt-4 w-full bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                    type="submit"
+                    disabled={isSubmittingEvent}
+                    className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-xs flex items-center justify-center gap-1.5"
                   >
-                    <Settings size={13} /> Edit Timing & Capacity
+                    <Save size={15} />
+                    <span>{isEditingEvent ? "Update Schedule Item" : "Publish to Pujo Nirghanto"}</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Schedule Timeline Table */}
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+                <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+                  <h3 className="font-heading text-lg font-bold text-gray-900">Current Pujo Nirghanto ({eventsList.length})</h3>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                        <th className="p-3.5">Date &amp; Time</th>
+                        <th className="p-3.5">Ritual Event</th>
+                        <th className="p-3.5">Type</th>
+                        <th className="p-3.5">Description</th>
+                        <th className="p-3.5 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {eventsList.map((ev) => (
+                        <tr key={ev.id} className="hover:bg-gray-50/60">
+                          <td className="p-3.5 whitespace-nowrap">
+                            <span className="font-bold text-gray-900 block">{ev.date}</span>
+                            <span className="text-amber-800 font-medium text-[11px]">{ev.time}</span>
+                          </td>
+                          <td className="p-3.5 font-bold text-primary">{ev.title}</td>
+                          <td className="p-3.5">
+                            <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              {ev.event_type}
+                            </span>
+                          </td>
+                          <td className="p-3.5 max-w-xs truncate text-gray-500">{ev.description}</td>
+                          <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                setNewEvent({
+                                  id: ev.id,
+                                  title: ev.title,
+                                  event_type: ev.event_type || "Nirghanto",
+                                  date: ev.date,
+                                  time: ev.time,
+                                  description: ev.description || "",
+                                });
+                                setIsEditingEvent(true);
+                              }}
+                              className="p-1.5 text-amber-700 hover:bg-amber-100 rounded-lg transition"
+                              title="Edit Event"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteEvent(ev.id)}
+                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                              title="Delete Event"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {scheduleSubView === "pratibimb" && (
+            <div className="space-y-6">
+              
+              {/* Pratibimb Timing & Slots Config */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-6">
+                  <div>
+                    <h3 className="font-heading text-xl font-bold text-primary">
+                      Pratibimb Evening Slots &amp; Timings Configuration
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Set daily evening start/end timings, maximum resident slot capacities, and manage PSS Flagship Headliners.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                  {eveningsConfig.map((ev) => (
+                    <div key={ev.id} className="bg-gray-50/80 rounded-2xl p-5 border border-gray-200 flex flex-col justify-between relative group hover:border-amber-400 transition">
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full uppercase">
+                            {ev.day} ({ev.date})
+                          </span>
+                          {ev.hasPssFlagship && (
+                            <span className="text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <Star size={10} className="fill-amber-600 text-amber-600" /> PSS Headliner
+                            </span>
+                          )}
+                        </div>
+
+                        <h4 className="font-heading text-lg font-bold text-gray-900 mb-1">{ev.theme}</h4>
+                        
+                        <div className="space-y-1.5 text-xs text-gray-600 mt-3 pt-3 border-t border-gray-200">
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">Evening Timings:</span>
+                            <span className="font-bold text-gray-900">{ev.startTime} - {ev.endTime}</span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-gray-500">Max Resident Slots:</span>
+                            <span className="font-bold text-primary">{ev.maxResidentSlots} Slots</span>
+                          </div>
+                        </div>
+
+                        {/* PSS Flagship Details */}
+                        {ev.hasPssFlagship && (
+                          <div className="mt-3 p-3 bg-amber-100/70 rounded-xl border border-amber-300 text-xs">
+                            <span className="text-[10px] font-bold text-amber-900 uppercase block mb-0.5">⭐ Flagship Show:</span>
+                            <p className="font-bold text-gray-900">{ev.pssEventTitle}</p>
+                            <span className="text-amber-800 font-semibold text-[11px]">{ev.pssEventTime} ({ev.pssDuration})</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        onClick={() => setEditingEvening({ ...ev })}
+                        className="mt-4 w-full bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                      >
+                        <Settings size={13} /> Edit Timing &amp; Capacity
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Registered Resident Acts Table */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+                <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Registered Resident Stage Performers ({performances.length})
+                  </h3>
+                  <button onClick={() => window.print()} className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5">
+                    <Download size={14} /> Export Stage Lineup
                   </button>
                 </div>
-              ))}
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                        <th className="p-3.5">Contact Lead</th>
+                        <th className="p-3.5">Flat Number</th>
+                        <th className="p-3.5">WhatsApp Phone</th>
+                        <th className="p-3.5">Genre</th>
+                        <th className="p-3.5">Format</th>
+                        <th className="p-3.5">Song / Act</th>
+                        <th className="p-3.5">Performers List</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {performances.map((p) => (
+                        <tr key={p.id} className="hover:bg-gray-50/60">
+                          <td className="p-3.5 font-bold text-gray-900">{p.contact_name}</td>
+                          <td className="p-3.5 text-gray-700">{p.flat_number}</td>
+                          <td className="p-3.5 text-gray-600">{p.phone}</td>
+                          <td className="p-3.5 font-semibold text-primary">{p.performance_type}</td>
+                          <td className="p-3.5 text-gray-600">{p.format}</td>
+                          <td className="p-3.5 font-medium text-amber-900">{p.song_name || "N/A"}</td>
+                          <td className="p-3.5 max-w-xs truncate text-gray-500">{p.participant_names}</td>
+                        </tr>
+                      ))}
+                      {performances.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="p-6 text-center text-gray-500">
+                            No resident performance submissions recorded yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
-          </div>
+          )}
 
           {/* Edit Modal for Evening Timing & Capacity */}
           {editingEvening && (
@@ -1814,62 +1910,13 @@ function decodeCategoryDescription(desc?: string) {
                     type="submit"
                     className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm mt-4"
                   >
-                    Save & Apply Configuration
+                    Save &amp; Apply Configuration
                   </button>
                 </form>
               </div>
             </div>
           )}
-        </div>
-      )}
 
-      {/* TAB CONTENT: 6. PRATIBIMB REGISTERED ACTS */}
-      {activeTab === "pratibimb_acts" && (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
-            <h3 className="font-heading text-lg font-bold text-gray-900">
-              Registered Resident Stage Performers ({performances.length})
-            </h3>
-            <button onClick={() => window.print()} className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5">
-              <Download size={14} /> Export Stage Lineup
-            </button>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
-                  <th className="p-3.5">Contact Lead</th>
-                  <th className="p-3.5">Flat Number</th>
-                  <th className="p-3.5">WhatsApp Phone</th>
-                  <th className="p-3.5">Genre</th>
-                  <th className="p-3.5">Format</th>
-                  <th className="p-3.5">Song / Act</th>
-                  <th className="p-3.5">Performers List</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {performances.map((p) => (
-                  <tr key={p.id} className="hover:bg-gray-50/60">
-                    <td className="p-3.5 font-bold text-gray-900">{p.contact_name}</td>
-                    <td className="p-3.5 text-gray-700">{p.flat_number}</td>
-                    <td className="p-3.5 text-gray-600">{p.phone}</td>
-                    <td className="p-3.5 font-semibold text-primary">{p.performance_type}</td>
-                    <td className="p-3.5 text-gray-600">{p.format}</td>
-                    <td className="p-3.5 font-medium text-amber-900">{p.song_name || "N/A"}</td>
-                    <td className="p-3.5 max-w-xs truncate text-gray-500">{p.participant_names}</td>
-                  </tr>
-                ))}
-                {performances.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="p-6 text-center text-gray-500">
-                      No resident performance submissions recorded yet.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
         </div>
       )}
 
@@ -2390,430 +2437,457 @@ function decodeCategoryDescription(desc?: string) {
         </div>
       )}
 
-      {/* TAB CONTENT: 11. DAILY BHOG LUNCH PASSES & KITCHEN HEADCOUNT */}
-      {activeTab === "bhog_passes" && (
-        <div className="space-y-6">
-          
-          {/* Daily Kitchen Headcount Metrics */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { id: "saptami", day: "Maha Saptami (17 Oct)", menu: "Khichuri, Labra, Payesh" },
-              { id: "ashtami", day: "Maha Ashtami (18 Oct)", menu: "Bhog Khichuri, Luchi, Chanar Payesh" },
-              { id: "nabami", day: "Maha Nabami (19 Oct)", menu: "Basanti Pulao, Paneer/Veg Delicacy" },
-              { id: "dashami", day: "Vijaya Dashami (20 Oct)", menu: "Shanti Jal, Prasad & Sweets" },
-            ].map((d) => {
-              const countForDay = bhogPasses
-                .filter((p) => p.days && p.days.includes(d.id))
-                .reduce((acc, p) => acc + (Number(p.passCount) || 0), 0);
-
-              return (
-                <div key={d.id} className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
-                  <div className="text-xs font-bold text-amber-900 uppercase mb-1">{d.day}</div>
-                  <div className="text-2xl sm:text-3xl font-bold text-primary font-heading">
-                    {countForDay} <span className="text-xs font-sans text-gray-500 font-normal">Registered Meals</span>
-                  </div>
-                  <div className="text-[11px] text-gray-500 mt-1 line-clamp-1">{d.menu}</div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Registered Families Table */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-            <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="font-heading text-lg font-bold text-gray-900">
-                  🍽️ Registered Member Families for Daily Bhog Lunch ({bhogPasses.length} Families)
-                </h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Member families generated through the <strong>/bhog-pass</strong> portal (Max 6 passes per family).
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Link
-                  href="/bhog-pass"
-                  target="_blank"
-                  className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs"
-                >
-                  <span>Open Public Pass Portal ↗</span>
-                </Link>
-                <button
-                  onClick={() => window.print()}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5"
-                >
-                  <Download size={14} /> Print Kitchen Roster
-                </button>
-              </div>
-            </div>
-
-            {bhogPasses.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead>
-                    <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
-                      <th className="p-3">Family Head & Flat</th>
-                      <th className="p-3">Phone / WhatsApp</th>
-                      <th className="p-3">Pass Count</th>
-                      <th className="p-3">Registered Pujo Days</th>
-                      <th className="p-3">Token ID</th>
-                      <th className="p-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {bhogPasses.map((pass) => (
-                      <tr key={pass.passId} className="hover:bg-gray-50">
-                        <td className="p-3">
-                          <span className="font-bold text-gray-900 block">{pass.name}</span>
-                          <span className="text-gray-500 text-[11px]">{pass.tower} • Flat {pass.flatNumber}</span>
-                        </td>
-                        <td className="p-3 font-mono">
-                          <a
-                            href={`https://api.whatsapp.com/send?phone=${pass.phone?.replace(/[^0-9]/g, '')}&text=Hello%20${encodeURIComponent(pass.name)}%2C%20greetings%20from%20PBEL%20Sanskritik%20Samiti!%20Your%20Daily%20Maha%20Bhog%20Pass%20ID%20is%20${pass.passId}.`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-green-700 font-bold hover:underline inline-flex items-center gap-1"
-                          >
-                            <span>📱 {pass.phone}</span>
-                          </a>
-                        </td>
-                        <td className="p-3">
-                          <span className="bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
-                            {pass.passCount} Members
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <div className="flex flex-wrap gap-1">
-                            {pass.days?.map((d: string) => (
-                              <span key={d} className="bg-amber-100 text-amber-900 text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize">
-                                {d}
-                              </span>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="p-3 font-mono text-[11px] font-bold text-primary">
-                          {pass.passId}
-                        </td>
-                        <td className="p-3 text-right">
-                          <button
-                            onClick={() => handleClearBhogPass(pass.passId)}
-                            className="p-1 text-gray-400 hover:text-red-600 rounded"
-                            title="Remove Pass"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="bg-gray-50 p-6 rounded-xl text-center text-xs text-gray-500">
-                No family lunch passes issued yet. Member families who issue passes from <strong>/bhog-pass</strong> will appear here with live daily kitchen headcounts.
-              </div>
-            )}
-          </div>
-
-        </div>
-      )}
-
-      {/* TAB CONTENT: 12. PSS ANNUAL MEMBERS (₹7,500 ROSTER & CSV IMPORT) */}
+      {/* TAB CONTENT: 3. PSS ANNUAL MEMBERS & DAILY BHOG PASSES (UNIFIED) */}
       {activeTab === "pss_members" && (
         <div className="space-y-6">
           
-          {/* Top Metrics Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
-              <div className="text-xs font-bold text-amber-900 uppercase mb-1">Registered PSS Patron Families</div>
-              <div className="text-3xl font-bold text-primary font-heading">
-                {pssMembers.length} Families
-              </div>
-              <div className="text-[11px] text-gray-500 mt-1">₹7,500 Annual Member Subscription</div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
-              <div className="text-xs font-bold text-amber-900 uppercase mb-1">Total Patron Fund Raised</div>
-              <div className="text-3xl font-bold text-green-700 font-heading">
-                ₹{(pssMembers.length * 7500).toLocaleString("en-IN")}
-              </div>
-              <div className="text-[11px] text-gray-500 mt-1">Sustaining Pujo & Maha Bhog operations</div>
-            </div>
-
-            <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
-              <div className="text-xs font-bold text-amber-900 uppercase mb-1">Daily Member Lunch Capacity</div>
-              <div className="text-3xl font-bold text-amber-700 font-heading">
-                {pssMembers.reduce((acc, m) => acc + Math.min(Number(m.headcount) || 4, 6), 0)} Meals / Day
-              </div>
-              <div className="text-[11px] text-gray-500 mt-1">Capped at max 6 members per family</div>
-            </div>
+          {/* Sub Switcher */}
+          <div className="flex items-center gap-2 bg-gray-100 p-1.5 rounded-2xl w-fit border border-gray-200">
+            <button
+              onClick={() => setMembersSubView("roster")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                membersSubView === "roster"
+                  ? "bg-white text-primary shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Users size={14} />
+              <span>1. PSS Patron Members Roster &amp; CSV Import ({pssMembers.length})</span>
+            </button>
+            <button
+              onClick={() => setMembersSubView("kitchen")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                membersSubView === "kitchen"
+                  ? "bg-white text-primary shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Utensils size={14} />
+              <span>2. Issued Lunch Passes &amp; Live Kitchen Headcounts ({bhogPasses.length})</span>
+            </button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* CSV / Spreadsheet Bulk Importer Card */}
-            <div className="bg-white rounded-2xl border border-amber-300/80 p-6 shadow-xs h-fit space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
-                <Download size={18} className="text-primary" />
-                <div>
-                  <h3 className="font-heading text-base font-bold text-gray-900">
-                    ⚡ Quick CSV / Bulk Member Import
-                  </h3>
-                  <span className="text-[11px] text-gray-500">Paste rows from Excel, Sheets, or CSV file</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">
-                  Upload CSV File
-                </label>
-                <input
-                  type="file"
-                  accept=".csv,.txt,.tsv"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const reader = new FileReader();
-                      reader.onload = (event) => {
-                        setCsvText(event.target?.result as string);
-                      };
-                      reader.readAsText(file);
-                    }
-                  }}
-                  className="w-full text-xs text-gray-500 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover"
-                />
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-semibold text-gray-700">
-                    Or Paste Spreadsheet Rows Directly:
-                  </label>
-                  <span className="text-[10px] text-gray-400">Format: Name, Flat, Phone, Headcount</span>
-                </div>
-                <textarea
-                  rows={5}
-                  value={csvText}
-                  onChange={(e) => setCsvText(e.target.value)}
-                  placeholder="Sourav Ganguly, Tower A - 802, 9845000000, 4&#10;Anirban Mukherjee, Tower B - 1104, 9845000001, 4&#10;Debashis Roy, Tower F - 1401, 9845000002, 5"
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono text-xs"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={handleBulkImportCsv}
-                className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 golden-glow"
-              >
-                <Sparkles size={14} />
-                <span>Parse & Import Members</span>
-              </button>
-            </div>
-
-            {/* Add Single Member Form Card */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit space-y-4">
-              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
-                <PlusCircle size={18} className="text-primary" />
-                <h3 className="font-heading text-base font-bold text-gray-900">
-                  Add Single Member Family
-                </h3>
-              </div>
-
-              <form onSubmit={handleAddSingleMember} className="space-y-3 text-xs">
-                <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Head of Family Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newMemberForm.name}
-                    onChange={(e) => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
-                    placeholder="e.g. Subhashish Mukherjee"
-                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Tower</label>
-                    <select
-                      value={newMemberForm.tower}
-                      onChange={(e) => setNewMemberForm({ ...newMemberForm, tower: e.target.value })}
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                    >
-                      {[
-                        "Tower A (Emerald)", "Tower B (Sapphire)", "Tower C (Coral)", "Tower D (Topaz)",
-                        "Tower E (Ruby)", "Tower F (Pearl)", "Tower G (Jade)", "Tower H (Diamond)",
-                        "Tower J (Aquamarine)", "Tower K (Opal)"
-                      ].map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </select>
+          {/* SUB-VIEW 1: PATRON MEMBERS ROSTER & CSV IMPORT */}
+          {membersSubView === "roster" && (
+            <div className="space-y-6">
+              
+              {/* Top Metrics Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
+                  <div className="text-xs font-bold text-amber-900 uppercase mb-1">Registered PSS Patron Families</div>
+                  <div className="text-3xl font-bold text-primary font-heading">
+                    {pssMembers.length} Families
                   </div>
+                  <div className="text-[11px] text-gray-500 mt-1">₹7,500 Annual Member Subscription</div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
+                  <div className="text-xs font-bold text-amber-900 uppercase mb-1">Total Patron Fund Raised</div>
+                  <div className="text-3xl font-bold text-green-700 font-heading">
+                    ₹{(pssMembers.length * 7500).toLocaleString("en-IN")}
+                  </div>
+                  <div className="text-[11px] text-gray-500 mt-1">Sustaining Pujo &amp; Maha Bhog operations</div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
+                  <div className="text-xs font-bold text-amber-900 uppercase mb-1">Daily Member Lunch Capacity</div>
+                  <div className="text-3xl font-bold text-amber-700 font-heading">
+                    {pssMembers.reduce((acc, m) => acc + Math.min(Number(m.headcount) || 4, 6), 0)} Meals / Day
+                  </div>
+                  <div className="text-[11px] text-gray-500 mt-1">Capped at max 6 members per family</div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* CSV / Spreadsheet Bulk Importer Card */}
+                <div className="bg-white rounded-2xl border border-amber-300/80 p-6 shadow-xs h-fit space-y-4">
+                  <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                    <Download size={18} className="text-primary" />
+                    <div>
+                      <h3 className="font-heading text-base font-bold text-gray-900">
+                        ⚡ Quick CSV / Bulk Member Import
+                      </h3>
+                      <span className="text-[11px] text-gray-500">Paste rows from Excel, Sheets, or CSV file</span>
+                    </div>
+                  </div>
+
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Flat / Unit *</label>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Upload CSV File
+                    </label>
+                    <input
+                      type="file"
+                      accept=".csv,.txt,.tsv"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setCsvText(event.target?.result as string);
+                          };
+                          reader.readAsText(file);
+                        }
+                      }}
+                      className="w-full text-xs text-gray-500 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-semibold text-gray-700">
+                        Or Paste Spreadsheet Rows Directly:
+                      </label>
+                      <span className="text-[10px] text-gray-400">Format: Name, Flat, Phone, Headcount</span>
+                    </div>
+                    <textarea
+                      rows={5}
+                      value={csvText}
+                      onChange={(e) => setCsvText(e.target.value)}
+                      placeholder="Sourav Ganguly, Emerald 802, 9845000000, 4&#10;Anirban Mukherjee, Sapphire 1104, 9845000001, 4&#10;Debashis Roy, Pearl 1401, 9845000002, 5"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono text-xs"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleBulkImportCsv}
+                    className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 golden-glow"
+                  >
+                    <Sparkles size={14} />
+                    <span>Parse &amp; Import Members</span>
+                  </button>
+                </div>
+
+                {/* Add Single Member Form Card */}
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit space-y-4">
+                  <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                    <PlusCircle size={18} className="text-primary" />
+                    <h3 className="font-heading text-base font-bold text-gray-900">
+                      Add Single Member Family
+                    </h3>
+                  </div>
+
+                  <form onSubmit={handleAddSingleMember} className="space-y-3 text-xs">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Head of Family Name *</label>
+                      <input
+                        type="text"
+                        required
+                        value={newMemberForm.name}
+                        onChange={(e) => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
+                        placeholder="e.g. Subhashish Mukherjee"
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Tower</label>
+                        <select
+                          value={newMemberForm.tower}
+                          onChange={(e) => setNewMemberForm({ ...newMemberForm, tower: e.target.value })}
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                        >
+                          {PBEL_TOWER_NAMES.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Flat / Unit *</label>
+                        <input
+                          type="text"
+                          required
+                          value={newMemberForm.flatNumber}
+                          onChange={(e) => setNewMemberForm({ ...newMemberForm, flatNumber: e.target.value })}
+                          placeholder="e.g. 402"
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp</label>
+                        <input
+                          type="tel"
+                          value={newMemberForm.phone}
+                          onChange={(e) => setNewMemberForm({ ...newMemberForm, phone: e.target.value })}
+                          placeholder="e.g. 9876543210"
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Headcount (Max 6)</label>
+                        <select
+                          value={newMemberForm.headcount}
+                          onChange={(e) => setNewMemberForm({ ...newMemberForm, headcount: Number(e.target.value) })}
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                        >
+                          {[1, 2, 3, 4, 5, 6].map((num) => (
+                            <option key={num} value={num}>{num} Members</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <PlusCircle size={14} />
+                      <span>Save Member Family</span>
+                    </button>
+                  </form>
+                </div>
+
+                {/* Quick Helper / Info Card */}
+                <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-6 shadow-xs h-fit space-y-3 text-xs text-gray-700">
+                  <h4 className="font-heading font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                    <Utensils size={15} className="text-primary" />
+                    <span>Day-Wise Pass Generation Rules</span>
+                  </h4>
+                  <p>
+                    • Every verified PSS Member family entry has direct <strong>Day-Wise 1-Click Lunch Pass</strong> generation buttons in the directory table below.
+                  </p>
+                  <p>
+                    • Headcounts are automatically <strong>capped at a maximum of 6 members per flat</strong>.
+                  </p>
+                  <p>
+                    • Generated passes automatically increment the kitchen headcount counters in real time.
+                  </p>
+                </div>
+
+              </div>
+
+              {/* Members Table */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+                <div className="p-4 sm:p-5 border-b border-gray-200 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-heading text-base font-bold text-gray-900">
+                      PSS Registered Member Families ({pssMembers.length})
+                    </h3>
+                    <span className="text-xs bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
+                      ₹7,500 Paid Roster
+                    </span>
+                  </div>
+
+                  <div className="relative w-full sm:w-72">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
-                      required
-                      value={newMemberForm.flatNumber}
-                      onChange={(e) => setNewMemberForm({ ...newMemberForm, flatNumber: e.target.value })}
-                      placeholder="e.g. 402"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      value={memberSearchQuery}
+                      onChange={(e) => setMemberSearchQuery(e.target.value)}
+                      placeholder="Search name, flat, tower..."
+                      className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp</label>
-                    <input
-                      type="tel"
-                      value={newMemberForm.phone}
-                      onChange={(e) => setNewMemberForm({ ...newMemberForm, phone: e.target.value })}
-                      placeholder="e.g. 9876543210"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                    />
+                {pssMembers.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                          <th className="p-3.5">Member Name &amp; Flat</th>
+                          <th className="p-3.5">WhatsApp / Phone</th>
+                          <th className="p-3.5">Headcount</th>
+                          <th className="p-3.5 text-center">Day-Wise 1-Click Lunch Pass Generation (Capped at 6)</th>
+                          <th className="p-3.5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {pssMembers
+                          .filter((m) => {
+                            const q = memberSearchQuery.toLowerCase().trim();
+                            return !q || m.name.toLowerCase().includes(q) || m.flatNumber.toLowerCase().includes(q) || m.tower.toLowerCase().includes(q);
+                          })
+                          .map((m) => (
+                            <tr key={m.id} className="hover:bg-amber-50/40 transition">
+                              <td className="p-3.5">
+                                <span className="font-bold text-gray-900 block text-sm">{m.name}</span>
+                                <span className="text-gray-500 text-xs">{m.tower} • Flat {m.flatNumber}</span>
+                              </td>
+                              <td className="p-3.5 font-mono">
+                                <a
+                                  href={`https://api.whatsapp.com/send?phone=${m.phone?.replace(/[^0-9]/g, '')}&text=Hello%20${encodeURIComponent(m.name)}%2C%20greetings%20from%20PBEL%20Sanskritik%20Samiti!`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-green-700 font-bold hover:underline inline-flex items-center gap-1"
+                                >
+                                  <span>📱 {m.phone || "PBEL Resident"}</span>
+                                </a>
+                              </td>
+                              <td className="p-3.5">
+                                <span className="font-bold text-gray-900 font-heading text-sm">
+                                  {Math.min(m.headcount || 4, 6)} Members
+                                </span>
+                              </td>
+                              <td className="p-3.5 text-center">
+                                <div className="flex flex-wrap items-center justify-center gap-1.5">
+                                  {["Saptami", "Ashtami", "Nabami", "Dashami"].map((day) => (
+                                    <button
+                                      key={day}
+                                      onClick={() => handleGenerateMemberPass(m, day)}
+                                      className="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-2.5 py-1 rounded-lg text-[11px] transition border border-amber-300 shadow-2xs"
+                                      title={`Generate ${day} Lunch Pass for ${Math.min(m.headcount || 4, 6)} members`}
+                                    >
+                                      🍛 {day}
+                                    </button>
+                                  ))}
+                                  <button
+                                    onClick={() => handleGenerateMemberPass(m, "All 4 Pujo Days")}
+                                    className="bg-primary hover:bg-primary-hover text-white font-bold px-3 py-1 rounded-lg text-[11px] transition shadow-2xs"
+                                    title="Generate All Days Pass"
+                                  >
+                                    🎫 All Days
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="p-3.5 text-right">
+                                <button
+                                  onClick={() => handleDeleteMember(m.id)}
+                                  className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                  title="Remove Member"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
                   </div>
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Headcount (Max 6)</label>
-                    <select
-                      value={newMemberForm.headcount}
-                      onChange={(e) => setNewMemberForm({ ...newMemberForm, headcount: Number(e.target.value) })}
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                    >
-                      {[1, 2, 3, 4, 5, 6].map((num) => (
-                        <option key={num} value={num}>{num} Members</option>
-                      ))}
-                    </select>
+                ) : (
+                  <div className="bg-gray-50/70 p-8 rounded-xl text-center text-xs text-gray-500 space-y-2">
+                    <p className="font-semibold text-gray-700 text-sm">No PSS Member records uploaded yet.</p>
+                    <p>Use the <strong>Quick CSV Import</strong> box above to paste rows from your member roster or add a family manually.</p>
                   </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* SUB-VIEW 2: ISSUED LUNCH PASSES & LIVE KITCHEN HEADCOUNTS */}
+          {membersSubView === "kitchen" && (
+            <div className="space-y-6">
+              
+              {/* Daily Kitchen Headcount Metrics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { id: "saptami", day: "Maha Saptami (17 Oct)", menu: "Khichuri, Labra, Payesh" },
+                  { id: "ashtami", day: "Maha Ashtami (18 Oct)", menu: "Bhog Khichuri, Luchi, Chanar Payesh" },
+                  { id: "nabami", day: "Maha Nabami (19 Oct)", menu: "Basanti Pulao, Paneer/Veg Delicacy" },
+                  { id: "dashami", day: "Vijaya Dashami (20 Oct)", menu: "Shanti Jal, Prasad & Sweets" },
+                ].map((d) => {
+                  const countForDay = bhogPasses
+                    .filter((p) => p.days && p.days.includes(d.id))
+                    .reduce((acc, p) => acc + (Number(p.passCount) || 0), 0);
+
+                  return (
+                    <div key={d.id} className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
+                      <div className="text-xs font-bold text-amber-900 uppercase mb-1">{d.day}</div>
+                      <div className="text-2xl sm:text-3xl font-bold text-primary font-heading">
+                        {countForDay} <span className="text-xs font-sans text-gray-500 font-normal">Registered Meals</span>
+                      </div>
+                      <div className="text-[11px] text-gray-500 mt-1 line-clamp-1">{d.menu}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Registered Families Table */}
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+                <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-heading text-lg font-bold text-gray-900">
+                      🍽️ Issued Daily Bhog Lunch Passes ({bhogPasses.length} Passes)
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Passes generated for PSS Member families with real-time kitchen headcount tracking (Max 6 per flat).
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => window.print()}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 w-fit"
+                  >
+                    <Download size={14} /> Print Kitchen Roster
+                  </button>
                 </div>
 
-                <button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-xs flex items-center justify-center gap-1.5"
-                >
-                  <PlusCircle size={14} />
-                  <span>Save Member Family</span>
-                </button>
-              </form>
-            </div>
-
-            {/* Quick Helper / Info Card */}
-            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-6 shadow-xs h-fit space-y-3 text-xs text-gray-700">
-              <h4 className="font-heading font-bold text-sm text-gray-900 flex items-center gap-1.5">
-                <Utensils size={15} className="text-primary" />
-                <span>Day-Wise Pass Generation Rules</span>
-              </h4>
-              <p>
-                • Every verified PSS Member family entry has direct <strong>Day-Wise 1-Click Lunch Pass</strong> generation buttons in the directory table.
-              </p>
-              <p>
-                • Headcounts are automatically <strong>capped at a maximum of 6 members per flat</strong>.
-              </p>
-              <p>
-                • Generated passes automatically increment the kitchen headcount counters in real time.
-              </p>
-            </div>
-
-          </div>
-
-          {/* Members Table */}
-          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-            <div className="p-4 sm:p-5 border-b border-gray-200 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <h3 className="font-heading text-base font-bold text-gray-900">
-                  PSS Registered Member Families ({pssMembers.length})
-                </h3>
-                <span className="text-xs bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
-                  ₹7,500 Paid Roster
-                </span>
-              </div>
-
-              <div className="relative w-full sm:w-72">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={memberSearchQuery}
-                  onChange={(e) => setMemberSearchQuery(e.target.value)}
-                  placeholder="Search name, flat, tower..."
-                  className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
-                    <th className="p-3.5">Member Name & Flat</th>
-                    <th className="p-3.5">WhatsApp / Phone</th>
-                    <th className="p-3.5">Headcount</th>
-                    <th className="p-3.5 text-center">Day-Wise 1-Click Lunch Pass Generation (Capped at 6)</th>
-                    <th className="p-3.5 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {pssMembers
-                    .filter((m) => {
-                      const q = memberSearchQuery.toLowerCase().trim();
-                      return !q || m.name.toLowerCase().includes(q) || m.flatNumber.toLowerCase().includes(q) || m.tower.toLowerCase().includes(q);
-                    })
-                    .map((m) => (
-                      <tr key={m.id} className="hover:bg-amber-50/40 transition">
-                        <td className="p-3.5">
-                          <span className="font-bold text-gray-900 block text-sm">{m.name}</span>
-                          <span className="text-gray-500 text-xs">{m.tower} • Flat {m.flatNumber}</span>
-                        </td>
-                        <td className="p-3.5 font-mono">
-                          <a
-                            href={`https://api.whatsapp.com/send?phone=${m.phone?.replace(/[^0-9]/g, '')}&text=Hello%20${encodeURIComponent(m.name)}%2C%20greetings%20from%20PBEL%20Sanskritik%20Samiti!`}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-green-700 font-bold hover:underline inline-flex items-center gap-1"
-                          >
-                            <span>📱 {m.phone || "PBEL Resident"}</span>
-                          </a>
-                        </td>
-                        <td className="p-3.5">
-                          <span className="font-bold text-gray-900 font-heading text-sm">
-                            {Math.min(m.headcount || 4, 6)} Members
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-center">
-                          <div className="flex flex-wrap items-center justify-center gap-1.5">
-                            {["Saptami", "Ashtami", "Nabami", "Dashami"].map((day) => (
-                              <button
-                                key={day}
-                                onClick={() => handleGenerateMemberPass(m, day)}
-                                className="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-2.5 py-1 rounded-lg text-[11px] transition border border-amber-300 shadow-2xs"
-                                title={`Generate ${day} Lunch Pass for ${Math.min(m.headcount || 4, 6)} members`}
+                {bhogPasses.length > 0 ? (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                          <th className="p-3">Family Head &amp; Flat</th>
+                          <th className="p-3">Phone / WhatsApp</th>
+                          <th className="p-3">Pass Count</th>
+                          <th className="p-3">Registered Pujo Days</th>
+                          <th className="p-3">Token ID</th>
+                          <th className="p-3 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {bhogPasses.map((pass) => (
+                          <tr key={pass.passId} className="hover:bg-gray-50">
+                            <td className="p-3">
+                              <span className="font-bold text-gray-900 block">{pass.name}</span>
+                              <span className="text-gray-500 text-[11px]">{pass.tower} • Flat {pass.flatNumber}</span>
+                            </td>
+                            <td className="p-3 font-mono">
+                              <a
+                                href={`https://api.whatsapp.com/send?phone=${pass.phone?.replace(/[^0-9]/g, '')}&text=Hello%20${encodeURIComponent(pass.name)}%2C%20greetings%20from%20PBEL%20Sanskritik%20Samiti!%20Your%20Daily%20Maha%20Bhog%20Pass%20ID%20is%20${pass.passId}.`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-green-700 font-bold hover:underline inline-flex items-center gap-1"
                               >
-                                🍛 {day}
+                                <span>📱 {pass.phone}</span>
+                              </a>
+                            </td>
+                            <td className="p-3">
+                              <span className="bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
+                                {pass.passCount} Members
+                              </span>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex flex-wrap gap-1">
+                                {pass.days?.map((d: string) => (
+                                  <span key={d} className="bg-amber-100 text-amber-900 text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize">
+                                    {d}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="p-3 font-mono text-[11px] font-bold text-primary">
+                              {pass.passId}
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                onClick={() => handleClearBhogPass(pass.passId)}
+                                className="p-1 text-gray-400 hover:text-red-600 rounded"
+                                title="Remove Pass"
+                              >
+                                <Trash2 size={14} />
                               </button>
-                            ))}
-                            <button
-                              onClick={() => handleGenerateMemberPass(m, "All 4 Pujo Days")}
-                              className="bg-primary hover:bg-primary-hover text-white font-bold px-3 py-1 rounded-lg text-[11px] transition shadow-2xs"
-                              title="Generate All Days Pass"
-                            >
-                              🎫 All Days
-                            </button>
-                          </div>
-                        </td>
-                        <td className="p-3.5 text-right">
-                          <button
-                            onClick={() => handleDeleteMember(m.id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                            title="Remove Member"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 p-6 rounded-xl text-center text-xs text-gray-500">
+                    No family lunch passes issued yet. Generate passes from the <strong>Patron Members Roster</strong> tab to track daily kitchen headcounts.
+                  </div>
+                )}
+              </div>
+
             </div>
-          </div>
+          )}
 
         </div>
       )}
