@@ -18,7 +18,8 @@ import {
   Smartphone,
   Copy,
   Check,
-  Info
+  Info,
+  AlertCircle
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
@@ -36,6 +37,9 @@ interface SevaItem {
   icon: string;
   description: string;
   badge?: string;
+  maxLimit?: number;
+  bookedCount?: number;
+  isActive?: boolean;
 }
 
 const defaultSevaCatalog: SevaItem[] = [
@@ -50,6 +54,7 @@ const defaultSevaCatalog: SevaItem[] = [
     icon: "🥁",
     description: "Welcome Maa Durga with the vibrant beats of traditional Dhaak and opening music.",
     badge: "Opening Day",
+    maxLimit: 5,
   },
   {
     id: "panchami-sweets",
@@ -60,6 +65,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "sweets",
     icon: "🍬",
     description: "Distribution of traditional Bengali sweets and prasad for evening gathering.",
+    maxLimit: 15,
   },
 
   // Sashti
@@ -73,6 +79,7 @@ const defaultSevaCatalog: SevaItem[] = [
     icon: "🌺",
     description: "Fresh fragrant marigolds, roses, and sacred bilva leaves for Bodhon & Pushpanjali.",
     badge: "Popular Seva",
+    maxLimit: 25,
   },
   {
     id: "sashti-sweets",
@@ -83,6 +90,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "sweets",
     icon: "🥮",
     description: "Sponsor special sweet offerings for the sacred Bodhon and Adhibas rituals.",
+    maxLimit: 15,
   },
   {
     id: "sashti-aarthi",
@@ -93,6 +101,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "rituals",
     icon: "🪔",
     description: "Earthen lamps, pure ghee, and camphor for the grand evening Sandhya Aarti.",
+    maxLimit: 10,
   },
 
   // Saptami
@@ -105,6 +114,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "rituals",
     icon: "🌿",
     description: "Sacred plants, yellow cloth, and ceremonial items for Kola Bou Snan.",
+    maxLimit: 5,
   },
   {
     id: "saptami-bhog",
@@ -116,6 +126,7 @@ const defaultSevaCatalog: SevaItem[] = [
     icon: "🍚",
     description: "Khichuri, Labra, Beguni, Chutney & Payesh prepared for afternoon community bhog.",
     badge: "Community Bhog",
+    maxLimit: 10,
   },
   {
     id: "saptami-sweets",
@@ -126,6 +137,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "sweets",
     icon: "🍬",
     description: "Evening prasad boxes for Pratibimb cultural stage attendees.",
+    maxLimit: 15,
   },
 
   // Ashtami
@@ -139,6 +151,7 @@ const defaultSevaCatalog: SevaItem[] = [
     icon: "🪷",
     description: "108 pristine red lotuses offered at the feet of Devi Durga during Sandhi Pujo.",
     badge: "Most Auspicious",
+    maxLimit: 5,
   },
   {
     id: "ashtami-sandhi-deepam",
@@ -150,6 +163,7 @@ const defaultSevaCatalog: SevaItem[] = [
     icon: "🪔",
     description: "108 sacred oil lamps lit during the divine conjunction of Ashtami and Navami.",
     badge: "Sandhi Pujo",
+    maxLimit: 5,
   },
   {
     id: "ashtami-kumari",
@@ -160,6 +174,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "rituals",
     icon: "👧",
     description: "Sponsorship of gifts, new clothes, and prasad for the revered young girls.",
+    maxLimit: 5,
   },
   {
     id: "ashtami-bhog",
@@ -170,6 +185,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "bhog",
     icon: "🍲",
     description: "Full family sponsorship for afternoon Maha Bhog feast for the entire township.",
+    maxLimit: 10,
   },
 
   // Nabami
@@ -182,6 +198,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "rituals",
     icon: "🔥",
     description: "Ghee, dry fruits, sacred wood (Samidha), and bel fruit for the auspicious Havan.",
+    maxLimit: 5,
   },
   {
     id: "nabami-bhog",
@@ -192,6 +209,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "bhog",
     icon: "🍚",
     description: "Special Pulao, Paneer/Veg delicacies, and Sweets for Maha Navami prasad.",
+    maxLimit: 10,
   },
 
   // Dashami
@@ -205,6 +223,7 @@ const defaultSevaCatalog: SevaItem[] = [
     icon: "🔴",
     description: "Pure vermilion, betel leaves, and sweet boxes for the festive Sindoor Khela.",
     badge: "Sindoor Khela",
+    maxLimit: 20,
   },
   {
     id: "dashami-visarjan",
@@ -215,6 +234,7 @@ const defaultSevaCatalog: SevaItem[] = [
     category: "rituals",
     icon: "🌊",
     description: "Dhunuchi Naach & Dhaaki accompaniment for the immersion procession.",
+    maxLimit: 5,
   },
 
   // Grand Patrons
@@ -228,6 +248,7 @@ const defaultSevaCatalog: SevaItem[] = [
     icon: "🥈",
     description: "Includes special family sankalp during Sandhi Pujo, VIP front seating, & Wall honor.",
     badge: "Grand Patron",
+    maxLimit: 3,
   },
   {
     id: "grand-gold",
@@ -239,6 +260,7 @@ const defaultSevaCatalog: SevaItem[] = [
     icon: "👑",
     description: "Principal sankalp for daily puja, prime stage acknowledgment & special Bhog delivery.",
     badge: "Maha Yajman",
+    maxLimit: 3,
   },
 ];
 
@@ -278,35 +300,70 @@ export default function ContributePage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
 
-  // Fetch dynamic categories from Supabase on mount
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const { data } = await supabase.from("contribution_categories").select("*");
-        if (data && data.length > 0) {
-          const dbItems: SevaItem[] = data.map((d: any) => {
-            const matched = defaultSevaCatalog.find(
-              (def) => def.title.toLowerCase() === d.name.toLowerCase()
-            );
-            return {
-              id: d.id,
-              title: d.name,
-              day: matched?.day || "6-Day Pujo",
-              date: matched?.date || "15 - 20 Oct 2026",
-              amount: d.fixed_amount ? Number(d.fixed_amount) : (matched?.amount || 1001),
-              category: (matched?.category || "rituals") as any,
-              icon: matched?.icon || "🌺",
-              description: d.description || matched?.description || "Special seva offering for PBEL City Durgotsav.",
-              badge: matched?.badge || (d.fixed_amount >= 10000 ? "Grand Seva" : undefined),
-            };
-          });
-          setSevaList(dbItems);
-        }
-      } catch (err) {
-        console.error("Error loading categories from DB:", err);
+  // Fetch dynamic categories and live contribution counts from Supabase
+  const loadData = async () => {
+    try {
+      // 1. Fetch categories
+      const { data: dbCategories } = await supabase.from("contribution_categories").select("*");
+      
+      // 2. Fetch non-rejected contributions to calculate booked counts
+      const { data: dbContributions } = await supabase
+        .from("contributions")
+        .select("category_id, amount, status, contribution_categories(name)")
+        .neq("status", "Rejected");
+
+      const contributionsList = dbContributions || [];
+
+      if (dbCategories && dbCategories.length > 0) {
+        const dbItems: SevaItem[] = dbCategories.map((d: any) => {
+          const matched = defaultSevaCatalog.find(
+            (def) => def.title.toLowerCase() === d.name.toLowerCase()
+          );
+
+          // Calculate booked count
+          const booked = contributionsList.filter(
+            (c: any) => c.category_id === d.id || c.contribution_categories?.name?.toLowerCase() === d.name.toLowerCase()
+          ).length;
+
+          const max = d.max_limit !== undefined && d.max_limit !== null ? Number(d.max_limit) : (matched?.maxLimit || 5);
+
+          return {
+            id: d.id,
+            title: d.name,
+            day: matched?.day || "6-Day Pujo",
+            date: matched?.date || "15 - 20 Oct 2026",
+            amount: d.fixed_amount ? Number(d.fixed_amount) : (matched?.amount || 1001),
+            category: (matched?.category || "rituals") as any,
+            icon: matched?.icon || "🌺",
+            description: d.description || matched?.description || "Special seva offering for PBEL City Durgotsav.",
+            badge: matched?.badge || (d.fixed_amount >= 10000 ? "Grand Seva" : undefined),
+            maxLimit: max,
+            bookedCount: booked,
+            isActive: d.is_active !== false,
+          };
+        });
+        setSevaList(dbItems);
+      } else {
+        // Compute against default catalog if categories table is still using defaults
+        const updatedDefaults = defaultSevaCatalog.map((item) => {
+          const booked = contributionsList.filter(
+            (c: any) => c.contribution_categories?.name?.toLowerCase() === item.title.toLowerCase()
+          ).length;
+          return {
+            ...item,
+            bookedCount: booked,
+            isActive: true,
+          };
+        });
+        setSevaList(updatedDefaults);
       }
+    } catch (err) {
+      console.error("Error loading categories & slot counters:", err);
     }
-    loadCategories();
+  };
+
+  useEffect(() => {
+    loadData();
 
     // Deep link query check
     if (typeof window !== "undefined") {
@@ -342,6 +399,14 @@ export default function ContributePage() {
     e.preventDefault();
     if (!modalSeva) return;
 
+    // Check if slot limit reached right before submission
+    const max = modalSeva.maxLimit || 5;
+    const booked = modalSeva.bookedCount || 0;
+    if (modalSeva.isActive === false || (max - booked <= 0)) {
+      alert("This Seva package has reached its maximum sponsorship limit. Please choose another seva or contact the committee.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       let { data: catData } = await supabase
@@ -353,7 +418,12 @@ export default function ContributePage() {
       if (!catData) {
         const { data: newCat } = await supabase
           .from("contribution_categories")
-          .insert({ name: modalSeva.title, fixed_amount: Number(modalSeva.amount) })
+          .insert({ 
+            name: modalSeva.title, 
+            fixed_amount: Number(modalSeva.amount),
+            max_limit: modalSeva.maxLimit || 5,
+            is_active: true
+          })
           .select("id")
           .single();
         catData = newCat;
@@ -397,6 +467,7 @@ export default function ContributePage() {
 
       setModalSeva(null);
       setIsSuccess(true);
+      loadData(); // refresh remaining counters
     } catch (error) {
       console.error("Error processing fixed seva payment:", error);
       alert("Payment recording failed. Please try again.");
@@ -423,7 +494,7 @@ export default function ContributePage() {
       if (!catData) {
         const { data: newCat } = await supabase
           .from("contribution_categories")
-          .insert({ name: categoryName })
+          .insert({ name: categoryName, is_active: true })
           .select("id")
           .single();
         catData = newCat;
@@ -466,6 +537,7 @@ export default function ContributePage() {
       });
 
       setIsSuccess(true);
+      loadData();
     } catch (error) {
       console.error("Error making custom contribution:", error);
       alert("Something went wrong. Please check database connection.");
@@ -629,7 +701,7 @@ export default function ContributePage() {
             }`}
           >
             <Sparkles size={17} />
-            <span>2. Sponsor Specific Seva Packages ({defaultSevaCatalog.length} Offerings)</span>
+            <span>2. Sponsor Specific Seva Packages ({sevaList.length} Offerings)</span>
           </button>
 
         </div>
@@ -827,7 +899,7 @@ export default function ContributePage() {
         </div>
       )}
 
-      {/* 4. MODE 2: DAY-WISE SPECIFIC SEVA CATALOG */}
+      {/* 4. MODE 2: DAY-WISE SPECIFIC SEVA CATALOG (WITH LIVE CAPACITY LIMITS & SOLD OUT CHECKS) */}
       {activeMode === "catalog" && (
         <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 mb-16">
           
@@ -855,54 +927,105 @@ export default function ContributePage() {
             ))}
           </div>
 
-          {/* Storefront Grid with Direct Pay on Every Card */}
+          {/* Storefront Grid with Direct Capacity Counters & Sold-Out Dimming */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {filteredSevas.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white rounded-3xl p-6 border border-amber-900/15 shadow-sm hover:shadow-xl hover:border-amber-400 transition-all flex flex-col justify-between relative group"
-              >
-                {item.badge && (
-                  <div className="absolute top-4 right-4">
-                    <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full uppercase">
-                      {item.badge}
-                    </span>
-                  </div>
-                )}
+            {filteredSevas.map((item) => {
+              const max = item.maxLimit !== undefined && item.maxLimit !== null ? Number(item.maxLimit) : 5;
+              const booked = item.bookedCount || 0;
+              const remaining = Math.max(0, max - booked);
+              const isSoldOut = item.isActive === false || remaining <= 0;
 
-                <div>
-                  <div className="text-3xl mb-2">{item.icon}</div>
-                  <div className="text-xs font-bold text-amber-700 flex items-center gap-1 mb-1">
-                    <Calendar size={13} /> {item.day} ({item.date})
+              return (
+                <div
+                  key={item.id}
+                  className={`rounded-3xl p-6 border transition-all flex flex-col justify-between relative group ${
+                    isSoldOut
+                      ? "bg-gray-100/90 border-gray-300 opacity-75 shadow-none"
+                      : "bg-white border-amber-900/15 shadow-sm hover:shadow-xl hover:border-amber-400"
+                  }`}
+                >
+                  {/* Top Badges */}
+                  <div className="absolute top-4 right-4 flex flex-col items-end gap-1">
+                    {isSoldOut ? (
+                      <span className="text-[10px] font-bold bg-red-100 text-red-800 border border-red-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                        🔒 Seva Full / Booked
+                      </span>
+                    ) : item.badge ? (
+                      <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full uppercase">
+                        {item.badge}
+                      </span>
+                    ) : null}
                   </div>
-                  <h3 className="font-heading text-xl font-bold text-gray-900 mb-2 group-hover:text-primary transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="text-xs text-gray-600 leading-relaxed mb-4">
-                    {item.description}
-                  </p>
+
+                  <div>
+                    <div className="text-3xl mb-2">{item.icon}</div>
+                    <div className="text-xs font-bold text-amber-700 flex items-center gap-1 mb-1">
+                      <Calendar size={13} /> {item.day} ({item.date})
+                    </div>
+                    <h3 className={`font-heading text-xl font-bold mb-2 transition-colors ${
+                      isSoldOut ? "text-gray-600 line-through" : "text-gray-900 group-hover:text-primary"
+                    }`}>
+                      {item.title}
+                    </h3>
+                    <p className="text-xs text-gray-600 leading-relaxed mb-4">
+                      {item.description}
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-200">
+                    
+                    {/* Price and Available Slots Counter */}
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
+                        <Lock size={12} className="text-amber-600" /> Fixed Amount
+                      </span>
+                      <span className={`text-2xl font-bold font-mono ${isSoldOut ? "text-gray-500" : "text-primary"}`}>
+                        ₹{item.amount.toLocaleString("en-IN")}
+                      </span>
+                    </div>
+
+                    {/* Capacity Indicator Pill */}
+                    <div className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between mb-3 ${
+                      isSoldOut
+                        ? "bg-red-50/90 border-red-200 text-red-700"
+                        : remaining <= 2
+                        ? "bg-orange-50 border-orange-300 text-orange-900 animate-pulse"
+                        : "bg-amber-50 border-amber-200/80 text-amber-950"
+                    }`}>
+                      <span className="flex items-center gap-1 text-[11px]">
+                        {isSoldOut ? <AlertCircle size={13} /> : <Sparkles size={13} className="text-primary" />}
+                        {isSoldOut ? "All Slots Sponsored" : "Available Sponsorships:"}
+                      </span>
+                      <span className="font-mono text-xs">
+                        {isSoldOut ? "0 Left" : `${remaining} of ${max} Available`}
+                      </span>
+                    </div>
+
+                    {/* Action Button: Disabled if Sold Out, Active otherwise */}
+                    {isSoldOut ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full bg-gray-200 text-gray-500 py-3 rounded-2xl font-bold text-xs cursor-not-allowed flex items-center justify-center gap-2 border border-gray-300"
+                      >
+                        <Lock size={14} />
+                        <span>Seva Full • All Slots Sponsored</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setModalSeva(item)}
+                        className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 rounded-2xl font-bold text-xs transition shadow-md golden-glow flex items-center justify-center gap-2"
+                      >
+                        <QrCode size={16} />
+                        <span>Sponsor Seva • Pay ₹{item.amount.toLocaleString("en-IN")} (UPI / QR)</span>
+                      </button>
+                    )}
+
+                  </div>
                 </div>
-
-                <div className="pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-[10px] text-gray-500 uppercase font-bold flex items-center gap-1">
-                      <Lock size={12} className="text-amber-600" /> Fixed Seva Amount
-                    </span>
-                    <span className="text-2xl font-bold text-primary">₹{item.amount.toLocaleString("en-IN")}</span>
-                  </div>
-
-                  {/* Direct UPI / QR Checkout Button */}
-                  <button
-                    type="button"
-                    onClick={() => setModalSeva(item)}
-                    className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 rounded-2xl font-bold text-xs transition shadow-md golden-glow flex items-center justify-center gap-2"
-                  >
-                    <QrCode size={16} />
-                    <span>Sponsor Seva • Pay ₹{item.amount.toLocaleString("en-IN")} (UPI / QR)</span>
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
         </div>

@@ -151,7 +151,14 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
 
   // Form State: Add / Edit Seva Category
-  const [newCategory, setNewCategory] = useState({ id: "", name: "", fixed_amount: 1001, description: "" });
+  const [newCategory, setNewCategory] = useState({ 
+    id: "", 
+    name: "", 
+    fixed_amount: 1001, 
+    description: "", 
+    max_limit: 5, 
+    is_active: true 
+  });
   const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
@@ -258,19 +265,27 @@ export default function AdminDashboard() {
     e.preventDefault();
     setIsSubmittingCategory(true);
     try {
+      const payload: any = {
+        name: newCategory.name,
+        fixed_amount: Number(newCategory.fixed_amount),
+        description: newCategory.description,
+        max_limit: newCategory.max_limit ? Number(newCategory.max_limit) : null,
+        is_active: newCategory.is_active,
+      };
+
       if (isEditingCategory && newCategory.id) {
         await supabase
           .from("contribution_categories")
-          .update({ name: newCategory.name, fixed_amount: Number(newCategory.fixed_amount), description: newCategory.description })
+          .update(payload)
           .eq("id", newCategory.id);
-        alert("Seva Category updated!");
+        alert("Seva Category updated successfully!");
       } else {
         await supabase
           .from("contribution_categories")
-          .insert({ name: newCategory.name, fixed_amount: Number(newCategory.fixed_amount), description: newCategory.description });
+          .insert(payload);
         alert("New Seva Category added!");
       }
-      setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "" });
+      setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true });
       setIsEditingCategory(false);
       fetchData();
     } catch (err) {
@@ -692,14 +707,14 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-2">
                 <HeartHandshake size={18} className="text-primary" />
                 <h3 className="font-heading text-lg font-bold text-gray-900">
-                  {isEditingCategory ? "Edit Seva Category" : "Add New Seva Category"}
+                  {isEditingCategory ? "Edit Seva Category & Limits" : "Add New Seva Category"}
                 </h3>
               </div>
               {isEditingCategory && (
                 <button
                   onClick={() => {
                     setIsEditingCategory(false);
-                    setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "" });
+                    setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true });
                   }}
                   className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1"
                 >
@@ -721,17 +736,43 @@ export default function AdminDashboard() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Fixed Amount (₹ INR) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={newCategory.fixed_amount}
+                    onChange={(e) => setNewCategory({ ...newCategory, fixed_amount: Number(e.target.value) })}
+                    placeholder="2501"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-semibold text-primary"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Max Contributions Allowed *</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={newCategory.max_limit || 5}
+                    onChange={(e) => setNewCategory({ ...newCategory, max_limit: Number(e.target.value) })}
+                    placeholder="e.g. 5 or 10"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-semibold text-amber-800"
+                  />
+                </div>
+              </div>
+
               <div>
-                <label className="block font-semibold text-gray-700 mb-1">Fixed Seva Amount (₹ INR) *</label>
-                <input
-                  type="number"
-                  required
-                  min="1"
-                  value={newCategory.fixed_amount}
-                  onChange={(e) => setNewCategory({ ...newCategory, fixed_amount: Number(e.target.value) })}
-                  placeholder="2501"
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-semibold text-primary"
-                />
+                <label className="block font-semibold text-gray-700 mb-1">Public Availability Status</label>
+                <select
+                  value={newCategory.is_active ? "true" : "false"}
+                  onChange={(e) => setNewCategory({ ...newCategory, is_active: e.target.value === "true" })}
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                >
+                  <option value="true">Active (Open for Public Contributions)</option>
+                  <option value="false">Disabled / Hidden from Public</option>
+                </select>
               </div>
 
               <div>
@@ -751,15 +792,20 @@ export default function AdminDashboard() {
                 className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2"
               >
                 <Save size={15} />
-                <span>{isSubmittingCategory ? "Saving..." : isEditingCategory ? "Update Seva Category" : "Publish Seva Category"}</span>
+                <span>{isSubmittingCategory ? "Saving..." : isEditingCategory ? "Update Seva Limits & Info" : "Publish Seva Category"}</span>
               </button>
             </form>
           </div>
 
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
-              <h3 className="font-heading text-lg font-bold text-gray-900">Live Seva Categories ({categoriesList.length})</h3>
-              <span className="text-xs text-gray-500">Live sync with `/contribute` cards</span>
+              <div>
+                <h3 className="font-heading text-lg font-bold text-gray-900">Live Seva Packages & Slot Counters</h3>
+                <span className="text-xs text-gray-500">Categories auto-greyout on `/contribute` when limit is reached.</span>
+              </div>
+              <span className="text-xs bg-amber-100 text-amber-900 font-bold px-3 py-1 rounded-full">
+                {categoriesList.length} Packages
+              </span>
             </div>
 
             <div className="overflow-x-auto">
@@ -767,23 +813,75 @@ export default function AdminDashboard() {
                 <thead>
                   <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
                     <th className="p-3.5">Seva Title</th>
-                    <th className="p-3.5">Fixed Price</th>
-                    <th className="p-3.5">Description</th>
+                    <th className="p-3.5">Price</th>
+                    <th className="p-3.5">Max Limit</th>
+                    <th className="p-3.5">Booked</th>
+                    <th className="p-3.5">Remaining</th>
+                    <th className="p-3.5">Public Status</th>
                     <th className="p-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {categoriesList.map((cat) => (
-                    <tr key={cat.id} className="hover:bg-gray-50/60">
-                      <td className="p-3.5 font-bold text-gray-900">{cat.name}</td>
-                      <td className="p-3.5 font-bold text-primary font-mono">₹{cat.fixed_amount ? Number(cat.fixed_amount).toLocaleString("en-IN") : "Custom"}</td>
-                      <td className="p-3.5 text-gray-500 max-w-xs truncate">{cat.description || "N/A"}</td>
-                      <td className="p-3.5 text-right space-x-2">
-                        <button onClick={() => { setNewCategory({ id: cat.id, name: cat.name, fixed_amount: cat.fixed_amount ? Number(cat.fixed_amount) : 1001, description: cat.description || "" }); setIsEditingCategory(true); }} className="p-1.5 text-amber-700 hover:bg-amber-50 rounded-lg transition"><Edit2 size={14} /></button>
-                        <button onClick={() => handleDeleteCategory(cat.id)} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"><Trash2 size={14} /></button>
-                      </td>
-                    </tr>
-                  ))}
+                  {categoriesList.map((cat) => {
+                    const booked = contributions.filter(
+                      (c) => (c.category_id === cat.id || c.contribution_categories?.name === cat.name) && c.status !== "Rejected"
+                    ).length;
+                    const max = cat.max_limit !== undefined && cat.max_limit !== null ? Number(cat.max_limit) : 5;
+                    const remaining = Math.max(0, max - booked);
+                    const isFull = remaining <= 0;
+                    const isActive = cat.is_active !== false;
+
+                    return (
+                      <tr key={cat.id} className={`hover:bg-gray-50/60 ${isFull || !isActive ? "bg-gray-50/70" : ""}`}>
+                        <td className="p-3.5 font-bold text-gray-900">{cat.name}</td>
+                        <td className="p-3.5 font-bold text-primary font-mono">₹{cat.fixed_amount ? Number(cat.fixed_amount).toLocaleString("en-IN") : "Custom"}</td>
+                        <td className="p-3.5 font-semibold text-gray-800">{max} slots</td>
+                        <td className="p-3.5 font-bold text-amber-900">{booked}</td>
+                        <td className="p-3.5">
+                          <span className={`font-bold font-mono ${remaining > 0 ? "text-green-700" : "text-red-600"}`}>
+                            {remaining} left
+                          </span>
+                        </td>
+                        <td className="p-3.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            !isActive 
+                              ? "bg-gray-200 text-gray-700" 
+                              : isFull 
+                              ? "bg-red-100 text-red-800" 
+                              : "bg-green-100 text-green-800"
+                          }`}>
+                            {!isActive ? "Inactive" : isFull ? "🔒 Full / Greyed Out" : "✓ Active"}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                          <button
+                            onClick={() => {
+                              setNewCategory({
+                                id: cat.id,
+                                name: cat.name,
+                                fixed_amount: cat.fixed_amount ? Number(cat.fixed_amount) : 1001,
+                                description: cat.description || "",
+                                max_limit: max,
+                                is_active: isActive,
+                              });
+                              setIsEditingCategory(true);
+                            }}
+                            className="p-1.5 text-amber-700 hover:bg-amber-100 rounded-lg transition"
+                            title="Edit / Increase Max Limit & Reactivate"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Delete Category"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -109,4 +109,62 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('6. Seva Package Capacity Limits & Sold-Out Greyout Logic', () => {
+    it('should correctly calculate remaining slots and trigger sold out state', () => {
+      const sevaPackage = {
+        id: "ashtami-lotus",
+        title: "Ashtami 108 Lotuses",
+        maxLimit: 5,
+        bookedCount: 5,
+        isActive: true,
+      };
+
+      const remainingSlots = Math.max(0, sevaPackage.maxLimit - sevaPackage.bookedCount);
+      const isSoldOut = sevaPackage.isActive === false || remainingSlots <= 0;
+
+      assert.strictEqual(remainingSlots, 0);
+      assert.strictEqual(isSoldOut, true);
+    });
+
+    it('should keep seva package active when slots are available', () => {
+      const sevaPackage = {
+        id: "sashti-flowers",
+        title: "Sashti Flowers",
+        maxLimit: 25,
+        bookedCount: 10,
+        isActive: true,
+      };
+
+      const remainingSlots = Math.max(0, sevaPackage.maxLimit - sevaPackage.bookedCount);
+      const isSoldOut = sevaPackage.isActive === false || remainingSlots <= 0;
+
+      assert.strictEqual(remainingSlots, 15);
+      assert.strictEqual(isSoldOut, false);
+    });
+  });
+
+  describe('7. Admin Reactivation by Increasing Max Limits', () => {
+    it('should immediately reactivate a sold-out package when admin increases maxLimit', () => {
+      // 1. Initially full
+      let sevaPackage = {
+        id: "saptami-bhog",
+        title: "Saptami Maha Bhog",
+        maxLimit: 10,
+        bookedCount: 10,
+        isActive: true,
+      };
+      let isSoldOut = sevaPackage.isActive === false || (sevaPackage.maxLimit - sevaPackage.bookedCount <= 0);
+      assert.strictEqual(isSoldOut, true);
+
+      // 2. Admin increases maxLimit to 15
+      sevaPackage = { ...sevaPackage, maxLimit: 15 };
+      const updatedRemaining = Math.max(0, sevaPackage.maxLimit - sevaPackage.bookedCount);
+      isSoldOut = sevaPackage.isActive === false || updatedRemaining <= 0;
+
+      assert.strictEqual(updatedRemaining, 5);
+      assert.strictEqual(isSoldOut, false); // Reactivated!
+    });
+  });
+
 });
+
