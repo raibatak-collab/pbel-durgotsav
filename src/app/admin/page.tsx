@@ -675,8 +675,8 @@ function decodeCategoryDescription(desc?: string) {
               <tbody className="divide-y divide-gray-100">
                 {contributions.map((c) => {
                   const isVerified = c.status === "Success";
-                  const isPending = c.status === "Pending Verification" || c.status === "Pending";
-                  const isRejected = c.status === "Rejected";
+                  const isPending = c.status === "Pending" || c.status === "Pending Verification";
+                  const isRejected = c.status === "Failed" || c.status === "Rejected";
 
                   return (
                     <tr key={c.id} className={`hover:bg-gray-50/60 ${isPending ? "bg-amber-50/30" : ""}`}>
@@ -713,7 +713,7 @@ function decodeCategoryDescription(desc?: string) {
                         )}
                         {!isRejected && (
                           <button
-                            onClick={() => handleUpdateContributionStatus(c.id, "Rejected")}
+                            onClick={() => handleUpdateContributionStatus(c.id, "Failed")}
                             className="bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs"
                             title="Reject fake/unverified submission"
                           >
@@ -722,7 +722,7 @@ function decodeCategoryDescription(desc?: string) {
                         )}
                         {isVerified && (
                           <button
-                            onClick={() => handleUpdateContributionStatus(c.id, "Pending Verification")}
+                            onClick={() => handleUpdateContributionStatus(c.id, "Pending")}
                             className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-[10px] px-2 py-1 rounded-lg transition"
                             title="Mark back to Pending"
                           >

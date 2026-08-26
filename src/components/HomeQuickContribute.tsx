@@ -80,7 +80,7 @@ export function HomeQuickContribute() {
         ? `UTR_${formData.upiRef.trim()}` 
         : `WEB_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
-      // 2. Insert with status "Pending Verification" to prevent malicious entries
+      // 2. Insert with status "Pending" to comply with PostgreSQL check constraint
       const { error } = await supabase.from("contributions").insert({
         contributor_name: formData.name.trim(),
         email: formData.email.trim(),
@@ -88,7 +88,7 @@ export function HomeQuickContribute() {
         flat_number: formData.flatNumber.trim(),
         amount: Number(amount),
         category_id: catData?.id,
-        status: "Pending Verification",
+        status: "Pending",
         is_name_visible: formData.isNameVisible,
         payment_id: generatedPaymentId,
       });

@@ -263,6 +263,43 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.strictEqual(decoded.parsedLimit, 10);
       assert.strictEqual(decoded.parsedActive, true);
     });
+
+    it('should successfully record contributions in DB with status "Pending" and allow Admin status transitions', async () => {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      // 1. Insert contribution with 'Pending'
+      const { data: inserted, error: insertError } = await supabase.from('contributions').insert({
+        contributor_name: "Automated Test Resident",
+        email: "test@pbelcity.org",
+        phone: "9988776655",
+        flat_number: "Tower B - 1001",
+        amount: 1001,
+        status: "Pending",
+        is_name_visible: true,
+        payment_id: "UTR_TEST_VALIDATION_01"
+      }).select().single();
+
+      assert.strictEqual(insertError, null, `Payment recording failed: ${insertError?.message}`);
+      assert.strictEqual(inserted.status, 'Pending');
+
+      // 2. Admin Approve to 'Success'
+      const { error: approveError } = await supabase
+        .from('contributions')
+        .update({ status: 'Success' })
+        .eq('id', inserted.id);
+      assert.strictEqual(approveError, null, `Admin approval failed: ${approveError?.message}`);
+
+      // 3. Admin Reject to 'Failed'
+      const { error: rejectError } = await supabase
+        .from('contributions')
+        .update({ status: 'Failed' })
+        .eq('id', inserted.id);
+      assert.strictEqual(rejectError, null, `Admin rejection failed: ${rejectError?.message}`);
+
+      // 4. Clean up test row
+      await supabase.from('contributions').delete().eq('id', inserted.id);
+    });
   });
 
 });

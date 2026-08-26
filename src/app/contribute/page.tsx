@@ -445,8 +445,7 @@ function decodeCategoryDescription(desc?: string) {
           .insert({ 
             name: modalSeva.title, 
             fixed_amount: Number(modalSeva.amount),
-            max_limit: modalSeva.maxLimit || 5,
-            is_active: true
+            description: `${modalSeva.description || ''} [limit:${modalSeva.maxLimit || 5}] [status:active]`.trim()
           })
           .select("id")
           .single();
@@ -457,7 +456,7 @@ function decodeCategoryDescription(desc?: string) {
         ? `UTR_${modalFormData.upiRef.trim()}` 
         : `WEB_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
-      // Insert with "Pending Verification"
+      // Insert with "Pending" (complying with PostgreSQL check constraint)
       const { error } = await supabase.from("contributions").insert({
         contributor_name: modalFormData.name.trim(),
         email: modalFormData.email.trim(),
@@ -465,7 +464,7 @@ function decodeCategoryDescription(desc?: string) {
         flat_number: modalFormData.flatNumber.trim(),
         amount: Number(modalSeva.amount),
         category_id: catData?.id,
-        status: "Pending Verification",
+        status: "Pending",
         is_name_visible: modalFormData.isNameVisible,
         payment_id: generatedPaymentId,
       });
@@ -492,9 +491,9 @@ function decodeCategoryDescription(desc?: string) {
       setModalSeva(null);
       setIsSuccess(true);
       loadData(); // refresh remaining counters
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error processing fixed seva payment:", error);
-      alert("Payment recording failed. Please try again.");
+      alert(`Payment recording failed: ${error?.message || "Please check your network."}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -518,7 +517,7 @@ function decodeCategoryDescription(desc?: string) {
       if (!catData) {
         const { data: newCat } = await supabase
           .from("contribution_categories")
-          .insert({ name: categoryName, is_active: true })
+          .insert({ name: categoryName })
           .select("id")
           .single();
         catData = newCat;
@@ -528,7 +527,7 @@ function decodeCategoryDescription(desc?: string) {
         ? `UTR_${customFormData.upiRef.trim()}` 
         : `WEB_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
-      // Insert with "Pending Verification"
+      // Insert with "Pending"
       const { error } = await supabase.from("contributions").insert({
         contributor_name: customFormData.name.trim(),
         email: customFormData.email.trim(),
@@ -536,7 +535,7 @@ function decodeCategoryDescription(desc?: string) {
         flat_number: customFormData.flatNumber.trim(),
         amount: Number(customAmount),
         category_id: catData?.id,
-        status: "Pending Verification",
+        status: "Pending",
         is_name_visible: customFormData.isNameVisible,
         payment_id: generatedPaymentId,
       });
