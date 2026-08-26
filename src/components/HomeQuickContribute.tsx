@@ -26,7 +26,7 @@ import { getStoredTowers, TowerDefinition } from "@/config/towers";
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
 const SOCIETY_NAME = "PBEL Sanskritik Samiti";
 
-const OPEN_PRESET_AMOUNTS = [501, 1001, 2001, 5001, 7501, 10001];
+const OPEN_PRESET_AMOUNTS = [501, 1001, 2001, 5001, 10001];
 
 interface FeaturedSevaPackage {
   id: string;

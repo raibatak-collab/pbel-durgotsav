@@ -832,14 +832,14 @@ function decodeCategoryDescription(desc?: string) {
 
             <form onSubmit={handleCustomDonate} className="space-y-6">
               
-              {/* Quick Amount Selection Chips (Starting from 501) */}
+              {/* Quick Amount Selection Chips (Starting from 501, 7501 removed) */}
               <div>
                 <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-2">
                   Select or Enter Contribution Amount (₹ INR) *
                 </label>
                 
-                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
-                  {[501, 1001, 2001, 5001, 7501, 10001].map((amt) => (
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+                  {[501, 1001, 2001, 5001, 10001].map((amt) => (
                     <button
                       key={amt}
                       type="button"
@@ -869,7 +869,43 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
               </div>
 
-              {/* Devotee Personal Details (Moved UP ahead of QR Scanner) */}
+              {/* Dynamic QR Scanner & 1-Click Mobile Widget (PLACED BEFORE DETAILS FORM FOR ZERO SCROLLING ON MOBILE) */}
+              {customAmount && Number(customAmount) > 0 && (
+                <div className="bg-amber-50/80 p-5 rounded-2xl border border-amber-300 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="text-center md:text-left space-y-1.5 flex-1">
+                    <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
+                      <QrCode size={16} className="text-primary" /> Instant 1-Click Mobile Payment & QR
+                    </span>
+                    <p className="text-sm font-bold text-gray-900">
+                      Pay ₹{Number(customAmount).toLocaleString("en-IN")} directly to Society Bank Account
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Beneficiary: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> (PBEL Sanskritik Samiti)
+                    </p>
+                    <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
+                      <a
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md"
+                      >
+                        <Smartphone size={15} /> 1-Click Pay via GPay / PhonePe / Paytm
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
+                      )}`}
+                      alt="PBEL Sanskritik Samiti UPI QR"
+                      className="w-36 h-36 mx-auto rounded-lg"
+                    />
+                    <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan & Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Devotee Personal Details (FOLLOWING QR CODE) */}
               <div className="space-y-4 pt-2 border-t border-gray-100">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -966,42 +1002,6 @@ function decodeCategoryDescription(desc?: string) {
                   </label>
                 </div>
               </div>
-
-              {/* Dynamic QR Scanner & 1-Click Mobile Widget (FOLLOWING CONTRIBUTOR DETAILS) */}
-              {customAmount && Number(customAmount) > 0 && (
-                <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-300 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="text-center md:text-left space-y-1">
-                    <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
-                      <QrCode size={16} className="text-primary" /> Dynamic Society Bank UPI QR Code
-                    </span>
-                    <p className="text-sm font-bold text-gray-900">
-                      Scan with GPay, PhonePe, Paytm, or BHIM to pay ₹{Number(customAmount).toLocaleString("en-IN")}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Beneficiary: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> (PBEL Sanskritik Samiti)
-                    </p>
-                    <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
-                      <a
-                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
-                        className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
-                      >
-                        <Smartphone size={14} /> 1-Click Pay on Mobile (GPay / PhonePe)
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
-                      )}`}
-                      alt="PBEL Sanskritik Samiti UPI QR"
-                      className="w-36 h-36 mx-auto rounded-lg"
-                    />
-                    <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan & Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
-                  </div>
-                </div>
-              )}
 
               {/* Submit Action */}
               <div className="pt-2">
@@ -1198,83 +1198,43 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
 
-            {/* UPI & QR Scanner Section */}
-            <div className="bg-gray-50 p-4 rounded-2xl border border-amber-300/80 mb-5 text-center">
+            {/* UPI & QR Scanner Section (Zero Friction: 1-Click Pay on Mobile + QR for Desktop) */}
+            <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-300/90 mb-5 text-center space-y-3">
               
-              {/* Payment Mode Selector */}
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setModalTab("qr_code")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
-                    modalTab === "qr_code"
-                      ? "bg-primary text-white shadow-xs"
-                      : "bg-white text-gray-700 border border-gray-200"
-                  }`}
-                >
-                  <QrCode size={13} /> Scan QR Code
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalTab("upi_app")}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition flex items-center gap-1.5 ${
-                    modalTab === "upi_app"
-                      ? "bg-primary text-white shadow-xs"
-                      : "bg-white text-gray-700 border border-gray-200"
-                  }`}
-                >
-                  <Smartphone size={13} /> 1-Click Pay on Mobile
-                </button>
-              </div>
+              {/* Primary 1-Click Mobile Pay Action */}
+              <a
+                href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)}
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-md hover:shadow-lg"
+              >
+                <Smartphone size={17} />
+                <span>1-Click Pay ₹{modalSeva.amount.toLocaleString("en-IN")} via GPay / PhonePe / Paytm</span>
+              </a>
 
-              {/* TAB 1: QR CODE DISPLAY */}
-              {modalTab === "qr_code" && (
-                <div className="space-y-3">
-                  <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm inline-block mx-auto">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                        generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)
-                      )}`}
-                      alt="PBEL Sanskritik Samiti UPI QR"
-                      className="w-40 h-40 mx-auto rounded-lg"
-                    />
-                  </div>
-                  <p className="text-xs font-bold text-gray-800">
-                    Scan with any UPI App (GPay, PhonePe, Paytm, BHIM, Cred)
-                  </p>
-                  <div className="flex items-center justify-center gap-2 text-[11px] text-gray-600">
-                    <span>UPI ID: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong></span>
-                    <button
-                      type="button"
-                      onClick={handleCopyUpi}
-                      className="text-amber-800 hover:text-black font-semibold flex items-center gap-1 bg-amber-100/70 px-2 py-0.5 rounded-md"
-                    >
-                      {copiedUpi ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
-                      <span>{copiedUpi ? "Copied" : "Copy"}</span>
-                    </button>
-                  </div>
+              {/* QR Code & Desktop Scanner */}
+              <div className="pt-2 border-t border-amber-200/60 flex flex-col items-center">
+                <div className="bg-white p-2.5 rounded-2xl border border-amber-300 shadow-sm inline-block">
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                      generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)
+                    )}`}
+                    alt="PBEL Sanskritik Samiti UPI QR"
+                    className="w-32 h-32 sm:w-36 sm:h-36 mx-auto rounded-lg"
+                  />
+                  <span className="text-[10px] text-gray-500 font-bold block mt-1">Scan &amp; Pay ₹{modalSeva.amount.toLocaleString("en-IN")}</span>
                 </div>
-              )}
 
-              {/* TAB 2: 1-CLICK PAY ON MOBILE */}
-              {modalTab === "upi_app" && (
-                <div className="space-y-3 py-2">
-                  <p className="text-xs text-gray-600">
-                    Tap below to open your installed UPI app with ₹{modalSeva.amount} pre-filled for <strong>PBEL Sanskritik Samiti</strong>:
-                  </p>
-                  <a
-                    href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-xl text-xs flex items-center justify-center gap-2 transition shadow-md"
+                <div className="flex items-center justify-center gap-2 text-[11px] text-gray-600 mt-2">
+                  <span>UPI ID: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong></span>
+                  <button
+                    type="button"
+                    onClick={handleCopyUpi}
+                    className="text-amber-800 hover:text-black font-semibold flex items-center gap-1 bg-amber-100 px-2 py-0.5 rounded-md text-[10px]"
                   >
-                    <Smartphone size={16} />
-                    <span>Open GPay / PhonePe / Paytm to Pay ₹{modalSeva.amount}</span>
-                  </a>
-                  <p className="text-[11px] text-gray-500">
-                    (Works directly when browsing from an Android or iPhone device)
-                  </p>
+                    {copiedUpi ? <Check size={11} className="text-green-600" /> : <Copy size={11} />}
+                    <span>{copiedUpi ? "Copied" : "Copy"}</span>
+                  </button>
                 </div>
-              )}
-
+              </div>
             </div>
 
             {/* Direct Seva Devotee Details Form */}

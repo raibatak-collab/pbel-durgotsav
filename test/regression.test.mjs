@@ -1042,10 +1042,11 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
   });
 
   describe('32. Dual Contribute Navigation & Minimum 501 Preset Verification', () => {
-    it('should verify open contribution presets start from 501 and exclude 251', () => {
-      const OPEN_PRESET_AMOUNTS = [501, 1001, 2001, 5001, 7501, 10001];
+    it('should verify open contribution presets start from 501 and exclude 251 and 7501', () => {
+      const OPEN_PRESET_AMOUNTS = [501, 1001, 2001, 5001, 10001];
       assert.strictEqual(OPEN_PRESET_AMOUNTS[0], 501);
       assert.ok(!OPEN_PRESET_AMOUNTS.includes(251), "251 must not be in preset chips");
+      assert.ok(!OPEN_PRESET_AMOUNTS.includes(7501), "7501 must not be in preset chips");
       assert.ok(OPEN_PRESET_AMOUNTS.includes(1001));
       assert.ok(OPEN_PRESET_AMOUNTS.includes(10001));
     });
