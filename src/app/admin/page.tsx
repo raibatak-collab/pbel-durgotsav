@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { 
   ShieldCheck, 
   HeartHandshake, 
@@ -168,7 +169,9 @@ const initialEveningsConfig = [
 ];
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"overview" | "contributions" | "categories" | "schedule" | "pratibimb_config" | "pratibimb_acts" | "volunteers" | "sponsors" | "gallery" | "users">("overview");
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "contributions" | "bhog_passes" | "categories" | "schedule" | "pratibimb_config" | "pratibimb_acts" | "volunteers" | "sponsors" | "gallery" | "users"
+  >("overview");
 
   // Authentication & Session State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -231,6 +234,7 @@ export default function AdminDashboard() {
   const [newSponsor, setNewSponsor] = useState({ name: "", tier: "Gold", logo_url: "" });
   const [isSubmittingSponsor, setIsSubmittingSponsor] = useState(false);
   const [sponsorLeads, setSponsorLeads] = useState<any[]>([]);
+  const [bhogPasses, setBhogPasses] = useState<any[]>([]);
 
   // Live Announcement State
   const [announcementText, setAnnouncementText] = useState(
@@ -312,6 +316,9 @@ export default function AdminDashboard() {
 
       const savedLeads = localStorage.getItem("pbel_sponsor_leads");
       if (savedLeads) setSponsorLeads(JSON.parse(savedLeads));
+
+      const savedPasses = localStorage.getItem("pbel_bhog_passes");
+      if (savedPasses) setBhogPasses(JSON.parse(savedPasses));
     } catch (e) {
       console.error("Failed loading session:", e);
     }
@@ -327,6 +334,12 @@ export default function AdminDashboard() {
     const updated = sponsorLeads.filter((_, idx) => idx !== index);
     setSponsorLeads(updated);
     localStorage.setItem("pbel_sponsor_leads", JSON.stringify(updated));
+  };
+
+  const handleClearBhogPass = (passId: string) => {
+    const updated = bhogPasses.filter((p) => p.passId !== passId);
+    setBhogPasses(updated);
+    localStorage.setItem("pbel_bhog_passes", JSON.stringify(updated));
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -873,6 +886,7 @@ function decodeCategoryDescription(desc?: string) {
             {[
               { id: "overview", label: "📊 Overview" },
               { id: "contributions", label: "💰 Contributions (CRM)" },
+              { id: "bhog_passes", label: "🍽️ Daily Bhog Lunch Passes & Kitchen Headcount" },
               { id: "categories", label: "🌺 Seva Categories CMS" },
               { id: "schedule", label: "📅 Schedule (Nirghanto) CMS" },
               { id: "pratibimb_config", label: "⚙️ Pratibimb Timings & Slots CMS" },
@@ -2199,6 +2213,134 @@ function decodeCategoryDescription(desc?: string) {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: 11. DAILY BHOG LUNCH PASSES & KITCHEN HEADCOUNT */}
+      {activeTab === "bhog_passes" && (
+        <div className="space-y-6">
+          
+          {/* Daily Kitchen Headcount Metrics */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { id: "saptami", day: "Maha Saptami (17 Oct)", menu: "Khichuri, Labra, Payesh" },
+              { id: "ashtami", day: "Maha Ashtami (18 Oct)", menu: "Bhog Khichuri, Luchi, Chanar Payesh" },
+              { id: "nabami", day: "Maha Nabami (19 Oct)", menu: "Basanti Pulao, Paneer/Veg Delicacy" },
+              { id: "dashami", day: "Vijaya Dashami (20 Oct)", menu: "Shanti Jal, Prasad & Sweets" },
+            ].map((d) => {
+              const countForDay = bhogPasses
+                .filter((p) => p.days && p.days.includes(d.id))
+                .reduce((acc, p) => acc + (Number(p.passCount) || 0), 0);
+
+              return (
+                <div key={d.id} className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
+                  <div className="text-xs font-bold text-amber-900 uppercase mb-1">{d.day}</div>
+                  <div className="text-2xl sm:text-3xl font-bold text-primary font-heading">
+                    {countForDay} <span className="text-xs font-sans text-gray-500 font-normal">Registered Meals</span>
+                  </div>
+                  <div className="text-[11px] text-gray-500 mt-1 line-clamp-1">{d.menu}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Registered Families Table */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+            <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-heading text-lg font-bold text-gray-900">
+                  🍽️ Registered Member Families for Daily Bhog Lunch ({bhogPasses.length} Families)
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Member families generated through the <strong>/bhog-pass</strong> portal (Max 6 passes per family).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Link
+                  href="/bhog-pass"
+                  target="_blank"
+                  className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs"
+                >
+                  <span>Open Public Pass Portal ↗</span>
+                </Link>
+                <button
+                  onClick={() => window.print()}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5"
+                >
+                  <Download size={14} /> Print Kitchen Roster
+                </button>
+              </div>
+            </div>
+
+            {bhogPasses.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                      <th className="p-3">Family Head & Flat</th>
+                      <th className="p-3">Phone / WhatsApp</th>
+                      <th className="p-3">Pass Count</th>
+                      <th className="p-3">Registered Pujo Days</th>
+                      <th className="p-3">Token ID</th>
+                      <th className="p-3 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {bhogPasses.map((pass) => (
+                      <tr key={pass.passId} className="hover:bg-gray-50">
+                        <td className="p-3">
+                          <span className="font-bold text-gray-900 block">{pass.name}</span>
+                          <span className="text-gray-500 text-[11px]">{pass.tower} • Flat {pass.flatNumber}</span>
+                        </td>
+                        <td className="p-3 font-mono">
+                          <a
+                            href={`https://api.whatsapp.com/send?phone=${pass.phone?.replace(/[^0-9]/g, '')}&text=Hello%20${encodeURIComponent(pass.name)}%2C%20greetings%20from%20PBEL%20Sanskritik%20Samiti!%20Your%20Daily%20Maha%20Bhog%20Pass%20ID%20is%20${pass.passId}.`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-green-700 font-bold hover:underline inline-flex items-center gap-1"
+                          >
+                            <span>📱 {pass.phone}</span>
+                          </a>
+                        </td>
+                        <td className="p-3">
+                          <span className="bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
+                            {pass.passCount} Members
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {pass.days?.map((d: string) => (
+                              <span key={d} className="bg-amber-100 text-amber-900 text-[10px] font-semibold px-2 py-0.5 rounded-md capitalize">
+                                {d}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="p-3 font-mono text-[11px] font-bold text-primary">
+                          {pass.passId}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleClearBhogPass(pass.passId)}
+                            className="p-1 text-gray-400 hover:text-red-600 rounded"
+                            title="Remove Pass"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="bg-gray-50 p-6 rounded-xl text-center text-xs text-gray-500">
+                No family lunch passes issued yet. Member families who issue passes from <strong>/bhog-pass</strong> will appear here with live daily kitchen headcounts.
+              </div>
+            )}
+          </div>
+
         </div>
       )}
 

@@ -247,6 +247,11 @@ export default async function Home() {
         <div id="quick-contribute-section">
           <HomeQuickContribute />
         </div>
+
+        {/* PROMINENT TOWER-WISE PARTICIPATION & DEVOTIONAL SOLIDARITY */}
+        <div className="pt-2">
+          <TowerParticipation />
+        </div>
       </section>
 
       {/* 3. 6-DAY PUJO TIMELINE AT A GLANCE */}
@@ -501,11 +506,6 @@ export default async function Home() {
           </div>
 
         </div>
-      </section>
-
-      {/* 6.5 TOWNSHIP SOLIDARITY & PARTICIPATION SUMMARY */}
-      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        <TowerParticipation />
       </section>
 
       {/* 7. PHOTO GALLERY - GLIMPSES OF PUJO (CAROUSEL & LIGHTBOX) */}

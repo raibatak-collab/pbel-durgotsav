@@ -174,6 +174,8 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       '/contribute',
       '/admin',
       '/sponsors',
+      '/bhog-pass',
+      '/committee',
     ];
 
     const validDayDeepLinks = [
@@ -190,7 +192,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
         assert.ok(route.startsWith('/'), `Route ${route} must start with /`);
         assert.doesNotMatch(route, /\s/, `Route ${route} must not contain spaces`);
       });
-      assert.strictEqual(validAppRoutes.length, 6);
+      assert.strictEqual(validAppRoutes.length, 8);
     });
 
     it('should validate 6-day timeline deep-link parameters match valid day IDs', () => {
@@ -467,6 +469,57 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(greeting.includes('শুভ দুর্গোৎসব'));
       assert.ok(greeting.includes('https://pbel-durgotsav.vercel.app'));
       assert.ok(greeting.includes('PBEL Sanskritik Samiti'));
+    });
+  });
+
+  describe('14. Digital Bhog Lunch Pass & Tower Parsing Integrity', () => {
+    it('should enforce max 6 lunch passes limit per member family', () => {
+      const validatePassCount = (count) => {
+        const num = Number(count);
+        return num >= 1 && num <= 6;
+      };
+
+      assert.strictEqual(validatePassCount(1), true);
+      assert.strictEqual(validatePassCount(4), true);
+      assert.strictEqual(validatePassCount(6), true);
+      assert.strictEqual(validatePassCount(7), false);
+      assert.strictEqual(validatePassCount(0), false);
+      assert.strictEqual(validatePassCount(-1), false);
+    });
+
+    it('should generate standardized PSS Bhog pass token IDs for dining verification', () => {
+      const generateTokenId = (tower, flat) => {
+        const cleanFlat = flat.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+        const towerLetter = tower.split(" ")[1] || "C";
+        return `PSS-BHOG-2026-T${towerLetter}-${cleanFlat}`;
+      };
+
+      const tokenId = generateTokenId("Tower C (Coral)", "402");
+      assert.strictEqual(tokenId, "PSS-BHOG-2026-TC-402");
+
+      const tokenIdEmerald = generateTokenId("Tower A (Emerald)", "1204");
+      assert.strictEqual(tokenIdEmerald, "PSS-BHOG-2026-TA-1204");
+    });
+
+    it('should correctly parse diverse resident flat number strings into PBEL towers', () => {
+      const towerRegexes = [
+        { id: "A", regex: /tower\s*a|emerald|\ba[\s-]*\d/i },
+        { id: "B", regex: /tower\s*b|sapphire|\bb[\s-]*\d/i },
+        { id: "C", regex: /tower\s*c|coral|\bc[\s-]*\d/i },
+      ];
+
+      const matchTower = (str) => {
+        for (const t of towerRegexes) {
+          if (t.regex.test(str)) return t.id;
+        }
+        return "OTHER";
+      };
+
+      assert.strictEqual(matchTower("Tower A - 1204"), "A");
+      assert.strictEqual(matchTower("Emerald 502"), "A");
+      assert.strictEqual(matchTower("Sapphire 301"), "B");
+      assert.strictEqual(matchTower("Tower C - 402"), "C");
+      assert.strictEqual(matchTower("Coral 804"), "C");
     });
   });
 

@@ -745,6 +745,11 @@ function decodeCategoryDescription(desc?: string) {
           </button>
 
         </div>
+
+        {/* TOWER SOLIDARITY & PARTICIPATION SUMMARY */}
+        <div className="mt-6">
+          <TowerParticipation />
+        </div>
       </div>
 
       {/* 3. MODE 1: GENERAL OPEN-ENDED CONTRIBUTION (ZERO FRICTION FRONT & CENTER) */}
@@ -1278,11 +1283,6 @@ function decodeCategoryDescription(desc?: string) {
           </div>
         </div>
       )}
-
-      {/* TOWNSHIP SOLIDARITY & PARTICIPATION SUMMARY */}
-      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <TowerParticipation />
-      </section>
 
     </div>
   );

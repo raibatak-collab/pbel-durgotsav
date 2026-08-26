@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin, Lock, Award } from "lucide-react";
+import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin, Lock, Award, Utensils } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export function Header() {
@@ -35,6 +35,7 @@ export function Header() {
   const navLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Pujo Schedule", href: "/programs", icon: Calendar },
+    { name: "Daily Lunch Pass", href: "/bhog-pass", icon: Utensils },
     { name: "Volunteer Seva", href: "/volunteer", icon: Users },
     { name: "Corporate Sponsors", href: "/sponsors", icon: Award },
     { name: "Contribute & E-Seva", href: "/contribute", icon: HeartHandshake },
