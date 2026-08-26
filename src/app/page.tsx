@@ -18,6 +18,7 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { GalleryCarousel } from "@/components/GalleryCarousel";
 import { HomeQuickContribute } from "@/components/HomeQuickContribute";
+import { TowerParticipation } from "@/components/TowerParticipation";
 
 export const revalidate = 0; // Fresh data on every load
 
@@ -430,21 +431,28 @@ export default async function Home() {
               </div>
             </div>
 
-            {/* Sponsor Inquiry Card */}
+            {/* Sponsor Action Card */}
             <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-6 rounded-2xl border border-amber-200/70 text-center flex flex-col justify-between">
               <div>
                 <h3 className="font-heading text-xl font-bold text-gray-900 mb-1">Corporate Deck</h3>
-                <p className="text-xs text-gray-600 mb-4">Request the official 2026 Sponsorship Brochure.</p>
+                <p className="text-xs text-gray-600 mb-4">Download the official 2026 Sponsorship Brochure & explore tiers.</p>
               </div>
 
               <div className="space-y-2.5">
-                <a
-                  href="mailto:raibatak@gmail.com?subject=PBEL City Durgotsav 2026 Sponsorship Inquiry"
-                  className="w-full block bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-semibold text-xs transition shadow-xs"
+                <Link
+                  href="/sponsors"
+                  className="w-full block bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold text-xs transition shadow-xs"
                 >
-                  Contact Sponsorship Committee
+                  Explore Packages & Inquire Online
+                </Link>
+                <a
+                  href="/docs/PBEL_Durgotsav_2026_Sponsorship_Deck.pdf"
+                  download
+                  className="w-full flex items-center justify-center gap-1.5 bg-white hover:bg-amber-100/60 text-amber-900 border border-amber-300 py-2 rounded-xl font-semibold text-xs transition"
+                >
+                  <Award size={13} />
+                  <span>Download Deck (PDF)</span>
                 </a>
-                <span className="text-[11px] text-gray-500 block">raibatak@gmail.com</span>
               </div>
             </div>
 
@@ -452,9 +460,14 @@ export default async function Home() {
 
           {/* Current Sponsors Grid */}
           <div className="mt-10 pt-8 border-t border-gray-100">
-            <h3 className="text-xs uppercase font-bold text-gray-400 tracking-wider mb-6 text-center">
-              Our Esteemed Sponsors & Partners
-            </h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xs uppercase font-bold text-gray-400 tracking-wider">
+                Our Esteemed Sponsors & Partners
+              </h3>
+              <Link href="/sponsors" className="text-xs text-primary font-bold hover:underline">
+                View All Partnership Tiers →
+              </Link>
+            </div>
             
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {sponsors && sponsors.length > 0 ? (
@@ -488,6 +501,11 @@ export default async function Home() {
           </div>
 
         </div>
+      </section>
+
+      {/* 6.5 TOWNSHIP SOLIDARITY & PARTICIPATION SUMMARY */}
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <TowerParticipation />
       </section>
 
       {/* 7. PHOTO GALLERY - GLIMPSES OF PUJO (CAROUSEL & LIGHTBOX) */}

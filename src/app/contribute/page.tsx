@@ -22,6 +22,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { DevotionalShareModal } from "@/components/DevotionalShareModal";
+import { TowerParticipation } from "@/components/TowerParticipation";
 
 // Official Society Bank Account UPI Configuration
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
@@ -270,6 +272,7 @@ export default function ContributePage() {
 
   const [sevaList, setSevaList] = useState<SevaItem[]>(defaultSevaCatalog);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Modal State for Direct Card Seva Checkout
   const [modalSeva, setModalSeva] = useState<SevaItem | null>(null);
@@ -637,6 +640,12 @@ function decodeCategoryDescription(desc?: string) {
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button
+              onClick={() => setIsShareModalOpen(true)}
+              className="bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-6 py-2.5 rounded-full text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
+            >
+              <span>🌺 Share Blessing on WhatsApp</span>
+            </button>
+            <button
               onClick={() => window.print()}
               className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold px-6 py-2.5 rounded-full text-xs transition flex items-center justify-center gap-1.5"
             >
@@ -653,6 +662,14 @@ function decodeCategoryDescription(desc?: string) {
               Make Another Offering
             </button>
           </div>
+
+          <DevotionalShareModal
+            isOpen={isShareModalOpen}
+            onClose={() => setIsShareModalOpen(false)}
+            contributorName={receiptData.name}
+            categoryName={receiptData.category}
+            flatNumber={receiptData.flatNumber}
+          />
 
         </div>
       </div>
@@ -1261,6 +1278,11 @@ function decodeCategoryDescription(desc?: string) {
           </div>
         </div>
       )}
+
+      {/* TOWNSHIP SOLIDARITY & PARTICIPATION SUMMARY */}
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-12">
+        <TowerParticipation />
+      </section>
 
     </div>
   );

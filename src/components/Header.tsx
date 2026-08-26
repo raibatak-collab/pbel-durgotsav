@@ -2,17 +2,25 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin, Lock } from "lucide-react";
+import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin, Lock, Award } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loggedInAdmin, setLoggedInAdmin] = useState<any>(null);
+  const [customAnnouncement, setCustomAnnouncement] = useState<string>("");
   const pathname = usePathname();
 
-  // Check if admin is currently logged in on this browser
+  // Check if admin is currently logged in on this browser & load announcement
   useEffect(() => {
     try {
+      const savedAnnounce = localStorage.getItem("pbel_pujo_announcement");
+      if (savedAnnounce) {
+        setCustomAnnouncement(savedAnnounce);
+      } else {
+        setCustomAnnouncement("PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)");
+      }
+
       const session = localStorage.getItem("pbel_admin_session") || sessionStorage.getItem("pbel_admin_session");
       if (session) {
         setLoggedInAdmin(JSON.parse(session));
@@ -26,19 +34,20 @@ export function Header() {
 
   const navLinks = [
     { name: "Home", href: "/", icon: Sparkles },
-    { name: "Pujo & Cultural Schedule", href: "/programs", icon: Calendar },
+    { name: "Pujo Schedule", href: "/programs", icon: Calendar },
     { name: "Volunteer Seva", href: "/volunteer", icon: Users },
+    { name: "Corporate Sponsors", href: "/sponsors", icon: Award },
     { name: "Contribute & E-Seva", href: "/contribute", icon: HeartHandshake },
     { name: "Admin Portal", href: "/admin", icon: ShieldCheck },
   ];
 
   return (
     <>
-      {/* Top Notification Announcement Bar with Admin Active Indicator */}
+      {/* Top Notification Announcement Bar with Dynamic Content */}
       <div className="bg-gradient-to-r from-[#5E0A16] via-[#850E1F] to-[#5E0A16] text-[#FDE68A] text-xs font-medium py-1.5 px-4 text-center border-b border-amber-500/20 shadow-inner flex items-center justify-between sm:justify-center gap-2">
         <div className="flex items-center gap-1.5 mx-auto">
           <Sparkles size={13} className="text-amber-400 animate-pulse" />
-          <span>PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)</span>
+          <span>{customAnnouncement || "PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)"}</span>
           <span className="hidden sm:inline bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
             Hyderabad
           </span>

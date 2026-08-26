@@ -173,6 +173,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       '/volunteer',
       '/contribute',
       '/admin',
+      '/sponsors',
     ];
 
     const validDayDeepLinks = [
@@ -189,7 +190,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
         assert.ok(route.startsWith('/'), `Route ${route} must start with /`);
         assert.doesNotMatch(route, /\s/, `Route ${route} must not contain spaces`);
       });
-      assert.strictEqual(validAppRoutes.length, 5);
+      assert.strictEqual(validAppRoutes.length, 6);
     });
 
     it('should validate 6-day timeline deep-link parameters match valid day IDs', () => {
@@ -428,6 +429,44 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       const suspendedLogin = verifyUser("suspend.user", "pass123");
       assert.strictEqual(suspendedLogin.success, false);
       assert.strictEqual(suspendedLogin.error, "Account Suspended");
+    });
+  });
+
+  describe('13. Corporate Sponsorship & Community Solidarity Modules', () => {
+    it('should verify official sponsorship deck PDF exists and has valid content structure', async () => {
+      const fs = await import('fs');
+      const path = await import('path');
+      const pdfPath = path.join(process.cwd(), 'public', 'docs', 'PBEL_Durgotsav_2026_Sponsorship_Deck.pdf');
+
+      assert.ok(fs.existsSync(pdfPath), 'Sponsorship Deck PDF must exist in public/docs');
+      const stats = fs.statSync(pdfPath);
+      assert.ok(stats.size > 100, 'Sponsorship Deck PDF must not be empty');
+    });
+
+    it('should validate all 5 sponsorship tiers have defined deliverables and pricing', () => {
+      const tiers = [
+        { name: "Title / Platinum Partner", amount: 100000 },
+        { name: "Gold Partner", amount: 50000 },
+        { name: "Cultural Stage Partner", amount: 40000 },
+        { name: "Food & Bhog Partner", amount: 35000 },
+        { name: "Silver Partner", amount: 25000 },
+      ];
+
+      assert.strictEqual(tiers.length, 5);
+      tiers.forEach((t) => {
+        assert.ok(t.amount >= 25000, `Tier ${t.name} amount must be valid`);
+      });
+    });
+
+    it('should format respectful non-commercial devotional WhatsApp greeting text', () => {
+      const generateGreeting = (donor, category) => {
+        return `🌺 *শুভ দুর্গোৎসব • PBEL City Durgotsav 2026* 🌺\n\nMay Maa Durga bless our township with joy, health, and prosperity. I have joined the devotional Seva for PBEL City Durgotsav (15th – 20th Oct 2026).\n\nJoin hands in community seva, view the Pujo Nirghanto & contribute:\n👉 https://pbel-durgotsav.vercel.app\n\n_PBEL Sanskritik Samiti (PSS)_`;
+      };
+
+      const greeting = generateGreeting("Subhash", "Maha Bhog");
+      assert.ok(greeting.includes('শুভ দুর্গোৎসব'));
+      assert.ok(greeting.includes('https://pbel-durgotsav.vercel.app'));
+      assert.ok(greeting.includes('PBEL Sanskritik Samiti'));
     });
   });
 

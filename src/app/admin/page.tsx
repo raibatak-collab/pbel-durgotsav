@@ -230,6 +230,12 @@ export default function AdminDashboard() {
   // Form State: Sponsor
   const [newSponsor, setNewSponsor] = useState({ name: "", tier: "Gold", logo_url: "" });
   const [isSubmittingSponsor, setIsSubmittingSponsor] = useState(false);
+  const [sponsorLeads, setSponsorLeads] = useState<any[]>([]);
+
+  // Live Announcement State
+  const [announcementText, setAnnouncementText] = useState(
+    "PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)"
+  );
 
   // Form State: Gallery
   const [newPhoto, setNewPhoto] = useState({ title: "", year: "2025", category: "Pujo Rituals", emoji: "🌺", image_url: "" });
@@ -301,10 +307,27 @@ export default function AdminDashboard() {
         setIsAuthenticated(true);
         setCurrentUser(parsed);
       }
+      const savedAnnounce = localStorage.getItem("pbel_pujo_announcement");
+      if (savedAnnounce) setAnnouncementText(savedAnnounce);
+
+      const savedLeads = localStorage.getItem("pbel_sponsor_leads");
+      if (savedLeads) setSponsorLeads(JSON.parse(savedLeads));
     } catch (e) {
       console.error("Failed loading session:", e);
     }
   }, []);
+
+  const handleSaveAnnouncement = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem("pbel_pujo_announcement", announcementText.trim());
+    alert("Live announcement updated across the platform header!");
+  };
+
+  const handleClearSponsorLead = (index: number) => {
+    const updated = sponsorLeads.filter((_, idx) => idx !== index);
+    setSponsorLeads(updated);
+    localStorage.setItem("pbel_sponsor_leads", JSON.stringify(updated));
+  };
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -918,6 +941,66 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
           </div>
+
+          {/* LIVE ANNOUNCEMENT & PUJO BULLETIN CMS */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-amber-300/80 p-6 shadow-xs relative overflow-hidden">
+            <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2 text-primary font-bold text-base">
+                <Sparkles size={18} className="text-amber-500" />
+                <span>📢 Live Township Announcement & Top Marquee Alert CMS</span>
+              </div>
+              <span className="text-[11px] text-gray-500">Live synced to top header bar across all pages</span>
+            </div>
+
+            <form onSubmit={handleSaveAnnouncement} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Active Announcement Text (Displayed on website top announcement bar)
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={announcementText}
+                    onChange={(e) => setAnnouncementText(e.target.value)}
+                    placeholder="e.g. ✨ Anandamela stall registrations now open for resident home chefs!"
+                    className="flex-1 p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-sm font-medium"
+                  />
+                  <button
+                    type="submit"
+                    className="bg-primary hover:bg-primary-hover text-white font-bold px-5 py-2.5 rounded-xl transition shadow-xs shrink-0 flex items-center gap-1.5"
+                  >
+                    <Save size={14} />
+                    <span>Publish Live Alert</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Presets */}
+              <div className="pt-2">
+                <span className="text-[11px] text-gray-500 font-semibold block mb-1.5">1-Click Quick Presets:</span>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)",
+                    "✨ Anandamela food stall registrations are now open for resident home chefs!",
+                    "🌺 Maha Saptami Pushpanjali Batch 1 starting at 10:30 AM at Main Pandal",
+                    "🍛 Afternoon Maha Bhog distribution is now open at Community Dining Hall",
+                    "🎭 Pratibimb Evening Stage Gala starting at 06:30 PM with Fushmontor!",
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setAnnouncementText(preset)}
+                      className="text-[11px] bg-gray-100 hover:bg-amber-100 hover:text-amber-900 text-gray-700 px-2.5 py-1 rounded-lg transition border border-gray-200 truncate max-w-xs"
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </form>
+          </div>
+
         </div>
       )}
 
@@ -1718,6 +1801,83 @@ function decodeCategoryDescription(desc?: string) {
             ) : (
               <p className="text-xs text-gray-500 py-6 text-center">No corporate sponsors added yet.</p>
             )}
+
+            {/* Inbound Sponsor Leads Table */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h4 className="font-heading text-base font-bold text-gray-900">
+                    📥 Inbound Sponsor Inquiries & Callbacks ({sponsorLeads.length})
+                  </h4>
+                  <span className="text-[11px] text-gray-500">
+                    Submissions from the public /sponsors partnership portal
+                  </span>
+                </div>
+                <a
+                  href="/docs/PBEL_Durgotsav_2026_Sponsorship_Deck.pdf"
+                  download
+                  className="text-xs bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-lg font-semibold flex items-center gap-1"
+                >
+                  <Download size={12} />
+                  <span>Download Deck PDF</span>
+                </a>
+              </div>
+
+              {sponsorLeads.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                        <th className="p-3">Company & Contact</th>
+                        <th className="p-3">Phone / WhatsApp</th>
+                        <th className="p-3">Preferred Tier</th>
+                        <th className="p-3">Message</th>
+                        <th className="p-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {sponsorLeads.map((lead, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="p-3">
+                            <span className="font-bold text-gray-900 block">{lead.name}</span>
+                            <span className="text-gray-500 text-[11px]">{lead.contact_person || lead.email}</span>
+                          </td>
+                          <td className="p-3 font-mono">
+                            <a
+                              href={`https://api.whatsapp.com/send?phone=${lead.phone?.replace(/[^0-9]/g, '')}&text=Hello%20${encodeURIComponent(lead.contact_person || 'Sir/Madam')}%2C%20greetings%20from%20PBEL%20Sanskritik%20Samiti%20regarding%20Durgotsav%202026%20Sponsorship!`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-green-700 font-bold hover:underline inline-flex items-center gap-1"
+                            >
+                              <span>📱 {lead.phone}</span>
+                            </a>
+                          </td>
+                          <td className="p-3">
+                            <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                              {lead.tier}
+                            </span>
+                          </td>
+                          <td className="p-3 text-gray-600 max-w-xs truncate">{lead.message || "—"}</td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => handleClearSponsorLead(idx)}
+                              className="text-gray-400 hover:text-red-600 p-1"
+                              title="Archive / Remove Lead"
+                            >
+                              <X size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="bg-gray-50 p-4 rounded-xl text-center text-xs text-gray-500">
+                  No new sponsor inquiry leads yet. Leads from the public <strong>/sponsors</strong> page will appear here with 1-click WhatsApp callback links.
+                </div>
+              )}
+            </div>
           </div>
 
         </div>
