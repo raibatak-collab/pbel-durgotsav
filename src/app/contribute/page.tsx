@@ -19,11 +19,13 @@ import {
   Copy,
   Check,
   Info,
-  AlertCircle
+  AlertCircle,
+  Building
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { DevotionalShareModal } from "@/components/DevotionalShareModal";
 import { TowerParticipation } from "@/components/TowerParticipation";
+import { getStoredTowers, TowerDefinition } from "@/config/towers";
 
 // Official Society Bank Account UPI Configuration
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
@@ -59,74 +61,64 @@ const defaultSevaCatalog: SevaItem[] = [
     maxLimit: 5,
   },
   {
-    id: "panchami-sweets",
-    title: "Panchami Anandamela Sweets & Mishti",
+    id: "panchami-bhog",
+    title: "Anandamela Opening Maha Bhog",
     day: "Panchami",
     date: "15 Oct 2026",
     amount: 1501,
-    category: "sweets",
-    icon: "🍬",
-    description: "Distribution of traditional Bengali sweets and prasad for evening gathering.",
-    maxLimit: 15,
+    category: "bhog",
+    icon: "🍲",
+    description: "Sponsor community prasad distribution during the grand Anandamela food festival.",
+    maxLimit: 10,
   },
 
-  // Sashti
+  // Shashthi
   {
-    id: "sashti-flowers",
-    title: "Sashti Pushpanjali Flowers & Bilva Patra",
-    day: "Maha Sashti",
+    id: "shashthi-bodhon",
+    title: "Devi Bodhon & Bel Baran Seva",
+    day: "Maha Shashthi",
     date: "16 Oct 2026",
-    amount: 501,
-    category: "flowers",
-    icon: "🌺",
-    description: "Fresh fragrant marigolds, roses, and sacred bilva leaves for Bodhon & Pushpanjali.",
-    badge: "Popular Seva",
-    maxLimit: 25,
+    amount: 2100,
+    category: "rituals",
+    icon: "🌿",
+    description: "Awakening of the Goddess under the sacred Bel tree with sacred Vedic chants.",
+    badge: "Pratima Bodhon",
+    maxLimit: 5,
   },
   {
-    id: "sashti-sweets",
-    title: "Sashti Devi Bodhon Sweets & Prasad",
-    day: "Maha Sashti",
+    id: "shashthi-amontron",
+    title: "Amontron & Adhibas Samagri",
+    day: "Maha Shashthi",
     date: "16 Oct 2026",
     amount: 1501,
-    category: "sweets",
-    icon: "🥮",
-    description: "Sponsor special sweet offerings for the sacred Bodhon and Adhibas rituals.",
-    maxLimit: 15,
-  },
-  {
-    id: "sashti-aarthi",
-    title: "Sashti Sandhya Aarti & Deepam",
-    day: "Maha Sashti",
-    date: "16 Oct 2026",
-    amount: 1001,
     category: "rituals",
     icon: "🪔",
-    description: "Earthen lamps, pure ghee, and camphor for the grand evening Sandhya Aarti.",
-    maxLimit: 10,
+    description: "Sacred invitation rituals with 28 holy mangal items, sandalwood & brass deepam.",
+    maxLimit: 8,
   },
 
   // Saptami
   {
     id: "saptami-nabapatrika",
-    title: "Saptami Nabapatrika Pujo Samagri",
+    title: "Kolabou Snan & Nabapatrika Seva",
     day: "Maha Saptami",
     date: "17 Oct 2026",
-    amount: 1100,
+    amount: 2501,
     category: "rituals",
-    icon: "🌿",
-    description: "Sacred plants, yellow cloth, and ceremonial items for Kola Bou Snan.",
+    icon: "🌾",
+    description: "Bathing of Nabapatrika with holy waters from 8 sacred rivers and forest essences.",
+    badge: "Sacred Ritual",
     maxLimit: 5,
   },
   {
     id: "saptami-bhog",
-    title: "Saptami Maha Bhog Seva",
+    title: "Saptami Khichuri Bhog Sponsorship",
     day: "Maha Saptami",
     date: "17 Oct 2026",
     amount: 2501,
     category: "bhog",
     icon: "🍚",
-    description: "Khichuri, Labra, Beguni, Chutney & Payesh prepared for afternoon community bhog.",
+    description: "Sponsor piping hot Gobindobhog rice, labra, chutney, and payesh for the pandal.",
     badge: "Community Bhog",
     maxLimit: 10,
   },
@@ -180,62 +172,88 @@ const defaultSevaCatalog: SevaItem[] = [
   },
   {
     id: "ashtami-bhog",
-    title: "Ashtami Grand Maha Bhog Family Seva",
+    title: "Maha Ashtami Rajbhog Seva",
     day: "Maha Ashtami",
     date: "18 Oct 2026",
-    amount: 5001,
+    amount: 3501,
     category: "bhog",
-    icon: "🍲",
-    description: "Full family sponsorship for afternoon Maha Bhog feast for the entire township.",
+    icon: "👑",
+    description: "Grand royal feast: Polao, Chhanar Dalna, Beguni, Chanar Payesh & Rosogolla.",
+    badge: "Grand Feast",
     maxLimit: 10,
   },
 
   // Nabami
   {
-    id: "nabami-yajna",
-    title: "Nabami Maha Yajna & Havan Samagri",
+    id: "nabami-homa",
+    title: "Maha Nabami Homa & Yajna Ghee",
     day: "Maha Nabami",
     date: "19 Oct 2026",
-    amount: 2100,
+    amount: 2501,
     category: "rituals",
     icon: "🔥",
-    description: "Ghee, dry fruits, sacred wood (Samidha), and bel fruit for the auspicious Havan.",
+    description: "Sacred sacrificial fire with pure cow ghee, 108 wood twigs, and bilva leaves.",
+    badge: "Maha Yajna",
     maxLimit: 5,
   },
   {
-    id: "nabami-bhog",
-    title: "Nabami Maha Bhog Seva",
+    id: "nabami-dhunuchi",
+    title: "Dhunuchi Naach & Dhaaki Honour",
     day: "Maha Nabami",
     date: "19 Oct 2026",
-    amount: 5001,
+    amount: 1501,
+    category: "rituals",
+    icon: "🥥",
+    description: "Coconut husk, camphor, frankincense (dhuna) and honorarium for traditional Dhaakis.",
+    maxLimit: 10,
+  },
+  {
+    id: "nabami-bhog",
+    title: "Nabami Community Mahaprasad",
+    day: "Maha Nabami",
+    date: "19 Oct 2026",
+    amount: 2501,
     category: "bhog",
-    icon: "🍚",
-    description: "Special Pulao, Paneer/Veg delicacies, and Sweets for Maha Navami prasad.",
+    icon: "🍛",
+    description: "Festive community lunch for PBEL residents, guests, and visiting devotees.",
     maxLimit: 10,
   },
 
   // Dashami
   {
     id: "dashami-sindoor",
-    title: "Dashami Sindoor Khela & Mishti Box",
-    day: "Vijaya Dashami",
+    title: "Sindoor Khela & Baran Thali",
+    day: "Bijoya Dashami",
     date: "20 Oct 2026",
-    amount: 1800,
-    category: "sweets",
+    amount: 1501,
+    category: "rituals",
     icon: "🔴",
-    description: "Pure vermilion, betel leaves, and sweet boxes for the festive Sindoor Khela.",
-    badge: "Sindoor Khela",
-    maxLimit: 20,
+    description: "Traditional vermilion, betel leaves, sweets & decorative plates for Baran.",
+    badge: "Bijoya Tradition",
+    maxLimit: 15,
   },
   {
-    id: "dashami-visarjan",
-    title: "Shanti Jal & Visarjan Dhaaki Seva",
-    day: "Vijaya Dashami",
+    id: "dashami-mishti",
+    title: "Subho Bijoya Mishti Distribution",
+    day: "Bijoya Dashami",
     date: "20 Oct 2026",
-    amount: 3501,
+    amount: 2100,
+    category: "sweets",
+    icon: "🥮",
+    description: "Sandesh and Laddu boxes shared with all families after Maa's holy immersion.",
+    badge: "Bijoya Milan",
+    maxLimit: 10,
+  },
+  {
+    id: "dashami-bisorjon",
+    title: "Immersion & Shobhayatra Seva",
+    day: "Bijoya Dashami",
+    date: "20 Oct 2026",
+    amount: 5001,
     category: "rituals",
     icon: "🌊",
-    description: "Dhunuchi Naach & Dhaaki accompaniment for the immersion procession.",
+    description: "Royal procession logistics, flowers, safe transport & eco-friendly immersion seva.",
+    badge: "Grand Immersion",
     maxLimit: 5,
   },
 
@@ -274,6 +292,13 @@ export default function ContributePage() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
+  // Towers Roster State for 1-Tap Dropdown
+  const [towersList, setTowersList] = useState<TowerDefinition[]>([]);
+  const [customTower, setCustomTower] = useState<string>("");
+  const [customFlatUnit, setCustomFlatUnit] = useState<string>("");
+  const [modalTower, setModalTower] = useState<string>("");
+  const [modalFlatUnit, setModalFlatUnit] = useState<string>("");
+
   // Modal State for Direct Card Seva Checkout
   const [modalSeva, setModalSeva] = useState<SevaItem | null>(null);
   const [modalTab, setModalTab] = useState<"qr_code" | "upi_app">("qr_code");
@@ -281,7 +306,6 @@ export default function ContributePage() {
     name: "",
     phone: "",
     email: "",
-    flatNumber: "",
     upiRef: "",
     isNameVisible: true,
   });
@@ -293,7 +317,6 @@ export default function ContributePage() {
     name: "",
     phone: "",
     email: "",
-    flatNumber: "",
     upiRef: "",
     isNameVisible: true,
   });
@@ -392,6 +415,23 @@ function decodeCategoryDescription(desc?: string) {
   useEffect(() => {
     loadData();
 
+    try {
+      const stored = getStoredTowers();
+      setTowersList(stored);
+      if (stored.length > 0) {
+        const def = stored[0].fullName || `${stored[0].tower} (${stored[0].name})`;
+        setCustomTower(def);
+        setModalTower(def);
+      }
+    } catch (_) {}
+
+    const handleTowerUpdate = () => {
+      const stored = getStoredTowers();
+      setTowersList(stored);
+    };
+
+    window.addEventListener("pbel_towers_updated", handleTowerUpdate);
+
     // Deep link query check
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -399,6 +439,10 @@ function decodeCategoryDescription(desc?: string) {
         setActiveMode("catalog");
       }
     }
+
+    return () => {
+      window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
+    };
   }, []);
 
   const filteredSevas = sevaList.filter((item) => {
@@ -425,6 +469,15 @@ function decodeCategoryDescription(desc?: string) {
   const handleModalCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!modalSeva) return;
+
+    const formattedFlat = modalTower === "Other"
+      ? modalFlatUnit.trim() || "Guest Devotee"
+      : `${modalTower} - ${modalFlatUnit.trim()}`;
+
+    if (!modalFormData.name.trim() || !modalFlatUnit.trim() || !modalFormData.phone.trim()) {
+      alert("Please fill in your Name, Flat Number, and Phone Number.");
+      return;
+    }
 
     // Check if slot limit reached right before submission
     const max = modalSeva.maxLimit || 5;
@@ -464,7 +517,7 @@ function decodeCategoryDescription(desc?: string) {
         contributor_name: modalFormData.name.trim(),
         email: modalFormData.email.trim(),
         phone: modalFormData.phone.trim(),
-        flat_number: modalFormData.flatNumber.trim(),
+        flat_number: formattedFlat,
         amount: Number(modalSeva.amount),
         category_id: catData?.id,
         status: "Pending",
@@ -476,7 +529,7 @@ function decodeCategoryDescription(desc?: string) {
 
       setReceiptData({
         name: modalFormData.name.trim(),
-        flatNumber: modalFormData.flatNumber.trim(),
+        flatNumber: formattedFlat,
         phone: modalFormData.phone.trim(),
         amount: Number(modalSeva.amount),
         category: `${modalSeva.day} - ${modalSeva.title}`,
@@ -507,6 +560,15 @@ function decodeCategoryDescription(desc?: string) {
     e.preventDefault();
     if (!customAmount || customAmount <= 0) return;
 
+    const formattedFlat = customTower === "Other"
+      ? customFlatUnit.trim() || "Guest Devotee"
+      : `${customTower} - ${customFlatUnit.trim()}`;
+
+    if (!customFormData.name.trim() || !customFlatUnit.trim() || !customFormData.phone.trim()) {
+      alert("Please fill in your Name, Flat Number, and Phone Number.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const categoryName = customPurpose || "General Pujo Fund";
@@ -535,7 +597,7 @@ function decodeCategoryDescription(desc?: string) {
         contributor_name: customFormData.name.trim(),
         email: customFormData.email.trim(),
         phone: customFormData.phone.trim(),
-        flat_number: customFormData.flatNumber.trim(),
+        flat_number: formattedFlat,
         amount: Number(customAmount),
         category_id: catData?.id,
         status: "Pending",
@@ -547,7 +609,7 @@ function decodeCategoryDescription(desc?: string) {
 
       setReceiptData({
         name: customFormData.name.trim(),
-        flatNumber: customFormData.flatNumber.trim(),
+        flatNumber: formattedFlat,
         phone: customFormData.phone.trim(),
         amount: Number(customAmount),
         category: categoryName,
@@ -655,7 +717,8 @@ function decodeCategoryDescription(desc?: string) {
               onClick={() => {
                 setIsSuccess(false);
                 setCustomAmount(1001);
-                setCustomFormData({ name: "", phone: "", email: "", flatNumber: "", upiRef: "", isNameVisible: true });
+                setCustomFormData({ name: "", phone: "", email: "", upiRef: "", isNameVisible: true });
+                setCustomFlatUnit("");
               }}
               className="bg-primary hover:bg-primary-hover text-white font-semibold px-6 py-2.5 rounded-full text-xs transition shadow-sm"
             >
@@ -862,20 +925,6 @@ function decodeCategoryDescription(desc?: string) {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                    Flat Number * (Required for PBEL Residents)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={customFormData.flatNumber}
-                    onChange={(e) => setCustomFormData({ ...customFormData, flatNumber: e.target.value })}
-                    placeholder="e.g. Tower B - 1204 / Guest"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
                     WhatsApp Phone Number *
                   </label>
                   <input
@@ -886,6 +935,41 @@ function decodeCategoryDescription(desc?: string) {
                     placeholder="10-digit mobile number"
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
                   />
+                </div>
+
+                {/* 1-TAP TOWER SELECTOR + FLAT UNIT */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200 sm:col-span-2">
+                  <div>
+                    <label className="block text-xs font-bold text-amber-950 uppercase mb-1 flex items-center gap-1">
+                      <Building size={13} className="text-primary" /> Select PBEL Tower *
+                    </label>
+                    <select
+                      value={customTower}
+                      onChange={(e) => setCustomTower(e.target.value)}
+                      className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold text-gray-900"
+                    >
+                      {towersList.map((t) => (
+                        <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
+                          {t.fullName || `${t.tower} (${t.name})`}
+                        </option>
+                      ))}
+                      <option value="Other">Other / Non-Resident Guest</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
+                      Flat / Unit Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customFlatUnit}
+                      onChange={(e) => setCustomFlatUnit(e.target.value)}
+                      placeholder="e.g. 402 or 1204"
+                      className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-medium"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -1202,28 +1286,49 @@ function decodeCategoryDescription(desc?: string) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone *</label>
+                <input
+                  type="tel"
+                  required
+                  value={modalFormData.phone}
+                  onChange={(e) => setModalFormData({ ...modalFormData, phone: e.target.value })}
+                  placeholder="10-digit mobile number"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              {/* 1-TAP TOWER SELECTOR + FLAT UNIT */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/60 p-3 rounded-2xl border border-amber-200">
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Flat Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={modalFormData.flatNumber}
-                    onChange={(e) => setModalFormData({ ...modalFormData, flatNumber: e.target.value })}
-                    placeholder="Tower B - 1204"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                  />
+                  <label className="block text-xs font-bold text-amber-950 uppercase mb-1 flex items-center gap-1">
+                    <Building size={12} className="text-primary" /> Select Tower *
+                  </label>
+                  <select
+                    value={modalTower}
+                    onChange={(e) => setModalTower(e.target.value)}
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs font-semibold text-gray-900"
+                  >
+                    {towersList.map((t) => (
+                      <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
+                        {t.fullName || `${t.tower} (${t.name})`}
+                      </option>
+                    ))}
+                    <option value="Other">Other / Non-Resident Guest</option>
+                  </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone *</label>
+                  <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
+                    Flat / Unit *
+                  </label>
                   <input
-                    type="tel"
+                    type="text"
                     required
-                    value={modalFormData.phone}
-                    onChange={(e) => setModalFormData({ ...modalFormData, phone: e.target.value })}
-                    placeholder="10-digit number"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    value={modalFlatUnit}
+                    onChange={(e) => setModalFlatUnit(e.target.value)}
+                    placeholder="e.g. 402 or 1204"
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs font-medium"
                   />
                 </div>
               </div>

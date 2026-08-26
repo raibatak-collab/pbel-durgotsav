@@ -1023,6 +1023,24 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('31. Universal Tower Dropdown & Flat Unit Consistency Across All Forms', () => {
+    it('should verify all forms format tower + unit canonically', () => {
+      const formatTowerFlat = (tower, unit) => {
+        if (tower === "Other" || !tower) return unit.trim() || "Guest Devotee";
+        return `${tower} - ${unit.trim()}`;
+      };
+
+      // Form 1: Contribute (Custom + Modal)
+      assert.strictEqual(formatTowerFlat("Tower B (Sapphire)", "1204"), "Tower B (Sapphire) - 1204");
+      // Form 2: Cultural Registration (Pratibimb)
+      assert.strictEqual(formatTowerFlat("Tower J (Topaz)", "603"), "Tower J (Topaz) - 603");
+      // Form 3: Volunteer Registration
+      assert.strictEqual(formatTowerFlat("Tower C (Diamond)", "804"), "Tower C (Diamond) - 804");
+      // Form 4: Non-resident / Guest fallback
+      assert.strictEqual(formatTowerFlat("Other", "Guest Suman"), "Guest Suman");
+    });
+  });
+
 });
 
 

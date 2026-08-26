@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { Users, CheckCircle2, Heart, Sparkles, Calendar, ShieldCheck, Clock, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Users, CheckCircle2, Heart, Sparkles, Calendar, ShieldCheck, Clock, MapPin, Building } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { getStoredTowers, TowerDefinition } from "@/config/towers";
 
 interface VolunteerRole {
   id: string;
@@ -54,11 +55,14 @@ const pujoDates = [
 
 export default function VolunteerPage() {
   const [selectedRole, setSelectedRole] = useState<string>("Maha Bhog & Prasad Distribution");
+  const [towersList, setTowersList] = useState<TowerDefinition[]>([]);
+  const [selectedTower, setSelectedTower] = useState<string>("");
+  const [flatUnit, setFlatUnit] = useState<string>("");
+
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     email: "",
-    flatNumber: "",
     category: "Maha Bhog & Prasad Distribution",
     date: "2026-10-17", // Default Saptami
     shiftTime: "Morning (09:00 AM - 01:00 PM)",
@@ -67,8 +71,38 @@ export default function VolunteerPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
 
+  useEffect(() => {
+    try {
+      const stored = getStoredTowers();
+      setTowersList(stored);
+      if (stored.length > 0) {
+        setSelectedTower(stored[0].fullName || `${stored[0].tower} (${stored[0].name})`);
+      }
+    } catch (_) {}
+
+    const handleTowerUpdate = () => {
+      const stored = getStoredTowers();
+      setTowersList(stored);
+    };
+
+    window.addEventListener("pbel_towers_updated", handleTowerUpdate);
+    return () => {
+      window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
+    };
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const formattedFlat = selectedTower === "Other"
+      ? flatUnit.trim() || "Guest Devotee"
+      : `${selectedTower} - ${flatUnit.trim()}`;
+
+    if (!formData.name.trim() || !flatUnit.trim() || !formData.phone.trim()) {
+      alert("Please fill in your Name, Flat Number, and WhatsApp Phone Number.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -115,7 +149,7 @@ export default function VolunteerPage() {
         full_name: formData.name,
         phone: formData.phone,
         email: formData.email,
-        flat_number: formData.flatNumber,
+        flat_number: formattedFlat,
       });
 
       if (error) throw error;
@@ -152,11 +186,11 @@ export default function VolunteerPage() {
                 name: "",
                 phone: "",
                 email: "",
-                flatNumber: "",
                 category: "Maha Bhog & Prasad Distribution",
                 date: "2026-10-17",
                 shiftTime: "Morning (09:00 AM - 01:00 PM)",
               });
+              setFlatUnit("");
             }}
             className="bg-primary hover:bg-primary-hover text-white font-semibold px-7 py-3 rounded-full text-xs transition shadow-sm"
           >
@@ -301,20 +335,6 @@ export default function VolunteerPage() {
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
-                  Flat Number *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.flatNumber}
-                  onChange={(e) => setFormData({ ...formData, flatNumber: e.target.value })}
-                  placeholder="e.g. Tower C - 804"
-                  className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
                   WhatsApp Phone Number *
                 </label>
                 <input
@@ -327,7 +347,42 @@ export default function VolunteerPage() {
                 />
               </div>
 
-              <div>
+              {/* 1-TAP TOWER SELECTOR + FLAT UNIT */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/60 p-4 rounded-2xl border border-amber-200 sm:col-span-2">
+                <div>
+                  <label className="block text-xs font-bold text-amber-950 uppercase mb-1 flex items-center gap-1">
+                    <Building size={13} className="text-primary" /> Select PBEL Tower *
+                  </label>
+                  <select
+                    value={selectedTower}
+                    onChange={(e) => setSelectedTower(e.target.value)}
+                    className="w-full p-3 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold text-gray-900"
+                  >
+                    {towersList.map((t) => (
+                      <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
+                        {t.fullName || `${t.tower} (${t.name})`}
+                      </option>
+                    ))}
+                    <option value="Other">Other / Non-Resident Guest</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
+                    Flat / Unit Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={flatUnit}
+                    onChange={(e) => setFlatUnit(e.target.value)}
+                    placeholder="e.g. 402 or 1204"
+                    className="w-full p-3 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
                   Email Address (Optional)
                 </label>

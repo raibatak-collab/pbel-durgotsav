@@ -20,7 +20,7 @@ import {
   Flame,
   Award
 } from "lucide-react";
-import { PBEL_TOWERS, PBEL_TOWER_NAMES } from "@/config/towers";
+import { PBEL_TOWERS, PBEL_TOWER_NAMES, getStoredTowers, TowerDefinition } from "@/config/towers";
 import { sanitizeText, validatePhoneNumber } from "@/utils/security";
 
 export interface FoodDish {
@@ -59,28 +59,26 @@ const INITIAL_STALLS: FoodStall[] = [
     emoji: "🌯",
     status: "Approved",
     dishes: [
-      { name: "Kolkata Double Egg Chicken Roll", price: 180, isVeg: false, specialty: true },
-      { name: "Crispy Paneer Malai Tikka Roll", price: 150, isVeg: true },
-      { name: "Double Egg Mughlai Porota with Aloo Dum", price: 200, isVeg: false, specialty: true },
-    ],
+      { name: "Double Egg Chicken Kathi Roll", price: 180, isVeg: false, specialty: true },
+      { name: "Paneer Tikka Roll", price: 150, isVeg: true },
+    ]
   },
   {
     id: "stall-2",
     stallNumber: "Stall #02",
-    stallName: "Bong Bhoj & Telebhaja",
-    chefName: "Sharmila Roy & Friends",
-    tower: "Tower F (Pearl)",
+    stallName: "Dhakai Biryani & Kebabs",
+    chefName: "Debashis & Sharmila Sen",
+    tower: "Tower A (Emerald)",
     flatNumber: "1401",
-    phone: "9845000003",
+    phone: "9845000002",
     category: "Bengali Delicacies",
-    description: "Classic Kolkata Bhetki Fish Fry with fiery Kasundi mustard, crisp Postor Bora and hot Radhaballabhi with Chholar Dal.",
-    emoji: "🐟",
+    description: "Traditional Kolkata fragrant Dum Biryani slow-cooked with aromatic spices, tender meat, boiled egg and melted golden potato.",
+    emoji: "🍲",
     status: "Approved",
     dishes: [
-      { name: "Kolkata Bhetki Fish Fry (Pure Fillet)", price: 220, isVeg: false, specialty: true },
-      { name: "Radhaballabhi (2 Pcs) + Narkel Chholar Dal", price: 120, isVeg: true },
-      { name: "Mochar Chop with Mustard Sauce", price: 60, isVeg: true },
-    ],
+      { name: "Kolkata Mutton Biryani (with Aloo & Egg)", price: 320, isVeg: false, specialty: true },
+      { name: "Galouti Kebab with Roomali Roti", price: 240, isVeg: false },
+    ]
   },
   {
     id: "stall-3",
@@ -140,6 +138,7 @@ const INITIAL_STALLS: FoodStall[] = [
 
 export default function AnandamelaPage() {
   const [stalls, setStalls] = useState<FoodStall[]>(INITIAL_STALLS);
+  const [towersList, setTowersList] = useState<TowerDefinition[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [dietaryFilter, setDietaryFilter] = useState<"all" | "veg" | "non-veg">("all");
@@ -166,6 +165,15 @@ export default function AnandamelaPage() {
 
   useEffect(() => {
     try {
+      const storedTowers = getStoredTowers();
+      setTowersList(storedTowers);
+      if (storedTowers.length > 0) {
+        setRegForm((prev) => ({
+          ...prev,
+          tower: storedTowers[0].fullName || `${storedTowers[0].tower} (${storedTowers[0].name})`,
+        }));
+      }
+
       const stored = localStorage.getItem("pbel_anandamela_stalls");
       if (stored) {
         setStalls(JSON.parse(stored));
@@ -173,6 +181,16 @@ export default function AnandamelaPage() {
     } catch (e) {
       console.error(e);
     }
+
+    const handleTowerUpdate = () => {
+      const storedTowers = getStoredTowers();
+      setTowersList(storedTowers);
+    };
+
+    window.addEventListener("pbel_towers_updated", handleTowerUpdate);
+    return () => {
+      window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
+    };
   }, []);
 
   const handleRegisterStall = (e: React.FormEvent) => {
@@ -566,15 +584,18 @@ export default function AnandamelaPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Tower</label>
+                    <label className="block font-semibold text-gray-700 mb-1">Select Tower</label>
                     <select
                       value={regForm.tower}
                       onChange={(e) => setRegForm({ ...regForm, tower: e.target.value })}
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold"
                     >
-                      {PBEL_TOWER_NAMES.map((t) => (
-                        <option key={t} value={t}>{t}</option>
+                      {towersList.map((t) => (
+                        <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
+                          {t.fullName || `${t.tower} (${t.name})`}
+                        </option>
                       ))}
+                      <option value="Other">Other / Non-Resident Guest</option>
                     </select>
                   </div>
                   <div>

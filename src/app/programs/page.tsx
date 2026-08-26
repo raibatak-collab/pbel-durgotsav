@@ -18,10 +18,12 @@ import {
   Star,
   Mic,
   Tv,
-  Download
+  Download,
+  Building
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent } from "@/utils/security";
+import { getStoredTowers, TowerDefinition } from "@/config/towers";
 
 interface DaySchedule {
   id: string;
@@ -195,6 +197,10 @@ const pujoSchedule: DaySchedule[] = [
 
 export default function ProgramsPage() {
   const [selectedDay, setSelectedDay] = useState<string>("sashti");
+  const [towersList, setTowersList] = useState<TowerDefinition[]>([]);
+  const [selectedTower, setSelectedTower] = useState<string>("");
+  const [flatUnit, setFlatUnit] = useState<string>("");
+
   const [formData, setFormData] = useState({
     eveningDate: "2026-10-16",
     performanceType: "Song",
@@ -203,7 +209,6 @@ export default function ProgramsPage() {
     participantNames: "",
     contactName: "",
     phone: "",
-    flatNumber: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -227,6 +232,21 @@ export default function ProgramsPage() {
 
   // Sync selected day with URL query param ?day=... (e.g. from Homepage cards)
   useEffect(() => {
+    try {
+      const stored = getStoredTowers();
+      setTowersList(stored);
+      if (stored.length > 0) {
+        setSelectedTower(stored[0].fullName || `${stored[0].tower} (${stored[0].name})`);
+      }
+    } catch (_) {}
+
+    const handleTowerUpdate = () => {
+      const stored = getStoredTowers();
+      setTowersList(stored);
+    };
+
+    window.addEventListener("pbel_towers_updated", handleTowerUpdate);
+
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const dayParam = params.get("day");
@@ -246,12 +266,26 @@ export default function ProgramsPage() {
         }));
       }
     }
+
+    return () => {
+      window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
+    };
   }, []);
 
   const currentSchedule = pujoSchedule.find((s) => s.id === selectedDay) || pujoSchedule[1];
 
   const handleRegisterPerformance = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const formattedFlat = selectedTower === "Other"
+      ? flatUnit.trim() || "Guest Devotee"
+      : `${selectedTower} - ${flatUnit.trim()}`;
+
+    if (!formData.contactName.trim() || !flatUnit.trim() || !formData.phone.trim()) {
+      alert("Please enter Contact Name, Flat Number, and WhatsApp Phone.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // 1. Get or create cultural evening
@@ -279,7 +313,7 @@ export default function ProgramsPage() {
         participant_names: formData.participantNames,
         contact_name: formData.contactName,
         phone: formData.phone,
-        flat_number: formData.flatNumber,
+        flat_number: formattedFlat,
       });
 
       if (error) throw error;
@@ -704,7 +738,7 @@ export default function ProgramsPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-gray-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-100">
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Contact Lead Person *</label>
                   <input
@@ -718,18 +752,6 @@ export default function ProgramsPage() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Flat Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.flatNumber}
-                    onChange={(e) => setFormData({ ...formData, flatNumber: e.target.value })}
-                    placeholder="e.g. Tower B - 1204"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                  />
-                </div>
-
-                <div>
                   <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone *</label>
                   <input
                     type="tel"
@@ -738,6 +760,41 @@ export default function ProgramsPage() {
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="10-digit number"
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* 1-TAP TOWER SELECTOR + FLAT UNIT */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200">
+                <div>
+                  <label className="block text-xs font-bold text-amber-950 uppercase mb-1 flex items-center gap-1">
+                    <Building size={13} className="text-primary" /> Select PBEL Tower *
+                  </label>
+                  <select
+                    value={selectedTower}
+                    onChange={(e) => setSelectedTower(e.target.value)}
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold text-gray-900"
+                  >
+                    {towersList.map((t) => (
+                      <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
+                        {t.fullName || `${t.tower} (${t.name})`}
+                      </option>
+                    ))}
+                    <option value="Other">Other / Non-Resident Guest</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
+                    Flat / Unit Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={flatUnit}
+                    onChange={(e) => setFlatUnit(e.target.value)}
+                    placeholder="e.g. 402 or 1204"
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-medium"
                   />
                 </div>
               </div>
