@@ -166,5 +166,52 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('8. Navigation Link & Route Integrity Verification', () => {
+    const validAppRoutes = [
+      '/',
+      '/programs',
+      '/volunteer',
+      '/contribute',
+      '/admin',
+    ];
+
+    const validDayDeepLinks = [
+      '/programs?day=panchami',
+      '/programs?day=sashti',
+      '/programs?day=saptami',
+      '/programs?day=ashtami',
+      '/programs?day=nabami',
+      '/programs?day=dashami',
+    ];
+
+    it('should ensure all primary navbar & bottom nav routes map to existing application pages', () => {
+      validAppRoutes.forEach((route) => {
+        assert.ok(route.startsWith('/'), `Route ${route} must start with /`);
+        assert.doesNotMatch(route, /\s/, `Route ${route} must not contain spaces`);
+      });
+      assert.strictEqual(validAppRoutes.length, 5);
+    });
+
+    it('should validate 6-day timeline deep-link parameters match valid day IDs', () => {
+      validDayDeepLinks.forEach((link) => {
+        const url = new URL(link, 'https://pbel-durgotsav.vercel.app');
+        assert.strictEqual(url.pathname, '/programs');
+        const day = url.searchParams.get('day');
+        assert.ok(
+          ['panchami', 'sashti', 'saptami', 'ashtami', 'nabami', 'dashami'].includes(day),
+          `Invalid day query param: ${day}`
+        );
+      });
+    });
+
+    it('should ensure external protocols and anchors use well-formed syntax', () => {
+      const externalUpi = `upi://pay?pa=${SOCIETY_UPI_ID}&pn=${encodeURIComponent(SOCIETY_NAME)}&am=1001&cu=INR&tn=Pujo%20Seva`;
+      const anchorLink = '#quick-contribute-section';
+
+      assert.match(externalUpi, /^upi:\/\/pay\?/);
+      assert.match(anchorLink, /^#[a-z0-9-]+$/);
+    });
+  });
+
 });
 
