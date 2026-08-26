@@ -435,8 +435,11 @@ function decodeCategoryDescription(desc?: string) {
     // Deep link query check
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("category") || params.get("amount")) {
+      const tabParam = (params.get("tab") || params.get("mode") || "").toLowerCase();
+      if (tabParam === "catalog" || tabParam === "sponsor" || tabParam === "sevas" || params.get("category") || params.get("amount")) {
         setActiveMode("catalog");
+      } else if (tabParam === "general" || tabParam === "any" || tabParam === "open") {
+        setActiveMode("general");
       }
     }
 
@@ -808,16 +811,11 @@ function decodeCategoryDescription(desc?: string) {
           </button>
 
         </div>
-
-        {/* TOWER SOLIDARITY & PARTICIPATION SUMMARY */}
-        <div className="mt-6">
-          <TowerParticipation />
-        </div>
       </div>
 
       {/* 3. MODE 1: GENERAL OPEN-ENDED CONTRIBUTION (ZERO FRICTION FRONT & CENTER) */}
       {activeMode === "general" && (
-        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 mb-16">
+        <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6 mb-12">
           <div className="bg-white rounded-3xl shadow-xl border border-amber-900/15 p-6 sm:p-10">
             
             <div className="pb-6 border-b border-gray-100 mb-6">
@@ -834,14 +832,14 @@ function decodeCategoryDescription(desc?: string) {
 
             <form onSubmit={handleCustomDonate} className="space-y-6">
               
-              {/* Quick Amount Selection Chips */}
+              {/* Quick Amount Selection Chips (Starting from 501) */}
               <div>
                 <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-2">
                   Select or Enter Contribution Amount (₹ INR) *
                 </label>
                 
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-3">
-                  {[251, 501, 1001, 2001, 5001, 11000].map((amt) => (
+                  {[501, 1001, 2001, 5001, 7501, 10001].map((amt) => (
                     <button
                       key={amt}
                       type="button"
@@ -871,74 +869,40 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
               </div>
 
-              {/* Dynamic QR Scanner & 1-Click Mobile Widget */}
-              {customAmount && Number(customAmount) > 0 && (
-                <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-300 flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="text-center md:text-left space-y-1">
-                    <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
-                      <QrCode size={16} className="text-primary" /> Dynamic Society Bank UPI QR Code
-                    </span>
-                    <p className="text-sm font-bold text-gray-900">
-                      Scan with GPay, PhonePe, Paytm, or BHIM to pay ₹{Number(customAmount).toLocaleString("en-IN")}
-                    </p>
-                    <p className="text-xs text-gray-600">
-                      Beneficiary: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> (PBEL Sanskritik Samiti)
-                    </p>
-                    <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
-                      <a
-                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
-                        className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
-                      >
-                        <Smartphone size={14} /> 1-Click Pay on Mobile (GPay / PhonePe)
-                      </a>
-                    </div>
-                  </div>
-
-                  <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
-                    <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
-                      )}`}
-                      alt="PBEL Sanskritik Samiti UPI QR"
-                      className="w-36 h-36 mx-auto rounded-lg"
+              {/* Devotee Personal Details (Moved UP ahead of QR Scanner) */}
+              <div className="space-y-4 pt-2 border-t border-gray-100">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={customFormData.name}
+                      onChange={(e) => setCustomFormData({ ...customFormData, name: e.target.value })}
+                      placeholder="Your Full Name"
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
                     />
-                    <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan & Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
                   </div>
-                </div>
-              )}
 
-              {/* Devotee Personal Details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={customFormData.name}
-                    onChange={(e) => setCustomFormData({ ...customFormData, name: e.target.value })}
-                    placeholder="Your Full Name"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                    WhatsApp Phone Number *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={customFormData.phone}
-                    onChange={(e) => setCustomFormData({ ...customFormData, phone: e.target.value })}
-                    placeholder="10-digit mobile number"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
-                  />
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
+                      WhatsApp Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={customFormData.phone}
+                      onChange={(e) => setCustomFormData({ ...customFormData, phone: e.target.value })}
+                      placeholder="10-digit mobile number"
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
+                    />
+                  </div>
                 </div>
 
                 {/* 1-TAP TOWER SELECTOR + FLAT UNIT */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200 sm:col-span-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/60 p-3.5 rounded-2xl border border-amber-200">
                   <div>
                     <label className="block text-xs font-bold text-amber-950 uppercase mb-1 flex items-center gap-1">
                       <Building size={13} className="text-primary" /> Select PBEL Tower *
@@ -974,7 +938,7 @@ function decodeCategoryDescription(desc?: string) {
 
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                    UPI UTR / Ref No. (From GPay / PhonePe)
+                    UPI UTR / Transaction Ref No. (Optional from GPay/PhonePe)
                   </label>
                   <input
                     type="text"
@@ -984,24 +948,60 @@ function decodeCategoryDescription(desc?: string) {
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-mono"
                   />
                 </div>
+
+                {/* Privacy Wall Checkbox */}
+                <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/60 flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    id="wall-custom-visibility"
+                    checked={customFormData.isNameVisible}
+                    onChange={(e) => setCustomFormData({ ...customFormData, isNameVisible: e.target.checked })}
+                    className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mt-0.5"
+                  />
+                  <label htmlFor="wall-custom-visibility" className="text-xs text-gray-800 leading-normal cursor-pointer">
+                    <strong>Display my name on the public "Wall of Contributors"</strong>
+                    <span className="block text-gray-500 text-[11px] mt-0.5">
+                      Uncheck if you prefer your contribution to remain Anonymous.
+                    </span>
+                  </label>
+                </div>
               </div>
 
-              {/* Privacy Wall Checkbox */}
-              <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/60 flex items-start gap-3">
-                <input
-                  type="checkbox"
-                  id="wall-custom-visibility"
-                  checked={customFormData.isNameVisible}
-                  onChange={(e) => setCustomFormData({ ...customFormData, isNameVisible: e.target.checked })}
-                  className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mt-0.5"
-                />
-                <label htmlFor="wall-custom-visibility" className="text-xs text-gray-800 leading-normal cursor-pointer">
-                  <strong>Display my name on the public "Wall of Contributors"</strong>
-                  <span className="block text-gray-500 text-[11px] mt-0.5">
-                    Uncheck if you prefer your contribution to remain Anonymous.
-                  </span>
-                </label>
-              </div>
+              {/* Dynamic QR Scanner & 1-Click Mobile Widget (FOLLOWING CONTRIBUTOR DETAILS) */}
+              {customAmount && Number(customAmount) > 0 && (
+                <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-300 flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="text-center md:text-left space-y-1">
+                    <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
+                      <QrCode size={16} className="text-primary" /> Dynamic Society Bank UPI QR Code
+                    </span>
+                    <p className="text-sm font-bold text-gray-900">
+                      Scan with GPay, PhonePe, Paytm, or BHIM to pay ₹{Number(customAmount).toLocaleString("en-IN")}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      Beneficiary: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> (PBEL Sanskritik Samiti)
+                    </p>
+                    <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
+                      <a
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
+                        className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Smartphone size={14} /> 1-Click Pay on Mobile (GPay / PhonePe)
+                      </a>
+                    </div>
+                  </div>
+
+                  <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
+                      )}`}
+                      alt="PBEL Sanskritik Samiti UPI QR"
+                      className="w-36 h-36 mx-auto rounded-lg"
+                    />
+                    <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan & Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
+                  </div>
+                </div>
+              )}
 
               {/* Submit Action */}
               <div className="pt-2">
@@ -1159,6 +1159,11 @@ function decodeCategoryDescription(desc?: string) {
 
         </div>
       )}
+
+      {/* TOWER SOLIDARITY & PARTICIPATION SUMMARY (AT BOTTOM OF PAGE) */}
+      <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 mb-16">
+        <TowerParticipation />
+      </div>
 
       {/* 5. DIRECT FIXED-SEVA QUICK CHECKOUT MODAL (WITH DYNAMIC UPI QR SCANNER) */}
       {modalSeva && (

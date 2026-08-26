@@ -305,13 +305,21 @@ export default async function Home() {
             ))}
           </div>
 
-          <div className="text-center">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-center">
             <Link
-              href="/contribute"
-              className="inline-flex items-center gap-2 bg-secondary hover:bg-secondary-hover text-primary font-bold px-8 py-3.5 rounded-full transition shadow-md golden-glow text-sm"
+              href="/contribute?tab=general"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] text-white font-bold px-7 py-3.5 rounded-full transition shadow-md golden-glow text-sm"
             >
-              <span>View All Seva Categories & Custom Contribution</span>
-              <ArrowRight size={17} />
+              <HeartHandshake size={17} />
+              <span>General Contribution (Any Amount)</span>
+            </Link>
+            <Link
+              href="/contribute?tab=catalog"
+              className="inline-flex items-center gap-2 bg-white hover:bg-amber-50 text-gray-900 border border-amber-300 font-bold px-7 py-3.5 rounded-full transition shadow-sm text-sm"
+            >
+              <Sparkles size={17} className="text-primary" />
+              <span>Explore All Specific Seva Packages</span>
+              <ArrowRight size={16} />
             </Link>
           </div>
         </div>

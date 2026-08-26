@@ -105,25 +105,32 @@ export function FestiveHero() {
           </div>
         </div>
 
-        {/* Primary Action CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-2xl mx-auto pt-2">
+        {/* Primary Action CTAs: Separated General Contribution and Seva Package Sponsor Buttons */}
+        <div className="flex flex-wrap items-center justify-center gap-3 max-w-4xl mx-auto pt-2">
           <Link
-            href="/contribute"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white px-7 py-3.5 rounded-full font-bold text-sm transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 golden-glow"
+            href="/contribute?tab=general"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white px-6 py-3.5 rounded-full font-bold text-sm transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 golden-glow"
           >
             <HeartHandshake size={18} />
-            <span>Sponsor / E-Seva</span>
+            <span>General Contribution (Any Amount)</span>
+          </Link>
+          <Link
+            href="/contribute?tab=catalog"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#B8801C] to-[#8A5E0F] hover:from-[#966714] hover:to-[#734A05] border border-amber-300/60 text-white px-6 py-3.5 rounded-full font-bold text-sm transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5"
+          >
+            <Sparkles size={17} className="text-amber-200" />
+            <span>Sponsor Seva Package</span>
           </Link>
           <Link
             href="/programs#pratibimb-registration"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#8B1024] to-[#680A1A] hover:from-[#A5132B] hover:to-[#8B1024] border border-amber-400/40 text-amber-100 hover:text-white px-6 py-3.5 rounded-full font-bold text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#8B1024] to-[#680A1A] hover:from-[#A5132B] hover:to-[#8B1024] border border-amber-400/40 text-amber-100 hover:text-white px-5 py-3.5 rounded-full font-bold text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
           >
             <Drama size={18} className="text-amber-300" />
             <span>Cultural Acts (Pratibimb)</span>
           </Link>
           <Link
             href="/programs"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 border border-white/30 text-white px-6 py-3.5 rounded-full font-semibold text-sm transition-all backdrop-blur-md"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 border border-white/30 text-white px-5 py-3.5 rounded-full font-semibold text-sm transition-all backdrop-blur-md"
           >
             <span>Pujo Schedule</span>
             <ArrowRight size={16} />

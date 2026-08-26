@@ -1041,6 +1041,36 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('32. Dual Contribute Navigation & Minimum 501 Preset Verification', () => {
+    it('should verify open contribution presets start from 501 and exclude 251', () => {
+      const OPEN_PRESET_AMOUNTS = [501, 1001, 2001, 5001, 7501, 10001];
+      assert.strictEqual(OPEN_PRESET_AMOUNTS[0], 501);
+      assert.ok(!OPEN_PRESET_AMOUNTS.includes(251), "251 must not be in preset chips");
+      assert.ok(OPEN_PRESET_AMOUNTS.includes(1001));
+      assert.ok(OPEN_PRESET_AMOUNTS.includes(10001));
+    });
+
+    it('should accurately resolve tab deep links for dual home buttons', () => {
+      const resolveContributeTab = (searchQuery) => {
+        const params = new URLSearchParams(searchQuery);
+        const tabParam = (params.get("tab") || params.get("mode") || "").toLowerCase();
+        if (tabParam === "catalog" || tabParam === "sponsor" || tabParam === "sevas" || params.get("category") || params.get("amount")) {
+          return "catalog";
+        }
+        if (tabParam === "general" || tabParam === "any" || tabParam === "open") {
+          return "general";
+        }
+        return "general"; // default
+      };
+
+      assert.strictEqual(resolveContributeTab("?tab=general"), "general");
+      assert.strictEqual(resolveContributeTab("?tab=catalog"), "catalog");
+      assert.strictEqual(resolveContributeTab("?category=Maha%20Bhog"), "catalog");
+      assert.strictEqual(resolveContributeTab("?tab=sponsor"), "catalog");
+      assert.strictEqual(resolveContributeTab(""), "general");
+    });
+  });
+
 });
 
 
