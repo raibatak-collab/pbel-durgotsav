@@ -32,7 +32,8 @@ import {
   UserCheck,
   UserX,
   LogOut,
-  KeyRound
+  KeyRound,
+  Utensils
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 
@@ -170,7 +171,7 @@ const initialEveningsConfig = [
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "contributions" | "bhog_passes" | "categories" | "schedule" | "pratibimb_config" | "pratibimb_acts" | "volunteers" | "sponsors" | "gallery" | "users"
+    "overview" | "contributions" | "pss_members" | "bhog_passes" | "categories" | "schedule" | "pratibimb_config" | "pratibimb_acts" | "volunteers" | "sponsors" | "gallery" | "users"
   >("overview");
 
   // Authentication & Session State
@@ -235,6 +236,26 @@ export default function AdminDashboard() {
   const [isSubmittingSponsor, setIsSubmittingSponsor] = useState(false);
   const [sponsorLeads, setSponsorLeads] = useState<any[]>([]);
   const [bhogPasses, setBhogPasses] = useState<any[]>([]);
+
+  // PSS Members Roster State
+  const [pssMembers, setPssMembers] = useState<any[]>([
+    { id: "M-1", name: "Raibatak Banerjee", tower: "Tower C (Coral)", flatNumber: "402", phone: "9845000000", headcount: 4, status: "Active" },
+    { id: "M-2", name: "Anirban Mukherjee", tower: "Tower B (Sapphire)", flatNumber: "1104", phone: "9845000001", headcount: 4, status: "Active" },
+    { id: "M-3", name: "Sourav Ganguly & Family", tower: "Tower A (Emerald)", flatNumber: "802", phone: "9845000002", headcount: 5, status: "Active" },
+    { id: "M-4", name: "Debashis & Sharmila Roy", tower: "Tower F (Pearl)", flatNumber: "1401", phone: "9845000003", headcount: 4, status: "Active" },
+    { id: "M-5", name: "Kalyan & Rupa Sengupta", tower: "Tower D (Topaz)", flatNumber: "603", phone: "9845000004", headcount: 3, status: "Active" },
+  ]);
+  const [csvText, setCsvText] = useState("");
+  const [memberSearchQuery, setMemberSearchQuery] = useState("");
+  const [newMemberForm, setNewMemberForm] = useState({
+    name: "",
+    tower: "Tower C (Coral)",
+    flatNumber: "",
+    phone: "",
+    headcount: 4,
+    status: "Active",
+  });
+  const [adminPassModal, setAdminPassModal] = useState<any | null>(null);
 
   // Live Announcement State
   const [announcementText, setAnnouncementText] = useState(
@@ -319,6 +340,12 @@ export default function AdminDashboard() {
 
       const savedPasses = localStorage.getItem("pbel_bhog_passes");
       if (savedPasses) setBhogPasses(JSON.parse(savedPasses));
+
+      const savedMembers = localStorage.getItem("pbel_pss_members");
+      if (savedMembers) {
+        const parsed = JSON.parse(savedMembers);
+        if (Array.isArray(parsed) && parsed.length > 0) setPssMembers(parsed);
+      }
     } catch (e) {
       console.error("Failed loading session:", e);
     }
@@ -340,6 +367,152 @@ export default function AdminDashboard() {
     const updated = bhogPasses.filter((p) => p.passId !== passId);
     setBhogPasses(updated);
     localStorage.setItem("pbel_bhog_passes", JSON.stringify(updated));
+  };
+
+  // PSS Members Handlers
+  const handleBulkImportCsv = () => {
+    if (!csvText.trim()) {
+      alert("Please paste comma-separated member rows or choose a CSV file.");
+      return;
+    }
+
+    const lines = csvText.split(/\r?\n/).map((l) => l.trim()).filter((l) => l.length > 0);
+    const parsedNewMembers: any[] = [];
+
+    const towerRegexes = [
+      { id: "Tower A (Emerald)", regex: /tower\s*a|emerald|\ba[\s-]*\d/i },
+      { id: "Tower B (Sapphire)", regex: /tower\s*b|sapphire|\bb[\s-]*\d/i },
+      { id: "Tower C (Coral)", regex: /tower\s*c|coral|\bc[\s-]*\d/i },
+      { id: "Tower D (Topaz)", regex: /tower\s*d|topaz|\bd[\s-]*\d/i },
+      { id: "Tower E (Ruby)", regex: /tower\s*e|ruby|\be[\s-]*\d/i },
+      { id: "Tower F (Pearl)", regex: /tower\s*f|pearl|\bf[\s-]*\d/i },
+      { id: "Tower G (Jade)", regex: /tower\s*g|jade|\bg[\s-]*\d/i },
+      { id: "Tower H (Diamond)", regex: /tower\s*h|diamond|\bh[\s-]*\d/i },
+      { id: "Tower J (Aquamarine)", regex: /tower\s*j|aquamarine|\bj[\s-]*\d/i },
+      { id: "Tower K (Opal)", regex: /tower\s*k|opal|\bk[\s-]*\d/i },
+    ];
+
+    lines.forEach((line, idx) => {
+      // Skip header line if present
+      if (idx === 0 && (line.toLowerCase().includes("name") || line.toLowerCase().includes("flat"))) {
+        return;
+      }
+
+      // Split by comma, tab, or semicolon
+      const parts = line.split(/[,;\t]/).map((p) => p.trim());
+      if (parts.length >= 2) {
+        const name = parts[0];
+        const flatNumber = parts[1];
+        const phone = parts[2] || "9845000000";
+        const rawHeadcount = parts[3] ? Number(parts[3]) : 4;
+        const headcount = Math.min(Math.max(isNaN(rawHeadcount) ? 4 : rawHeadcount, 1), 6);
+
+        // Auto-detect tower from flat
+        let matchedTower = "Tower C (Coral)";
+        for (const t of towerRegexes) {
+          if (t.regex.test(flatNumber) || t.regex.test(line)) {
+            matchedTower = t.id;
+            break;
+          }
+        }
+
+        parsedNewMembers.push({
+          id: `M-${Date.now()}-${idx}`,
+          name,
+          tower: matchedTower,
+          flatNumber,
+          phone,
+          headcount,
+          status: "Active",
+          joinedYear: "2026",
+        });
+      }
+    });
+
+    if (parsedNewMembers.length === 0) {
+      alert("No valid rows could be parsed. Expected format: Name, Flat, Phone, Headcount");
+      return;
+    }
+
+    const updated = [...parsedNewMembers, ...pssMembers];
+    setPssMembers(updated);
+    localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
+    setCsvText("");
+    alert(`Successfully imported ${parsedNewMembers.length} PSS Member families!`);
+  };
+
+  const handleAddSingleMember = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMemberForm.name.trim() || !newMemberForm.flatNumber.trim()) {
+      alert("Please fill in Member Name and Flat Number.");
+      return;
+    }
+
+    const newMember = {
+      id: `M-${Date.now()}`,
+      name: newMemberForm.name.trim(),
+      tower: newMemberForm.tower,
+      flatNumber: newMemberForm.flatNumber.trim(),
+      phone: newMemberForm.phone.trim() || "9845000000",
+      headcount: Math.min(Math.max(Number(newMemberForm.headcount) || 4, 1), 6),
+      status: newMemberForm.status as any,
+      joinedYear: "2026",
+    };
+
+    const updated = [newMember, ...pssMembers];
+    setPssMembers(updated);
+    localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
+    setNewMemberForm({
+      name: "",
+      tower: "Tower C (Coral)",
+      flatNumber: "",
+      phone: "",
+      headcount: 4,
+      status: "Active",
+    });
+    alert(`Added ${newMember.name} to PSS Annual Members roster!`);
+  };
+
+  const handleDeleteMember = (id: string) => {
+    if (confirm("Are you sure you want to remove this member family from the roster?")) {
+      const updated = pssMembers.filter((m) => m.id !== id);
+      setPssMembers(updated);
+      localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
+    }
+  };
+
+  const handleGenerateMemberPass = (member: any, dayName: string = "All 4 Pujo Days") => {
+    const cappedHeadcount = Math.min(Math.max(Number(member.headcount) || 4, 1), 6);
+    const cleanFlat = member.flatNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const towerLetter = member.tower.split(" ")[1] || "C";
+    const passId = `PSS-BHOG-2026-T${towerLetter}-${cleanFlat}`;
+
+    const pass = {
+      passId,
+      name: member.name,
+      tower: member.tower,
+      flatNumber: member.flatNumber,
+      phone: member.phone || "PBEL Resident",
+      passCount: cappedHeadcount,
+      days: dayName === "All 4 Pujo Days" ? ["saptami", "ashtami", "nabami", "dashami"] : [dayName.toLowerCase().replace(/[^a-z]/g, "")],
+      dayLabel: dayName,
+      issuedAt: new Date().toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    // Save into local bhog passes registry
+    const existing = JSON.parse(localStorage.getItem("pbel_bhog_passes") || "[]");
+    const filtered = existing.filter((p: any) => p.passId !== passId);
+    filtered.unshift(pass);
+    localStorage.setItem("pbel_bhog_passes", JSON.stringify(filtered));
+    setBhogPasses(filtered);
+
+    setAdminPassModal(pass);
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -886,6 +1059,7 @@ function decodeCategoryDescription(desc?: string) {
             {[
               { id: "overview", label: "📊 Overview" },
               { id: "contributions", label: "💰 Contributions (CRM)" },
+              { id: "pss_members", label: "👥 PSS Members (₹7,500 Roster & CSV Import)" },
               { id: "bhog_passes", label: "🍽️ Daily Bhog Lunch Passes & Kitchen Headcount" },
               { id: "categories", label: "🌺 Seva Categories CMS" },
               { id: "schedule", label: "📅 Schedule (Nirghanto) CMS" },
@@ -2341,6 +2515,379 @@ function decodeCategoryDescription(desc?: string) {
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* TAB CONTENT: 12. PSS ANNUAL MEMBERS (₹7,500 ROSTER & CSV IMPORT) */}
+      {activeTab === "pss_members" && (
+        <div className="space-y-6">
+          
+          {/* Top Metrics Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
+              <div className="text-xs font-bold text-amber-900 uppercase mb-1">Registered PSS Patron Families</div>
+              <div className="text-3xl font-bold text-primary font-heading">
+                {pssMembers.length} Families
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">₹7,500 Annual Member Subscription</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
+              <div className="text-xs font-bold text-amber-900 uppercase mb-1">Total Patron Fund Raised</div>
+              <div className="text-3xl font-bold text-green-700 font-heading">
+                ₹{(pssMembers.length * 7500).toLocaleString("en-IN")}
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">Sustaining Pujo & Maha Bhog operations</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-2xl border border-amber-300/80 shadow-xs">
+              <div className="text-xs font-bold text-amber-900 uppercase mb-1">Daily Member Lunch Capacity</div>
+              <div className="text-3xl font-bold text-amber-700 font-heading">
+                {pssMembers.reduce((acc, m) => acc + Math.min(Number(m.headcount) || 4, 6), 0)} Meals / Day
+              </div>
+              <div className="text-[11px] text-gray-500 mt-1">Capped at max 6 members per family</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* CSV / Spreadsheet Bulk Importer Card */}
+            <div className="bg-white rounded-2xl border border-amber-300/80 p-6 shadow-xs h-fit space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                <Download size={18} className="text-primary" />
+                <div>
+                  <h3 className="font-heading text-base font-bold text-gray-900">
+                    ⚡ Quick CSV / Bulk Member Import
+                  </h3>
+                  <span className="text-[11px] text-gray-500">Paste rows from Excel, Sheets, or CSV file</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Upload CSV File
+                </label>
+                <input
+                  type="file"
+                  accept=".csv,.txt,.tsv"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const reader = new FileReader();
+                      reader.onload = (event) => {
+                        setCsvText(event.target?.result as string);
+                      };
+                      reader.readAsText(file);
+                    }
+                  }}
+                  className="w-full text-xs text-gray-500 file:mr-2.5 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary file:text-white hover:file:bg-primary-hover"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-gray-700">
+                    Or Paste Spreadsheet Rows Directly:
+                  </label>
+                  <span className="text-[10px] text-gray-400">Format: Name, Flat, Phone, Headcount</span>
+                </div>
+                <textarea
+                  rows={5}
+                  value={csvText}
+                  onChange={(e) => setCsvText(e.target.value)}
+                  placeholder="Sourav Ganguly, Tower A - 802, 9845000000, 4&#10;Anirban Mukherjee, Tower B - 1104, 9845000001, 4&#10;Debashis Roy, Tower F - 1401, 9845000002, 5"
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono text-xs"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleBulkImportCsv}
+                className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5 golden-glow"
+              >
+                <Sparkles size={14} />
+                <span>Parse & Import Members</span>
+              </button>
+            </div>
+
+            {/* Add Single Member Form Card */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit space-y-4">
+              <div className="flex items-center gap-2 pb-3 border-b border-gray-100">
+                <PlusCircle size={18} className="text-primary" />
+                <h3 className="font-heading text-base font-bold text-gray-900">
+                  Add Single Member Family
+                </h3>
+              </div>
+
+              <form onSubmit={handleAddSingleMember} className="space-y-3 text-xs">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Head of Family Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newMemberForm.name}
+                    onChange={(e) => setNewMemberForm({ ...newMemberForm, name: e.target.value })}
+                    placeholder="e.g. Subhashish Mukherjee"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Tower</label>
+                    <select
+                      value={newMemberForm.tower}
+                      onChange={(e) => setNewMemberForm({ ...newMemberForm, tower: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    >
+                      {[
+                        "Tower A (Emerald)", "Tower B (Sapphire)", "Tower C (Coral)", "Tower D (Topaz)",
+                        "Tower E (Ruby)", "Tower F (Pearl)", "Tower G (Jade)", "Tower H (Diamond)",
+                        "Tower J (Aquamarine)", "Tower K (Opal)"
+                      ].map((t) => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Flat / Unit *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newMemberForm.flatNumber}
+                      onChange={(e) => setNewMemberForm({ ...newMemberForm, flatNumber: e.target.value })}
+                      placeholder="e.g. 402"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp</label>
+                    <input
+                      type="tel"
+                      value={newMemberForm.phone}
+                      onChange={(e) => setNewMemberForm({ ...newMemberForm, phone: e.target.value })}
+                      placeholder="e.g. 9876543210"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Headcount (Max 6)</label>
+                    <select
+                      value={newMemberForm.headcount}
+                      onChange={(e) => setNewMemberForm({ ...newMemberForm, headcount: Number(e.target.value) })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    >
+                      {[1, 2, 3, 4, 5, 6].map((num) => (
+                        <option key={num} value={num}>{num} Members</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-xs flex items-center justify-center gap-1.5"
+                >
+                  <PlusCircle size={14} />
+                  <span>Save Member Family</span>
+                </button>
+              </form>
+            </div>
+
+            {/* Quick Helper / Info Card */}
+            <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl border border-amber-200 p-6 shadow-xs h-fit space-y-3 text-xs text-gray-700">
+              <h4 className="font-heading font-bold text-sm text-gray-900 flex items-center gap-1.5">
+                <Utensils size={15} className="text-primary" />
+                <span>Day-Wise Pass Generation Rules</span>
+              </h4>
+              <p>
+                • Every verified PSS Member family entry has direct <strong>Day-Wise 1-Click Lunch Pass</strong> generation buttons in the directory table.
+              </p>
+              <p>
+                • Headcounts are automatically <strong>capped at a maximum of 6 members per flat</strong>.
+              </p>
+              <p>
+                • Generated passes automatically increment the kitchen headcount counters in real time.
+              </p>
+            </div>
+
+          </div>
+
+          {/* Members Table */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+            <div className="p-4 sm:p-5 border-b border-gray-200 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <h3 className="font-heading text-base font-bold text-gray-900">
+                  PSS Registered Member Families ({pssMembers.length})
+                </h3>
+                <span className="text-xs bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
+                  ₹7,500 Paid Roster
+                </span>
+              </div>
+
+              <div className="relative w-full sm:w-72">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  value={memberSearchQuery}
+                  onChange={(e) => setMemberSearchQuery(e.target.value)}
+                  placeholder="Search name, flat, tower..."
+                  className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                    <th className="p-3.5">Member Name & Flat</th>
+                    <th className="p-3.5">WhatsApp / Phone</th>
+                    <th className="p-3.5">Headcount</th>
+                    <th className="p-3.5 text-center">Day-Wise 1-Click Lunch Pass Generation (Capped at 6)</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {pssMembers
+                    .filter((m) => {
+                      const q = memberSearchQuery.toLowerCase().trim();
+                      return !q || m.name.toLowerCase().includes(q) || m.flatNumber.toLowerCase().includes(q) || m.tower.toLowerCase().includes(q);
+                    })
+                    .map((m) => (
+                      <tr key={m.id} className="hover:bg-amber-50/40 transition">
+                        <td className="p-3.5">
+                          <span className="font-bold text-gray-900 block text-sm">{m.name}</span>
+                          <span className="text-gray-500 text-xs">{m.tower} • Flat {m.flatNumber}</span>
+                        </td>
+                        <td className="p-3.5 font-mono">
+                          <a
+                            href={`https://api.whatsapp.com/send?phone=${m.phone?.replace(/[^0-9]/g, '')}&text=Hello%20${encodeURIComponent(m.name)}%2C%20greetings%20from%20PBEL%20Sanskritik%20Samiti!`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-green-700 font-bold hover:underline inline-flex items-center gap-1"
+                          >
+                            <span>📱 {m.phone || "PBEL Resident"}</span>
+                          </a>
+                        </td>
+                        <td className="p-3.5">
+                          <span className="font-bold text-gray-900 font-heading text-sm">
+                            {Math.min(m.headcount || 4, 6)} Members
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-center">
+                          <div className="flex flex-wrap items-center justify-center gap-1.5">
+                            {["Saptami", "Ashtami", "Nabami", "Dashami"].map((day) => (
+                              <button
+                                key={day}
+                                onClick={() => handleGenerateMemberPass(m, day)}
+                                className="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-2.5 py-1 rounded-lg text-[11px] transition border border-amber-300 shadow-2xs"
+                                title={`Generate ${day} Lunch Pass for ${Math.min(m.headcount || 4, 6)} members`}
+                              >
+                                🍛 {day}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => handleGenerateMemberPass(m, "All 4 Pujo Days")}
+                              className="bg-primary hover:bg-primary-hover text-white font-bold px-3 py-1 rounded-lg text-[11px] transition shadow-2xs"
+                              title="Generate All Days Pass"
+                            >
+                              🎫 All Days
+                            </button>
+                          </div>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <button
+                            onClick={() => handleDeleteMember(m.id)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="Remove Member"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* ADMIN DIGITAL PASS POPUP MODAL */}
+      {adminPassModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 border-2 border-amber-400 shadow-2xl relative text-center animate-fade-in">
+            <button
+              onClick={() => setAdminPassModal(null)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-gray-100 rounded-full w-8 h-8 flex items-center justify-center font-bold"
+            >
+              ✕
+            </button>
+
+            <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-3">
+              <ShieldCheck size={13} className="text-primary" />
+              <span>Official PSS Dining Pass (Admin Stamped)</span>
+            </div>
+
+            <h2 className="font-heading text-2xl font-bold text-primary mb-1">
+              Maha Bhog Lunch Token
+            </h2>
+            <p className="text-xs text-gray-500 mb-5">
+              PBEL Sanskritik Samiti • PBEL City Durgotsav 2026
+            </p>
+
+            <div className="bg-gradient-to-br from-[#FFFDF9] to-[#FDF8F0] rounded-2xl p-5 border border-amber-300 text-left space-y-3 mb-6 shadow-sm">
+              <div className="flex items-center justify-between pb-2.5 border-b border-amber-900/10">
+                <div>
+                  <span className="font-heading text-lg font-bold text-gray-900 block">{adminPassModal.name}</span>
+                  <span className="text-xs text-amber-800 font-semibold">{adminPassModal.tower} • Flat {adminPassModal.flatNumber}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-gray-400 block font-mono">TOKEN ID</span>
+                  <span className="font-mono text-xs font-bold text-primary">{adminPassModal.passId}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-gray-500 text-[11px] block">Daily Pass Headcount</span>
+                  <span className="font-bold text-green-700 text-base font-heading">{adminPassModal.passCount} Members</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 text-[11px] block">Dining Timing</span>
+                  <span className="font-semibold text-gray-900">01:00 PM – 03:30 PM</span>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t border-amber-900/10 text-xs">
+                <span className="text-gray-500 text-[11px] block mb-1">Selected Day:</span>
+                <span className="bg-amber-200/90 text-amber-950 text-xs font-bold px-3 py-1 rounded-full">
+                  🍛 {adminPassModal.dayLabel || "All Pujo Days"}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => window.print()}
+                className="flex-1 bg-primary hover:bg-primary-hover text-white py-3 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Download size={14} />
+                <span>Save / Print Token</span>
+              </button>
+              <button
+                onClick={() => setAdminPassModal(null)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-5 py-3 rounded-xl text-xs font-semibold transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

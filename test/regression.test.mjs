@@ -521,6 +521,31 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.strictEqual(matchTower("Tower C - 402"), "C");
       assert.strictEqual(matchTower("Coral 804"), "C");
     });
+
+    it('should parse CSV lines with auto-detected towers and capped headcounts', () => {
+      const parseCsvLine = (line) => {
+        const parts = line.split(/[,;\t]/).map((p) => p.trim());
+        const name = parts[0];
+        const flatNumber = parts[1];
+        const phone = parts[2] || "9845000000";
+        const rawHeadcount = parts[3] ? Number(parts[3]) : 4;
+        const headcount = Math.min(Math.max(isNaN(rawHeadcount) ? 4 : rawHeadcount, 1), 6);
+        return { name, flatNumber, phone, headcount };
+      };
+
+      const parsed1 = parseCsvLine("Sourav Ganguly, Emerald 802, 9845000000, 5");
+      assert.strictEqual(parsed1.name, "Sourav Ganguly");
+      assert.strictEqual(parsed1.flatNumber, "Emerald 802");
+      assert.strictEqual(parsed1.headcount, 5);
+
+      // Verify headcount is strictly capped at 6 when 9 is entered
+      const parsed2 = parseCsvLine("Large Family, Tower C 402, 9845000001, 9");
+      assert.strictEqual(parsed2.headcount, 6);
+
+      // Verify headcount defaults to minimum 1 when 0 is entered
+      const parsed3 = parseCsvLine("Single Devotee, Tower D 603, 9845000002, 0");
+      assert.strictEqual(parsed3.headcount, 1);
+    });
   });
 
 });

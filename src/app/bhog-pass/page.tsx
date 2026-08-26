@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Utensils, 
@@ -12,7 +12,7 @@ import {
   Clock, 
   ShieldCheck, 
   Sparkles, 
-  Info, 
+  Search,
   ArrowRight,
   Share2,
   Building2
@@ -28,8 +28,20 @@ export default function BhogPassPage() {
     days: ["saptami", "ashtami", "nabami"],
   });
 
+  const [pssMembers, setPssMembers] = useState<any[]>([]);
+  const [quickLookupQuery, setQuickLookupQuery] = useState("");
   const [generatedPass, setGeneratedPass] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("pbel_pss_members");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) setPssMembers(parsed);
+      }
+    } catch (_) {}
+  }, []);
 
   const pbelTowers = [
     "Tower A (Emerald)",
@@ -51,6 +63,40 @@ export default function BhogPassPage() {
     { id: "dashami", day: "Vijaya Dashami", date: "20 Oct 2026", menu: "Shanti Jal, Vijaya Sweets, Traditional Prasad" },
   ];
 
+  const handleSelectMember = (member: any, specificDay: string = "All 4 Pujo Days") => {
+    const capped = Math.min(Math.max(Number(member.headcount) || 4, 1), 6);
+    const cleanFlat = member.flatNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+    const towerLetter = member.tower.split(" ")[1] || "C";
+    const passId = `PSS-BHOG-2026-T${towerLetter}-${cleanFlat}`;
+
+    const newPass = {
+      passId,
+      name: member.name,
+      tower: member.tower,
+      flatNumber: member.flatNumber,
+      phone: member.phone || "PBEL Resident",
+      passCount: capped,
+      days: specificDay === "All 4 Pujo Days" ? ["saptami", "ashtami", "nabami", "dashami"] : [specificDay.toLowerCase().replace(/[^a-z]/g, "")],
+      dayLabel: specificDay,
+      issuedAt: new Date().toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    };
+
+    try {
+      const existing = JSON.parse(localStorage.getItem("pbel_bhog_passes") || "[]");
+      const filtered = existing.filter((p: any) => p.passId !== passId);
+      filtered.unshift(newPass);
+      localStorage.setItem("pbel_bhog_passes", JSON.stringify(filtered));
+    } catch (_) {}
+
+    setGeneratedPass(newPass);
+  };
+
   const handleDayToggle = (dayId: string) => {
     if (formData.days.includes(dayId)) {
       if (formData.days.length === 1) return; // Keep at least one
@@ -62,8 +108,8 @@ export default function BhogPassPage() {
 
   const handleGeneratePass = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.flatNumber.trim() || !formData.phone.trim()) {
-      alert("Please fill in your Name, Flat Number, and Phone Number.");
+    if (!formData.name.trim() || !formData.flatNumber.trim()) {
+      alert("Please fill in your Name and Flat Number.");
       return;
     }
 
@@ -71,15 +117,17 @@ export default function BhogPassPage() {
     const cleanFlat = formData.flatNumber.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
     const towerLetter = formData.tower.split(" ")[1] || "C";
     const passId = `PSS-BHOG-2026-T${towerLetter}-${cleanFlat}`;
+    const cappedCount = Math.min(Math.max(Number(formData.passCount) || 4, 1), 6);
 
     const newPass = {
       passId,
       name: formData.name.trim(),
       tower: formData.tower,
       flatNumber: formData.flatNumber.trim(),
-      phone: formData.phone.trim(),
-      passCount: Number(formData.passCount),
+      phone: formData.phone.trim() || "PBEL Resident",
+      passCount: cappedCount,
       days: formData.days,
+      dayLabel: `${formData.days.length} Pujo Days`,
       issuedAt: new Date().toLocaleDateString("en-IN", {
         day: "numeric",
         month: "short",
@@ -100,6 +148,11 @@ export default function BhogPassPage() {
     setGeneratedPass(newPass);
     setIsSubmitting(false);
   };
+
+  const filteredQuickMembers = pssMembers.filter((m) => {
+    const q = quickLookupQuery.toLowerCase().trim();
+    return q && (m.name.toLowerCase().includes(q) || m.flatNumber.toLowerCase().includes(q) || m.tower.toLowerCase().includes(q));
+  });
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-[#FCFBF8] pb-16">
@@ -134,8 +187,67 @@ export default function BhogPassPage() {
         </div>
       </section>
 
-      {/* 2. FORM OR GENERATED PASS CARD */}
-      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 -mt-6 relative z-20">
+      {/* 2. QUICK PSS MEMBER LOOKUP & DAY-WISE BUTTONS */}
+      {pssMembers.length > 0 && !generatedPass && (
+        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 -mt-4 relative z-20 mb-4">
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 sm:p-5 border border-amber-300 shadow-sm space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-xs font-bold text-amber-950">
+                <Sparkles size={15} className="text-primary" />
+                <span>Quick Claim for Registered PSS Member Families (₹7,500 Patron Roster)</span>
+              </div>
+              <span className="text-[10px] text-amber-800 font-semibold bg-amber-200/80 px-2 py-0.5 rounded-full">
+                {pssMembers.length} Families Registered
+              </span>
+            </div>
+
+            <div className="relative">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={quickLookupQuery}
+                onChange={(e) => setQuickLookupQuery(e.target.value)}
+                placeholder="Type your name or flat number (e.g. 402, Sourav, Tower B)..."
+                className="w-full pl-9 pr-3 py-2 bg-white border border-amber-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary font-medium"
+              />
+            </div>
+
+            {filteredQuickMembers.length > 0 && (
+              <div className="divide-y divide-amber-200/60 bg-white rounded-xl border border-amber-200 overflow-hidden max-h-48 overflow-y-auto">
+                {filteredQuickMembers.map((m) => (
+                  <div key={m.id} className="p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-amber-50/50 text-xs">
+                    <div>
+                      <span className="font-bold text-gray-900 block">{m.name}</span>
+                      <span className="text-gray-500 text-[11px]">{m.tower} • Flat {m.flatNumber}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {["Saptami", "Ashtami", "Nabami", "Dashami"].map((day) => (
+                        <button
+                          key={day}
+                          onClick={() => handleSelectMember(m, day)}
+                          className="bg-amber-100 hover:bg-amber-200 text-amber-950 font-bold px-2 py-1 rounded text-[10px] border border-amber-300 transition"
+                        >
+                          🍛 {day}
+                        </button>
+                      ))}
+                      <button
+                        onClick={() => handleSelectMember(m, "All 4 Pujo Days")}
+                        className="bg-primary hover:bg-primary-hover text-white font-bold px-2.5 py-1 rounded text-[10px] transition"
+                      >
+                        🎫 All Days
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 3. FORM OR GENERATED PASS CARD */}
+      <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 relative z-20">
         {!generatedPass ? (
           <div className="bg-white rounded-3xl p-6 sm:p-10 border border-amber-900/15 shadow-2xl">
             <div className="pb-5 border-b border-gray-100 mb-6">
@@ -162,10 +274,9 @@ export default function BhogPassPage() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">WhatsApp / Mobile Number *</label>
+                  <label className="block font-semibold text-gray-700 mb-1">WhatsApp / Mobile Number</label>
                   <input
                     type="tel"
-                    required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     placeholder="e.g. +91 98765 43210"
@@ -195,7 +306,7 @@ export default function BhogPassPage() {
                     required
                     value={formData.flatNumber}
                     onChange={(e) => setFormData({ ...formData, flatNumber: e.target.value })}
-                    placeholder="e.g. 402 / Tower C"
+                    placeholder="e.g. 402"
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                   />
                 </div>
@@ -299,7 +410,7 @@ export default function BhogPassPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
                 <div>
-                  <span className="text-gray-500 text-[11px] block">Daily Pass Count</span>
+                  <span className="text-gray-500 text-[11px] block">Daily Pass Headcount</span>
                   <span className="font-bold text-green-700 text-lg font-heading">{generatedPass.passCount} Members</span>
                 </div>
                 <div>
@@ -315,7 +426,7 @@ export default function BhogPassPage() {
               <div>
                 <span className="text-gray-500 text-[11px] block mb-1">Active Pujo Days:</span>
                 <div className="flex flex-wrap gap-1.5">
-                  {generatedPass.days.map((d: string) => (
+                  {generatedPass.days?.map((d: string) => (
                     <span key={d} className="bg-amber-200/80 text-amber-950 text-[10px] font-bold px-2.5 py-0.5 rounded-full capitalize">
                       ✓ {d}
                     </span>
