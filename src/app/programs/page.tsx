@@ -17,15 +17,18 @@ import {
   HeartHandshake,
   Star,
   Mic,
-  Tv
+  Tv,
+  Download
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { generateGoogleCalendarUrl, generateIcsContent } from "@/utils/security";
 
 interface DaySchedule {
   id: string;
   dayName: string;
   bengaliName: string;
   date: string;
+  isoDate: string;
   theme: string;
   rituals: { time: string; event: string; type: "ritual" | "bhog" | "aarti" | "cultural" }[];
   culturalEvening: {
@@ -49,6 +52,7 @@ const pujoSchedule: DaySchedule[] = [
     dayName: "Maha Panchami",
     bengaliName: "মহাপঞ্চমী",
     date: "15 Oct 2026",
+    isoDate: "2026-10-15",
     theme: "Agomoni, Anandamela & Stage Inauguration",
     rituals: [
       { time: "05:30 PM", event: "Pandal Inauguration & Diya Lighting Ceremony", type: "ritual" },
@@ -68,6 +72,7 @@ const pujoSchedule: DaySchedule[] = [
     dayName: "Maha Sashti",
     bengaliName: "মহাষষ্ঠী",
     date: "16 Oct 2026",
+    isoDate: "2026-10-16",
     theme: "Devi Bodhon & Retro Rock Gala",
     rituals: [
       { time: "08:30 AM", event: "Pratima Sthapana & Kalparambho", type: "ritual" },
@@ -94,6 +99,7 @@ const pujoSchedule: DaySchedule[] = [
     dayName: "Maha Saptami",
     bengaliName: "মহাসপ্তমী",
     date: "17 Oct 2026",
+    isoDate: "2026-10-17",
     theme: "Nabapatrika Pravesh & Dance Drama",
     rituals: [
       { time: "07:30 AM", event: "Nabapatrika (Kola Bou) Snan & Pravesh", type: "ritual" },
@@ -120,6 +126,7 @@ const pujoSchedule: DaySchedule[] = [
     dayName: "Maha Ashtami",
     bengaliName: "মহাষ্টমী",
     date: "18 Oct 2026",
+    isoDate: "2026-10-18",
     theme: "Sandhi Pujo & Grand Bangla Drama",
     rituals: [
       { time: "09:30 AM", event: "Maha Ashtami Pujo & Special Pushpanjali", type: "ritual" },
@@ -147,6 +154,7 @@ const pujoSchedule: DaySchedule[] = [
     dayName: "Maha Nabami",
     bengaliName: "মহানবমী",
     date: "19 Oct 2026",
+    isoDate: "2026-10-19",
     theme: "Maha Yajna & Grand Cultural Finale",
     rituals: [
       { time: "09:30 AM", event: "Maha Nabami Pujo & Pushpanjali", type: "ritual" },
@@ -167,6 +175,7 @@ const pujoSchedule: DaySchedule[] = [
     dayName: "Vijaya Dashami",
     bengaliName: "বিজয়াদশমী",
     date: "20 Oct 2026",
+    isoDate: "2026-10-20",
     theme: "Sindoor Khela, Visarjan & Subho Bijoya",
     rituals: [
       { time: "09:00 AM", event: "Darpan Visarjan (Mirror Immersion Ceremony)", type: "ritual" },
@@ -198,6 +207,23 @@ export default function ProgramsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  const handleDownloadIcs = (event: {
+    title: string;
+    description: string;
+    startDate: string;
+    startTime: string;
+    durationMinutes?: number;
+  }) => {
+    const icsString = generateIcsContent(event);
+    const blob = new Blob([icsString], { type: "text/calendar;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.setAttribute("download", `${event.title.toLowerCase().replace(/[^a-z0-9]/g, "-")}.ics`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Sync selected day with URL query param ?day=... (e.g. from Homepage cards)
   useEffect(() => {
@@ -371,34 +397,76 @@ export default function ProgramsPage() {
             </div>
 
             <div className="space-y-3">
-              {currentSchedule.rituals.map((ritual, idx) => (
-                <div
-                  key={idx}
-                  className="bg-white rounded-2xl p-4 sm:p-5 border border-amber-900/10 shadow-xs hover:border-amber-400 transition-all flex items-start gap-4"
-                >
-                  <div className="bg-amber-100/70 text-primary px-3 py-2 rounded-xl text-center shrink-0 border border-amber-200">
-                    <Clock size={16} className="mx-auto mb-1 text-primary" />
-                    <span className="text-[11px] font-bold block whitespace-nowrap">{ritual.time}</span>
-                  </div>
+              {currentSchedule.rituals.map((ritual, idx) => {
+                const gCalUrl = generateGoogleCalendarUrl({
+                  title: `${ritual.event} (${currentSchedule.dayName})`,
+                  description: `${ritual.event} at PBEL City Durgotsav 2026.`,
+                  startDate: currentSchedule.isoDate,
+                  startTime: ritual.time,
+                  durationMinutes: ritual.type === "bhog" ? 150 : 60,
+                });
 
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
-                        ritual.type === "ritual"
-                          ? "bg-red-100 text-red-800"
-                          : ritual.type === "bhog"
-                          ? "bg-amber-100 text-amber-900"
-                          : ritual.type === "aarti"
-                          ? "bg-orange-100 text-orange-800"
-                          : "bg-purple-100 text-purple-800"
-                      }`}>
-                        {ritual.type}
-                      </span>
+                return (
+                  <div
+                    key={idx}
+                    className="bg-white rounded-2xl p-4 sm:p-5 border border-amber-900/10 shadow-xs hover:border-amber-400 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <div className="bg-amber-100/70 text-primary px-3 py-2 rounded-xl text-center shrink-0 border border-amber-200">
+                        <Clock size={15} className="mx-auto mb-1 text-primary" />
+                        <span className="text-[11px] font-bold block whitespace-nowrap">{ritual.time}</span>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                            ritual.type === "ritual"
+                              ? "bg-red-100 text-red-800"
+                              : ritual.type === "bhog"
+                              ? "bg-amber-100 text-amber-900"
+                              : ritual.type === "aarti"
+                              ? "bg-orange-100 text-orange-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}>
+                            {ritual.type}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-sm sm:text-base text-gray-900">{ritual.event}</h4>
+                      </div>
                     </div>
-                    <h4 className="font-bold text-sm sm:text-base text-gray-900">{ritual.event}</h4>
+
+                    {/* Calendar 1-Click Sync */}
+                    <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100 w-full sm:w-auto justify-end">
+                      <a
+                        href={gCalUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="bg-gray-50 hover:bg-amber-50 text-gray-700 hover:text-amber-900 border border-gray-200 hover:border-amber-300 px-2.5 py-1.5 rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-2xs"
+                        title="Add to Google Calendar"
+                      >
+                        <Calendar size={12} className="text-primary" />
+                        <span>Google Cal</span>
+                      </a>
+                      <button
+                        onClick={() =>
+                          handleDownloadIcs({
+                            title: `${ritual.event} - PBEL Durgotsav 2026`,
+                            description: `${ritual.event} at PBEL City Community Arena.`,
+                            startDate: currentSchedule.isoDate,
+                            startTime: ritual.time,
+                            durationMinutes: ritual.type === "bhog" ? 150 : 60,
+                          })
+                        }
+                        className="bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 px-2 py-1.5 rounded-xl text-[11px] font-bold transition flex items-center gap-1"
+                        title="Download Apple / Outlook iCal File"
+                      >
+                        <Download size={12} />
+                        <span>.ics</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -433,33 +501,74 @@ export default function ProgramsPage() {
               </div>
 
               {/* ⭐ PSS SPECIAL FLAGSHIP HEADLINER CARD */}
-              {currentSchedule.culturalEvening.pssHeadliner && (
-                <div className="bg-gradient-to-r from-[#850E1F] to-[#5C0A15] text-white p-5 rounded-2xl shadow-lg border border-amber-400/40 relative overflow-hidden">
-                  <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/20 rounded-full blur-xl" />
-                  
-                  <div className="flex items-center gap-1.5 text-amber-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                    <Star size={12} className="fill-amber-300" />
-                    <span>PBEL Sanskritik Samiti Flagship Show</span>
+              {(() => {
+                const headliner = currentSchedule.culturalEvening.pssHeadliner;
+                if (!headliner) return null;
+                return (
+                  <div className="bg-gradient-to-r from-[#850E1F] to-[#5C0A15] text-white p-5 rounded-2xl shadow-lg border border-amber-400/40 relative overflow-hidden space-y-3">
+                    <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-amber-500/20 rounded-full blur-xl" />
+                    
+                    <div>
+                      <div className="flex items-center gap-1.5 text-amber-300 text-[10px] font-bold uppercase tracking-wider mb-1">
+                        <Star size={12} className="fill-amber-300" />
+                        <span>PBEL Sanskritik Samiti Flagship Show</span>
+                      </div>
+
+                      <h5 className="font-heading text-lg font-bold text-white mb-1">
+                        {headliner.title}
+                      </h5>
+
+                      <p className="text-xs text-amber-100/90">
+                        {headliner.genre}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-white/15 text-amber-200">
+                      <span className="font-bold flex items-center gap-1">
+                        <Clock size={13} /> {headliner.time}
+                      </span>
+                      <span className="bg-black/30 px-2 py-0.5 rounded-md font-mono text-[11px]">
+                        Duration: {headliner.duration}
+                      </span>
+                    </div>
+
+                    {/* 1-Click Sync for Headliner */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <a
+                        href={generateGoogleCalendarUrl({
+                          title: headliner.title,
+                          description: `${headliner.genre} - Flagship Evening Show at PBEL City Durgotsav 2026`,
+                          startDate: currentSchedule.isoDate,
+                          startTime: headliner.time.replace(" Start", ""),
+                          durationMinutes: 90,
+                        })}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex-1 bg-amber-400 hover:bg-amber-500 text-amber-950 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm"
+                      >
+                        <Calendar size={13} />
+                        <span>Add Concert to Cal</span>
+                      </a>
+                      <button
+                        onClick={() =>
+                          handleDownloadIcs({
+                            title: headliner.title,
+                            description: `${headliner.genre} at PBEL City Community Arena.`,
+                            startDate: currentSchedule.isoDate,
+                            startTime: headliner.time.replace(" Start", ""),
+                            durationMinutes: 90,
+                          })
+                        }
+                        className="bg-white/20 hover:bg-white/30 text-white px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1"
+                        title="Download iCal File"
+                      >
+                        <Download size={13} />
+                        <span>.ics</span>
+                      </button>
+                    </div>
                   </div>
-
-                  <h5 className="font-heading text-lg font-bold text-white mb-1">
-                    {currentSchedule.culturalEvening.pssHeadliner.title}
-                  </h5>
-
-                  <p className="text-xs text-amber-100/90 mb-3">
-                    {currentSchedule.culturalEvening.pssHeadliner.genre}
-                  </p>
-
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-white/15 text-amber-200">
-                    <span className="font-bold flex items-center gap-1">
-                      <Clock size={13} /> {currentSchedule.culturalEvening.pssHeadliner.time}
-                    </span>
-                    <span className="bg-black/30 px-2 py-0.5 rounded-md font-mono text-[11px]">
-                      Duration: {currentSchedule.culturalEvening.pssHeadliner.duration}
-                    </span>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Other Acts Lineup */}
               <div>

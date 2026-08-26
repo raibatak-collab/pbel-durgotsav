@@ -2,18 +2,27 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin, Lock, Award, Utensils } from "lucide-react";
+import { HeartHandshake, Menu, X, Sparkles, Calendar, Users, ShieldCheck, MapPin, Lock, Award, Utensils, Compass } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { getStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [loggedInAdmin, setLoggedInAdmin] = useState<any>(null);
   const [customAnnouncement, setCustomAnnouncement] = useState<string>("");
+  const [branding, setBranding] = useState<SamitiBrandingConfig>(DEFAULT_BRANDING);
   const pathname = usePathname();
 
-  // Check if admin is currently logged in on this browser & load announcement
+  // Check if admin is currently logged in on this browser & load announcement & branding
   useEffect(() => {
     try {
+      setBranding(getStoredBranding());
+
+      const handleBrandingUpdate = () => {
+        setBranding(getStoredBranding());
+      };
+      window.addEventListener("pbel_branding_updated", handleBrandingUpdate);
+
       const savedAnnounce = localStorage.getItem("pbel_pujo_announcement");
       if (savedAnnounce) {
         setCustomAnnouncement(savedAnnounce);
@@ -27,6 +36,10 @@ export function Header() {
       } else {
         setLoggedInAdmin(null);
       }
+
+      return () => {
+        window.removeEventListener("pbel_branding_updated", handleBrandingUpdate);
+      };
     } catch (_) {
       setLoggedInAdmin(null);
     }
@@ -35,6 +48,8 @@ export function Header() {
   const navLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Pujo Schedule", href: "/programs", icon: Calendar },
+    { name: "Anandamela", href: "/anandamela", icon: Utensils },
+    { name: "Pandal Guide", href: "/guide", icon: Compass },
     { name: "Organizing Committee", href: "/committee", icon: Users },
     { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake },
     { name: "Corporate Sponsors", href: "/sponsors", icon: Award },

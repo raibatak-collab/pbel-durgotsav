@@ -33,10 +33,27 @@ import {
   UserX,
   LogOut,
   KeyRound,
-  Utensils
+  Utensils,
+  Palette,
+  FileText,
+  DollarSign,
+  ClipboardList,
+  Printer,
+  Copy,
+  TrendingUp,
+  AlertCircle
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower } from "@/config/towers";
+import { 
+  AESTHETIC_WALLPAPERS, 
+  DEFAULT_BRANDING, 
+  getStoredBranding, 
+  saveStoredBranding, 
+  SamitiBrandingConfig,
+  AestheticWallpaper
+} from "@/config/branding";
+import { sanitizeText, validateDonationAmount, validatePhoneNumber } from "@/utils/security";
 
 export interface AdminUser {
   id: string;
@@ -172,7 +189,7 @@ const initialEveningsConfig = [
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "contributions" | "pss_members" | "categories" | "schedule" | "volunteers" | "sponsors" | "gallery" | "users"
+    "overview" | "contributions" | "pss_members" | "categories" | "schedule" | "volunteers" | "sponsors" | "budget" | "branding" | "gallery" | "users"
   >("overview");
   const [membersSubView, setMembersSubView] = useState<"roster" | "kitchen">("roster");
   const [scheduleSubView, setScheduleSubView] = useState<"schedule" | "pratibimb">("schedule");
@@ -253,6 +270,36 @@ export default function AdminDashboard() {
     status: "Active",
   });
   const [adminPassModal, setAdminPassModal] = useState<any | null>(null);
+
+  // Self-Service Branding, Logo & Wallpaper State
+  const [branding, setBranding] = useState<SamitiBrandingConfig>(DEFAULT_BRANDING);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+  const [pdfUploadSuccess, setPdfUploadSuccess] = useState(false);
+
+  // Committee Budget & Expenses State
+  const [budgetExpenses, setBudgetExpenses] = useState<any[]>([
+    { id: "exp-1", category: "Pratima & Purohit", title: "Ekchala Pratima & Purohit Dakshina", planned: 150000, actual: 145000, paidTo: "Kumartuli Artisan & Head Purohit", status: "Partially Paid" },
+    { id: "exp-2", category: "Pandal & Lighting", title: "Pandal Structure, Chandernagore Lights & Arch", planned: 250000, actual: 240000, paidTo: "Royal Pandal Infrastructure", status: "Advance Paid" },
+    { id: "exp-3", category: "Dhaaki & Traditional Samagri", title: "Kolkata Dhaaki Troupe (4 Artists) & 108 Lotuses", planned: 60000, actual: 55000, paidTo: "Bikash Dhaaki & Samagri Suppliers", status: "Confirmed" },
+    { id: "exp-4", category: "Maha Bhog & Kitchen", title: "Groceries (Basmati, Gobindobhog, Ghee, Spices, Sal Leaf)", planned: 180000, actual: 175000, paidTo: "Wholesale Grocery Distributors", status: "Procured" },
+    { id: "exp-5", category: "Sound & Cultural Stage", title: "LED Wall, Line-Array Acoustics & Green Rooms", planned: 120000, actual: 110000, paidTo: "Sonic Stage Productions", status: "Advance Paid" },
+    { id: "exp-6", category: "Sanitation & Green Pujo", title: "Waste Management, Sal Plate Disposal & Cleaners", planned: 30000, actual: 25000, paidTo: "CleanCity Environmental Ops", status: "Allocated" },
+  ]);
+  const [newExpense, setNewExpense] = useState({
+    category: "Pratima & Purohit",
+    title: "",
+    planned: 50000,
+    actual: 50000,
+    paidTo: "",
+    status: "Allocated",
+  });
+
+  // Emcee Run-Sheet Modal State
+  const [isEmceeModalOpen, setIsEmceeModalOpen] = useState(false);
+  const [emceeFilterDay, setEmceeFilterDay] = useState("all");
+
+  // Volunteer WhatsApp Dispatcher State
+  const [volunteerDispatchShift, setVolunteerDispatchShift] = useState<string | null>(null);
 
   // Live Announcement State
   const [announcementText, setAnnouncementText] = useState(
@@ -364,6 +411,105 @@ export default function AdminDashboard() {
     const updated = bhogPasses.filter((p) => p.passId !== passId);
     setBhogPasses(updated);
     localStorage.setItem("pbel_bhog_passes", JSON.stringify(updated));
+  };
+
+  // Branding & Asset Handlers
+  const handleSaveBranding = (updated: SamitiBrandingConfig) => {
+    setBranding(updated);
+    saveStoredBranding(updated);
+    alert("Branding, Logos & Hero Wallpaper updated live across the portal!");
+  };
+
+  const handleUploadPdfFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 35 * 1024 * 1024) {
+      alert("File size exceeds 35MB. Please upload a PDF under 35MB or provide an external URL.");
+      return;
+    }
+
+    setIsUploadingPdf(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const updated = {
+        ...branding,
+        sponsorshipDeckPdfUrl: dataUrl,
+        sponsorshipDeckFileName: file.name,
+      };
+      setBranding(updated);
+      saveStoredBranding(updated);
+      setIsUploadingPdf(false);
+      setPdfUploadSuccess(true);
+      setTimeout(() => setPdfUploadSuccess(false), 3000);
+      alert(`Sponsorship Deck "${file.name}" uploaded successfully! Available instantly for sponsors to download.`);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Budget & Ledger Handlers
+  const handleAddExpense = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newExpense.title.trim()) {
+      alert("Please enter Expense Title.");
+      return;
+    }
+    const item = {
+      id: `exp-${Date.now()}`,
+      category: newExpense.category,
+      title: sanitizeText(newExpense.title),
+      planned: Number(newExpense.planned) || 0,
+      actual: Number(newExpense.actual) || 0,
+      paidTo: sanitizeText(newExpense.paidTo) || "Vendor",
+      status: newExpense.status,
+    };
+    const updated = [item, ...budgetExpenses];
+    setBudgetExpenses(updated);
+    localStorage.setItem("pbel_budget_expenses", JSON.stringify(updated));
+    setNewExpense({
+      category: "Pratima & Purohit",
+      title: "",
+      planned: 50000,
+      actual: 50000,
+      paidTo: "",
+      status: "Allocated",
+    });
+    alert("Expense recorded in Committee Budget Ledger!");
+  };
+
+  const handleDeleteExpense = (id: string) => {
+    const updated = budgetExpenses.filter((e) => e.id !== id);
+    setBudgetExpenses(updated);
+    localStorage.setItem("pbel_budget_expenses", JSON.stringify(updated));
+  };
+
+  // WhatsApp Volunteer Dispatcher Handler
+  const handleCopyWhatsAppRoster = (deptName: string, shiftDate: string) => {
+    const deptVols = volunteers.filter((v) => {
+      const cat = v.volunteer_slots?.volunteer_categories?.name || "";
+      return cat.toLowerCase().includes(deptName.toLowerCase()) || !deptName;
+    });
+
+    const lines = [
+      `🌺 *PBEL CITY DURGOTSAV 2026 - VOLUNTEER SEVA ROSTER* 🌺`,
+      `📍 *Department:* ${deptName || "All Departments"}`,
+      `📅 *Shift / Date:* ${shiftDate || "All Pujo Days"}`,
+      `─────────────────────────`,
+      deptVols.length > 0
+        ? deptVols
+            .map(
+              (v, idx) =>
+                `${idx + 1}. *${v.full_name || v.volunteer_name || "Sevak"}* (${v.flat_number || "PBEL"}) - 📱 ${v.phone}`
+            )
+            .join("\n")
+        : "No volunteers registered yet for this slot.",
+      `─────────────────────────`,
+      `🙏 _Thank you for your dedicated community seva! Subho Sharodotsav!_`,
+    ].join("\n");
+
+    navigator.clipboard.writeText(lines);
+    alert(`Copied ${deptName || "Volunteer"} WhatsApp Roster to clipboard! Ready to paste into WhatsApp group.`);
   };
 
   // PSS Members Handlers
@@ -1041,8 +1187,10 @@ function decodeCategoryDescription(desc?: string) {
               { id: "pss_members", label: "👥 Members & Daily Bhog Passes" },
               { id: "categories", label: "🌺 Seva Catalog CMS" },
               { id: "schedule", label: "📅 Schedule & Pratibimb Stage" },
-              { id: "volunteers", label: "🤝 Volunteers Roster" },
+              { id: "volunteers", label: "🤝 Volunteers & WhatsApp Dispatch" },
               { id: "sponsors", label: "🏢 Corporate Sponsors" },
+              { id: "budget", label: "📊 Budget & Expenses Ledger" },
+              { id: "branding", label: "🎨 Branding & Wallpaper CMS" },
               { id: "gallery", label: "🖼️ Gallery Carousel CMS" },
               { id: "users", label: "🔒 User Management" },
             ].map((tab) => (
@@ -1770,9 +1918,17 @@ function decodeCategoryDescription(desc?: string) {
                   <h3 className="font-heading text-lg font-bold text-gray-900">
                     Registered Resident Stage Performers ({performances.length})
                   </h3>
-                  <button onClick={() => window.print()} className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5">
-                    <Download size={14} /> Export Stage Lineup
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => setIsEmceeModalOpen(true)} 
+                      className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition"
+                    >
+                      <ClipboardList size={14} /> Open Emcee Run-Sheet
+                    </button>
+                    <button onClick={() => window.print()} className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5">
+                      <Download size={14} /> Print
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -1920,36 +2076,102 @@ function decodeCategoryDescription(desc?: string) {
         </div>
       )}
 
-      {/* TAB CONTENT: 7. VOLUNTEERS ROSTER */}
+      {/* TAB CONTENT: 6. VOLUNTEERS ROSTER & WHATSAPP DISPATCH */}
       {activeTab === "volunteers" && (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-gray-200 bg-gray-50/50">
-            <h3 className="font-heading text-lg font-bold text-gray-900">Volunteer Duty Roster</h3>
+        <div className="space-y-6">
+          
+          {/* WhatsApp Dispatch Toolbar */}
+          <div className="bg-gradient-to-r from-green-50 via-emerald-50/50 to-white rounded-2xl p-5 border border-green-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1 text-[11px] font-bold text-green-800 uppercase tracking-wider mb-1">
+                <span>💬 WhatsApp Shift Dispatcher</span>
+              </div>
+              <h3 className="font-heading text-lg font-bold text-gray-900">
+                1-Click Ready-to-Paste WhatsApp Duty Rosters
+              </h3>
+              <p className="text-xs text-gray-600">
+                Click any department below to generate and copy a clean, beautifully formatted seva roster to paste directly into your core team WhatsApp group.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => handleCopyWhatsAppRoster("Bhog", "All Days")}
+                className="bg-white hover:bg-green-100 text-green-900 border border-green-300 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <Copy size={13} /> <span>🍲 Food & Bhog</span>
+              </button>
+              <button
+                onClick={() => handleCopyWhatsAppRoster("Security", "All Days")}
+                className="bg-white hover:bg-green-100 text-green-900 border border-green-300 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <Copy size={13} /> <span>🛡️ Crowd & Security</span>
+              </button>
+              <button
+                onClick={() => handleCopyWhatsAppRoster("Pratibimb", "Evening")}
+                className="bg-white hover:bg-green-100 text-green-900 border border-green-300 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-2xs"
+              >
+                <Copy size={13} /> <span>🎭 Stage & Sound</span>
+              </button>
+              <button
+                onClick={() => handleCopyWhatsAppRoster("", "Full Schedule")}
+                className="bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+              >
+                <Copy size={13} /> <span>📋 Copy All Volunteers</span>
+              </button>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
-                  <th className="p-3.5">Volunteer Name</th>
-                  <th className="p-3.5">Flat Number</th>
-                  <th className="p-3.5">Assigned Domain / Role</th>
-                  <th className="p-3.5">Duty Date</th>
-                  <th className="p-3.5">Phone</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {volunteers.map((v) => (
-                  <tr key={v.id} className="hover:bg-gray-50/60">
-                    <td className="p-3.5 font-bold text-gray-900">{v.full_name}</td>
-                    <td className="p-3.5 text-gray-700">{v.flat_number}</td>
-                    <td className="p-3.5 font-semibold text-primary">{v.volunteer_slots?.volunteer_categories?.name || "Pujo Seva"}</td>
-                    <td className="p-3.5 text-gray-600">{v.volunteer_slots?.slot_date || "Pujo Day"}</td>
-                    <td className="p-3.5 text-gray-600">{v.phone}</td>
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+              <h3 className="font-heading text-lg font-bold text-gray-900">
+                Registered Volunteer Sevaks ({volunteers.length})
+              </h3>
+              <button onClick={() => window.print()} className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1">
+                <Download size={13} /> Print Roster
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                    <th className="p-3.5">Volunteer Name</th>
+                    <th className="p-3.5">Flat Number</th>
+                    <th className="p-3.5">Assigned Domain / Role</th>
+                    <th className="p-3.5">Duty Date</th>
+                    <th className="p-3.5">Phone / WhatsApp</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {volunteers.map((v) => (
+                    <tr key={v.id} className="hover:bg-gray-50/60">
+                      <td className="p-3.5 font-bold text-gray-900">{v.full_name || v.volunteer_name || "Sevak"}</td>
+                      <td className="p-3.5 text-gray-700">{v.flat_number}</td>
+                      <td className="p-3.5 font-semibold text-primary">{v.volunteer_slots?.volunteer_categories?.name || "Pujo Seva"}</td>
+                      <td className="p-3.5 text-gray-600">{v.volunteer_slots?.slot_date || "Pujo Day"}</td>
+                      <td className="p-3.5 font-mono">
+                        <a
+                          href={`https://api.whatsapp.com/send?phone=${v.phone?.replace(/[^0-9]/g, "")}&text=Hello%20${encodeURIComponent(v.full_name || v.volunteer_name || "Sevak")}%2C%20thank%20you%20for%20volunteering%20for%20PBEL%20Durgotsav%202026!`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-green-700 hover:underline flex items-center gap-1"
+                        >
+                          <span>💬 {v.phone}</span>
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                  {volunteers.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-gray-500">
+                        No volunteer registrations recorded yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
@@ -2118,7 +2340,478 @@ function decodeCategoryDescription(desc?: string) {
         </div>
       )}
 
-      {/* TAB CONTENT: 9. GALLERY CAROUSEL CMS */}
+      {/* TAB CONTENT: 8. COMMITTEE BUDGET & EXPENSES LEDGER */}
+      {activeTab === "budget" && (
+        <div className="space-y-6">
+          
+          {/* Financial Summary KPIs */}
+          {(() => {
+            const totalMemberships = pssMembers.length * 7500;
+            const totalSponsorships = sponsorsList.length * 50000;
+            const totalInflow = totalFunds + totalMemberships + totalSponsorships;
+            const totalPlanned = budgetExpenses.reduce((acc, e) => acc + (Number(e.planned) || 0), 0);
+            const totalActual = budgetExpenses.reduce((acc, e) => acc + (Number(e.actual) || 0), 0);
+            const netSurplus = totalInflow - totalActual;
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                    Total Inflow / Collections
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-bold font-heading text-green-700">
+                    ₹{totalInflow.toLocaleString("en-IN")}
+                  </div>
+                  <span className="text-[10px] text-gray-400 block mt-1">
+                    Donations (₹{totalFunds.toLocaleString("en-IN")}) + Members (₹{totalMemberships.toLocaleString("en-IN")}) + Sponsors (₹{totalSponsorships.toLocaleString("en-IN")})
+                  </span>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                    Budgeted Target
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-bold font-heading text-gray-900">
+                    ₹{totalPlanned.toLocaleString("en-IN")}
+                  </div>
+                  <span className="text-[10px] text-gray-400 block mt-1">
+                    Across {budgetExpenses.length} departmental allocations
+                  </span>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase block mb-1">
+                    Incurred Expenses
+                  </span>
+                  <div className="text-2xl sm:text-3xl font-bold font-heading text-amber-900">
+                    ₹{totalActual.toLocaleString("en-IN")}
+                  </div>
+                  <span className="text-[10px] text-gray-400 block mt-1">
+                    Committed / Paid to Vendors
+                  </span>
+                </div>
+
+                <div className={`p-5 rounded-2xl border shadow-xs ${
+                  netSurplus >= 0 ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
+                }`}>
+                  <span className="text-[11px] font-bold uppercase block mb-1 text-gray-700">
+                    Projected Net Balance / Surplus
+                  </span>
+                  <div className={`text-2xl sm:text-3xl font-bold font-heading ${
+                    netSurplus >= 0 ? "text-green-800" : "text-red-700"
+                  }`}>
+                    ₹{netSurplus.toLocaleString("en-IN")}
+                  </div>
+                  <span className="text-[10px] text-gray-500 block mt-1">
+                    {netSurplus >= 0 ? "✓ Financially balanced & solvent" : "⚠️ Collections deficit"}
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Budget Expense Management Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Add Expense Form */}
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
+              <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                <DollarSign size={18} className="text-primary" />
+                <h3 className="font-heading text-lg font-bold text-gray-900">Record Department Expense</h3>
+              </div>
+
+              <form onSubmit={handleAddExpense} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Department / Head</label>
+                  <select
+                    value={newExpense.category}
+                    onChange={(e) => setNewExpense({ ...newExpense, category: e.target.value })}
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  >
+                    <option value="Pratima & Purohit">Pratima & Purohit Dakshina</option>
+                    <option value="Pandal & Lighting">Pandal Structure & Chandernagore Lighting</option>
+                    <option value="Dhaaki & Traditional Samagri">Dhaaki Troupe & Traditional Samagri</option>
+                    <option value="Maha Bhog & Kitchen">Maha Bhog Groceries & Dining Setup</option>
+                    <option value="Sound & Cultural Stage">Sound, LED Stage & Acoustics</option>
+                    <option value="Sanitation & Green Pujo">Sanitation, Dustbins & Green Pujo</option>
+                    <option value="Miscellaneous">Permits, Security & Miscellaneous</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Expense Description / Line Item *</label>
+                  <input
+                    type="text"
+                    required
+                    value={newExpense.title}
+                    onChange={(e) => setNewExpense({ ...newExpense, title: e.target.value })}
+                    placeholder="e.g. 108 Red Lotuses & Sandhi Aarti Ghee"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Planned Budget (₹)</label>
+                    <input
+                      type="number"
+                      required
+                      value={newExpense.planned}
+                      onChange={(e) => setNewExpense({ ...newExpense, planned: Number(e.target.value) })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Actual Amount (₹)</label>
+                    <input
+                      type="number"
+                      required
+                      value={newExpense.actual}
+                      onChange={(e) => setNewExpense({ ...newExpense, actual: Number(e.target.value) })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold text-amber-900"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Vendor / Payee</label>
+                    <input
+                      type="text"
+                      value={newExpense.paidTo}
+                      onChange={(e) => setNewExpense({ ...newExpense, paidTo: e.target.value })}
+                      placeholder="e.g. Kumartuli Artisan"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Payment Status</label>
+                    <select
+                      value={newExpense.status}
+                      onChange={(e) => setNewExpense({ ...newExpense, status: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    >
+                      <option value="Advance Paid">Advance Paid</option>
+                      <option value="Partially Paid">Partially Paid</option>
+                      <option value="Confirmed">Confirmed</option>
+                      <option value="Procured">Procured</option>
+                      <option value="Allocated">Allocated</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm mt-2"
+                >
+                  Record Expense in Ledger
+                </button>
+              </form>
+            </div>
+
+            {/* Departmental Ledger Table */}
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                <div>
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Committee Budget & Incurred Expenses
+                  </h3>
+                  <span className="text-xs text-gray-500">
+                    {budgetExpenses.length} ledger entries recorded
+                  </span>
+                </div>
+                <button
+                  onClick={() => window.print()}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1"
+                >
+                  <Download size={13} /> Print Financial Report
+                </button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                      <th className="p-3">Department</th>
+                      <th className="p-3">Expense Item & Payee</th>
+                      <th className="p-3">Planned</th>
+                      <th className="p-3">Actual Paid</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {budgetExpenses.map((exp) => (
+                      <tr key={exp.id} className="hover:bg-gray-50/60">
+                        <td className="p-3 font-semibold text-gray-800">
+                          {exp.category}
+                        </td>
+                        <td className="p-3">
+                          <span className="font-bold text-gray-900 block">{exp.title}</span>
+                          <span className="text-gray-500 text-[11px]">Payee: {exp.paidTo}</span>
+                        </td>
+                        <td className="p-3 font-mono text-gray-600">
+                          ₹{Number(exp.planned).toLocaleString("en-IN")}
+                        </td>
+                        <td className="p-3 font-mono font-bold text-amber-950">
+                          ₹{Number(exp.actual).toLocaleString("en-IN")}
+                        </td>
+                        <td className="p-3">
+                          <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                            {exp.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => handleDeleteExpense(exp.id)}
+                            className="p-1 text-gray-400 hover:text-red-600 rounded-lg transition"
+                            title="Remove Entry"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB CONTENT: 9. BRANDING, LOGOS & AESTHETIC HERO WALLPAPER CMS */}
+      {activeTab === "branding" && (
+        <div className="space-y-8">
+          
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-amber-50 to-orange-50/60 rounded-3xl p-6 border border-amber-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider mb-1">
+                <Palette size={14} className="text-primary" />
+                <span>Self-Service First Theme CMS</span>
+              </div>
+              <h2 className="font-heading text-2xl font-bold text-gray-900">
+                Portal Identity, Aesthetic Wallpapers & Brochure CMS
+              </h2>
+              <p className="text-xs text-gray-600 mt-1 max-w-2xl">
+                Update festival logos, switch between divine Maa Durga hero wallpapers, or upload the 25MB corporate sponsorship brochure PDF without touching code.
+              </p>
+            </div>
+
+            <button
+              onClick={() => handleSaveBranding(branding)}
+              className="bg-primary hover:bg-primary-hover text-white px-5 py-2.5 rounded-2xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 self-start md:self-auto shrink-0 golden-glow"
+            >
+              <Save size={15} />
+              <span>Save &amp; Publish Changes Live</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            {/* COLUMN 1: AESTHETIC DURGA MAA HERO WALLPAPERS (7 COLS) */}
+            <div className="lg:col-span-7 bg-white rounded-3xl border border-gray-200 p-6 shadow-xs space-y-5">
+              <div>
+                <h3 className="font-heading text-lg font-bold text-gray-900 flex items-center gap-2">
+                  <Sparkles size={18} className="text-primary" />
+                  <span>Aesthetic Maa Durga Hero Wallpaper Presets</span>
+                </h3>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Select your preferred divine backdrop to display across the homepage hero section.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {AESTHETIC_WALLPAPERS.map((wp) => {
+                  const isSelected = branding.activeHeroWallpaperId === wp.id;
+                  return (
+                    <div
+                      key={wp.id}
+                      onClick={() => {
+                        const updated = { ...branding, activeHeroWallpaperId: wp.id, customWallpaperUrl: "" };
+                        handleSaveBranding(updated);
+                      }}
+                      className={`group cursor-pointer rounded-2xl border overflow-hidden transition-all shadow-xs relative ${
+                        isSelected
+                          ? "border-primary ring-3 ring-primary/20 shadow-md"
+                          : "border-gray-200 hover:border-amber-400"
+                      }`}
+                    >
+                      <div className="h-36 relative overflow-hidden bg-gray-900">
+                        <img
+                          src={wp.previewUrl}
+                          alt={wp.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-all duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                        {isSelected && (
+                          <div className="absolute top-2.5 right-2.5 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                            <CheckCircle2 size={11} /> Active Wallpaper
+                          </div>
+                        )}
+                        <div className="absolute bottom-2.5 left-2.5 right-2.5 text-white">
+                          <h4 className="font-heading text-sm font-bold truncate leading-tight">
+                            {wp.title}
+                          </h4>
+                          <span className="text-[10px] text-amber-200/90 truncate block">
+                            {wp.tagline}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Custom Wallpaper URL Override */}
+              <div className="pt-4 border-t border-gray-100 space-y-2">
+                <label className="block font-semibold text-xs text-gray-700">
+                  Or Provide Custom High-Resolution Wallpaper URL
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={branding.customWallpaperUrl || ""}
+                    onChange={(e) => setBranding({ ...branding, customWallpaperUrl: e.target.value })}
+                    placeholder="https://images.unsplash.com/.../durga-idol.jpg"
+                    className="flex-1 p-2.5 border border-gray-200 rounded-xl text-xs outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <button
+                    onClick={() => handleSaveBranding(branding)}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 px-4 py-2 rounded-xl text-xs font-bold transition"
+                  >
+                    Apply URL
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* COLUMN 2: SPONSORSHIP BROCHURE PDF & LOGOS (5 COLS) */}
+            <div className="lg:col-span-5 space-y-6">
+              
+              {/* 25MB Sponsorship Brochure PDF Manager */}
+              <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs space-y-4">
+                <div className="flex items-center gap-2">
+                  <FileText size={18} className="text-primary" />
+                  <h3 className="font-heading text-lg font-bold text-gray-900">
+                    Corporate Sponsorship Deck PDF
+                  </h3>
+                </div>
+                <p className="text-xs text-gray-500">
+                  Upload up to 35MB high-resolution sponsorship brochures directly without touching GitHub or code paths.
+                </p>
+
+                <div className="border-2 border-dashed border-amber-300 hover:border-primary rounded-2xl p-5 text-center bg-amber-50/40 hover:bg-amber-50/70 transition cursor-pointer relative">
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    onChange={handleUploadPdfFile}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  />
+                  <div className="py-2">
+                    <FileText size={32} className="mx-auto text-primary mb-2" />
+                    <span className="font-bold text-gray-900 text-xs block">
+                      {isUploadingPdf ? "Uploading Large PDF..." : "Click or Drop PDF Brochure (Up to 35MB)"}
+                    </span>
+                    <span className="text-[10px] text-gray-500">
+                      Instantly updates all public brochure download buttons
+                    </span>
+                  </div>
+                </div>
+
+                {pdfUploadSuccess && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-xl text-[11px] text-green-800 font-semibold text-center flex items-center justify-center gap-1.5">
+                    <CheckCircle2 size={14} className="text-green-600" />
+                    <span>Brochure updated successfully!</span>
+                  </div>
+                )}
+
+                <div className="p-3.5 bg-gray-50 rounded-2xl border border-gray-100 space-y-2">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                    Current Active Brochure:
+                  </span>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-gray-800 truncate">
+                      {branding.sponsorshipDeckFileName || "PBEL_Durgotsav_2026_Sponsorship_Deck.pdf"}
+                    </span>
+                    <a
+                      href={branding.sponsorshipDeckPdfUrl || "/PBEL_City_Durgotsav_2026_Sponsorship_Deck.pdf"}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary font-bold hover:underline flex items-center gap-1 shrink-0 ml-2"
+                    >
+                      <Eye size={13} /> Preview
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              {/* Samiti & Festival Logos */}
+              <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs space-y-4">
+                <h3 className="font-heading text-lg font-bold text-gray-900">
+                  Logos & Festival Identity
+                </h3>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      PBEL Sanskritik Samiti Logo URL / Image Link
+                    </label>
+                    <input
+                      type="url"
+                      value={branding.pssLogoUrl || ""}
+                      onChange={(e) => setBranding({ ...branding, pssLogoUrl: e.target.value })}
+                      placeholder="https://.../pss-samiti-logo.png"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      PBEL Durgotsav Festival Logo URL
+                    </label>
+                    <input
+                      type="url"
+                      value={branding.durgotsavLogoUrl || ""}
+                      onChange={(e) => setBranding({ ...branding, durgotsavLogoUrl: e.target.value })}
+                      placeholder="https://.../durgotsav-logo.png"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Festival Sub-title / Tagline
+                    </label>
+                    <input
+                      type="text"
+                      value={branding.tagline || ""}
+                      onChange={(e) => setBranding({ ...branding, tagline: e.target.value })}
+                      placeholder="Joy Maa Durga • 15th to 20th October (Panchami to Dashami)"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary font-medium"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => handleSaveBranding(branding)}
+                    className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-xs mt-2"
+                  >
+                    Save Logo &amp; Identity Settings
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* TAB CONTENT: 10. GALLERY CAROUSEL CMS */}
       {activeTab === "gallery" && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
@@ -2961,6 +3654,120 @@ function decodeCategoryDescription(desc?: string) {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🎭 PRATIBIMB EMCEE MASTER RUN-SHEET MODAL */}
+      {isEmceeModalOpen && (
+        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsEmceeModalOpen(false)}
+              className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+              <div>
+                <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-2">
+                  <ClipboardList size={13} className="text-primary" />
+                  <span>Pratibimb Stage &amp; Sound Cue Sheet</span>
+                </div>
+                <h2 className="font-heading text-2xl font-bold text-gray-900">
+                  Emcee Master Run-Sheet &amp; Stage Lineup
+                </h2>
+                <p className="text-xs text-gray-500">
+                  Chronological stage cue order for Sound Engineers, Stage Leads, and Emcees.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <Printer size={14} />
+                  <span>Print Stage Cue Sheet</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Run Sheet Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-amber-50 text-amber-950 font-bold border-b border-amber-200">
+                    <th className="p-3">Cue #</th>
+                    <th className="p-3">Stage Time</th>
+                    <th className="p-3">Performance / Song</th>
+                    <th className="p-3">Genre &amp; Format</th>
+                    <th className="p-3">Performers &amp; Contact</th>
+                    <th className="p-3">Audio / Stage Needs</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {/* Default Flagship Openers */}
+                  <tr className="bg-amber-100/40 font-semibold">
+                    <td className="p-3 font-mono font-bold text-primary">#01</td>
+                    <td className="p-3 font-mono">06:30 PM</td>
+                    <td className="p-3 text-primary font-bold">Dhaak Welcome &amp; Stage Diya Lighting</td>
+                    <td className="p-3">Inauguration (15 mins)</td>
+                    <td className="p-3">PSS Core Committee &amp; Priests</td>
+                    <td className="p-3 text-gray-600">2 Handheld Wireless Mics + Aarti Light Cue</td>
+                  </tr>
+
+                  {performances.map((p, idx) => (
+                    <tr key={p.id || idx} className="hover:bg-gray-50/60">
+                      <td className="p-3 font-mono font-bold text-gray-700">#{String(idx + 2).padStart(2, "0")}</td>
+                      <td className="p-3 font-mono font-semibold text-gray-900">
+                        {p.scheduled_time || `Slot ${idx + 1}`}
+                      </td>
+                      <td className="p-3">
+                        <span className="font-bold text-gray-900 block">{p.song_name || p.performance_type}</span>
+                        <span className="text-gray-500 text-[11px]">{p.performance_type}</span>
+                      </td>
+                      <td className="p-3">
+                        <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md font-medium">
+                          {p.format || "Solo"}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <span className="font-semibold text-gray-900 block">{p.contact_name} (Flat {p.flat_number})</span>
+                        <span className="text-gray-500 text-[11px]">{p.participant_names || "Solo"} • 📱 {p.phone}</span>
+                      </td>
+                      <td className="p-3 text-gray-600">
+                        {p.performance_type === "Dance" ? "Audio Track USB / Aux • Stage Wash" : "1 Vocal Mic + Instrument In"}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Flagship Show Finale */}
+                  <tr className="bg-gradient-to-r from-red-50 to-amber-50 font-semibold border-t-2 border-primary/20">
+                    <td className="p-3 font-mono font-bold text-primary">#FINAL</td>
+                    <td className="p-3 font-mono text-primary font-bold">08:15 PM</td>
+                    <td className="p-3 font-heading font-bold text-primary">
+                      ⭐ PSS Flagship Production (Fushmontor / Drama)
+                    </td>
+                    <td className="p-3">Headliner (90 mins)</td>
+                    <td className="p-3">PBEL Sanskritik Samiti Ensemble</td>
+                    <td className="p-3 text-gray-700">Full Band Setup, Drum Mics, 4 Vocal Mics &amp; LED Visuals</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+              <span>Pratibimb Stage Coordination Desk • PBEL Sanskritik Samiti</span>
+              <button
+                onClick={() => setIsEmceeModalOpen(false)}
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded-xl"
+              >
+                Close Run-Sheet
+              </button>
+            </div>
+
           </div>
         </div>
       )}

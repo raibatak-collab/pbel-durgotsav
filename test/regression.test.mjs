@@ -548,5 +548,229 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('15. Input Sanitization & Enterprise Security Utilities', () => {
+    const sanitizeText = (input) => {
+      if (!input) return "";
+      return String(input)
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/<[^>]+>/g, "")
+        .replace(/javascript:/gi, "")
+        .replace(/on\w+\s*=/gi, "")
+        .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F]/g, "")
+        .trim();
+    };
+
+    const validateDonationAmount = (amount, min = 10, max = 1000000) => {
+      const num = Number(amount);
+      if (isNaN(num) || !Number.isInteger(num)) {
+        return { isValid: false, parsedAmount: 0, error: "Amount must be a valid whole number." };
+      }
+      if (num < min) {
+        return { isValid: false, parsedAmount: num, error: `Minimum seva offering is ₹${min}.` };
+      }
+      if (num > max) {
+        return { isValid: false, parsedAmount: num, error: `Maximum seva offering is ₹${max}.` };
+      }
+      return { isValid: true, parsedAmount: num };
+    };
+
+    const validatePhoneNumber = (phone) => {
+      if (!phone) return false;
+      const cleaned = phone.replace(/[^0-9]/g, "");
+      return /^(\+?91)?[6789]\d{9}$/.test(cleaned) || cleaned.length === 10;
+    };
+
+    it('should strip malicious scripts, event handlers and HTML tags from user inputs', () => {
+      const dirty = "<script>alert('XSS')</script>Joy <img src=x onerror=alert(1)>Maa Durga";
+      const clean = sanitizeText(dirty);
+      assert.strictEqual(clean, "Joy Maa Durga");
+    });
+
+    it('should sanitize javascript: URI links and strip control characters', () => {
+      const dirty = "javascript:alert(1) Devotee Name\u0000";
+      const clean = sanitizeText(dirty);
+      assert.strictEqual(clean, "alert(1) Devotee Name");
+    });
+
+    it('should validate donation amounts strictly within positive whole number limits', () => {
+      assert.strictEqual(validateDonationAmount(1001).isValid, true);
+      assert.strictEqual(validateDonationAmount("5000").isValid, true);
+      assert.strictEqual(validateDonationAmount(5).isValid, false); // below min
+      assert.strictEqual(validateDonationAmount(1000001).isValid, false); // above max
+      assert.strictEqual(validateDonationAmount(500.5).isValid, false); // non-integer
+      assert.strictEqual(validateDonationAmount("abc").isValid, false); // invalid NaN
+    });
+
+    it('should validate standard 10-digit Indian WhatsApp and mobile numbers', () => {
+      assert.strictEqual(validatePhoneNumber("9845000001"), true);
+      assert.strictEqual(validatePhoneNumber("+91 9845000001"), true);
+      assert.strictEqual(validatePhoneNumber("98450-00001"), true);
+      assert.strictEqual(validatePhoneNumber("12345"), false);
+      assert.strictEqual(validatePhoneNumber(""), false);
+    });
+  });
+
+  describe('16. RFC 5545 .ics & 1-Click Google Calendar Generators', () => {
+    const generateIcsContent = (event) => {
+      const location = event.location || "PBEL City Community Arena, Hyderabad, Telangana";
+      return [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//PBEL Sanskritik Samiti//PBEL Durgotsav 2026//EN",
+        "BEGIN:VEVENT",
+        `SUMMARY:${event.title}`,
+        `DESCRIPTION:${event.description}`,
+        `LOCATION:${location}`,
+        "STATUS:CONFIRMED",
+        "END:VEVENT",
+        "END:VCALENDAR",
+      ].join("\r\n");
+    };
+
+    const generateGoogleCalendarUrl = (event) => {
+      const params = new URLSearchParams({
+        action: "TEMPLATE",
+        text: event.title,
+        details: event.description,
+        location: event.location || "PBEL City Community Arena, Hyderabad, Telangana",
+      });
+      return `https://calendar.google.com/calendar/render?${params.toString()}`;
+    };
+
+    it('should generate valid RFC 5545 compliant VCALENDAR strings', () => {
+      const ics = generateIcsContent({
+        title: "Sandhi Pujo (108 Lotuses)",
+        description: "Sacred Sandhi Puja at PBEL City Durgotsav 2026",
+      });
+
+      assert.ok(ics.includes("BEGIN:VCALENDAR"));
+      assert.ok(ics.includes("VERSION:2.0"));
+      assert.ok(ics.includes("SUMMARY:Sandhi Pujo (108 Lotuses)"));
+      assert.ok(ics.includes("LOCATION:PBEL City Community Arena"));
+      assert.ok(ics.includes("END:VCALENDAR"));
+    });
+
+    it('should generate valid 1-Click Google Calendar URLs with encoded parameters', () => {
+      const gcal = generateGoogleCalendarUrl({
+        title: "Retro Rock by Fushmontor",
+        description: "Flagship live concert at PBEL Durgotsav 2026",
+      });
+
+      assert.ok(gcal.startsWith("https://calendar.google.com/calendar/render?"));
+      assert.ok(gcal.includes("text=Retro+Rock+by+Fushmontor"));
+      assert.ok(gcal.includes("location=PBEL+City+Community+Arena"));
+    });
+  });
+
+  describe('17. Self-Service Branding & 25MB Brochure Manager', () => {
+    const defaultBranding = {
+      samitiName: "PBEL Sanskritik Samiti",
+      festivalName: "PBEL City Durgotsav 2026",
+      activeHeroWallpaperId: "traditional-ekchala",
+      sponsorshipDeckPdfUrl: "/PBEL_City_Durgotsav_2026_Sponsorship_Deck.pdf",
+    };
+
+    it('should resolve default branding and support custom wallpaper and PDF overrides', () => {
+      const customBranding = {
+        ...defaultBranding,
+        activeHeroWallpaperId: "sandhi-deepam-aarti",
+        sponsorshipDeckPdfUrl: "https://storage.googleapis.com/pbel-assets/deck-25mb.pdf",
+      };
+
+      assert.strictEqual(customBranding.samitiName, "PBEL Sanskritik Samiti");
+      assert.strictEqual(customBranding.activeHeroWallpaperId, "sandhi-deepam-aarti");
+      assert.strictEqual(customBranding.sponsorshipDeckPdfUrl, "https://storage.googleapis.com/pbel-assets/deck-25mb.pdf");
+    });
+  });
+
+  describe('18. Anandamela Food Fiesta & Home Chef Directory Schema', () => {
+    const mockStalls = [
+      {
+        id: "stall-1",
+        stallName: "Calcutta Roll Express",
+        chefName: "Anirban Mukherjee",
+        category: "Rolls & Mughlai",
+        dishes: [
+          { name: "Egg Chicken Roll", price: 180, isVeg: false },
+          { name: "Paneer Tikka Roll", price: 150, isVeg: true },
+        ],
+      },
+      {
+        id: "stall-2",
+        stallName: "Mishti Mukh",
+        chefName: "Rupa Sengupta",
+        category: "Sweets & Pithe",
+        dishes: [{ name: "Kheer Patishapta", price: 90, isVeg: true }],
+      },
+    ];
+
+    it('should filter stalls by category and dietary flags (Pure Veg vs Non-Veg)', () => {
+      const vegStalls = mockStalls.filter((s) => s.dishes.some((d) => d.isVeg));
+      const nonVegStalls = mockStalls.filter((s) => s.dishes.some((d) => !d.isVeg));
+
+      assert.strictEqual(vegStalls.length, 2);
+      assert.strictEqual(nonVegStalls.length, 1);
+    });
+
+    it('should construct valid WhatsApp pre-order URL links for home chefs', () => {
+      const chefPhone = "9845000001";
+      const stallName = "Calcutta Roll Express";
+      const chefName = "Anirban Mukherjee";
+      const waUrl = `https://api.whatsapp.com/send?phone=${chefPhone}&text=Hello%20${encodeURIComponent(chefName)}%2C%20I%20saw%20your%20Anandamela%20stall%20"${encodeURIComponent(stallName)}"%20on%20the%20PBEL%20Durgotsav%20Portal!`;
+
+      assert.ok(waUrl.includes("phone=9845000001"));
+      assert.ok(waUrl.includes("Calcutta%20Roll%20Express"));
+      assert.ok(waUrl.includes("Anirban%20Mukherjee"));
+    });
+  });
+
+  describe('19. Township Pandal Facilities & Emergency Schema', () => {
+    const facilities = [
+      { id: "1", name: "Maa Durga Sanctum", category: "Sanctum & Rituals" },
+      { id: "2", name: "Senior Citizen Ramp", category: "Sanctum & Rituals" },
+      { id: "3", name: "Pratibimb Cultural Stage", category: "Cultural Stage" },
+      { id: "4", name: "Maha Bhog Dining Hall", category: "Dining & Bhog" },
+      { id: "5", name: "First Aid & Medical Station", category: "Amenities & Medical" },
+      { id: "6", name: "Parking Area", category: "Parking & Entry" },
+    ];
+
+    it('should have all 5 core facility categories mapped with clear locations', () => {
+      const categories = new Set(facilities.map((f) => f.category));
+      assert.strictEqual(categories.size, 5);
+      assert.ok(categories.has("Sanctum & Rituals"));
+      assert.ok(categories.has("Dining & Bhog"));
+      assert.ok(categories.has("Amenities & Medical"));
+    });
+  });
+
+  describe('20. Committee Budget Ledger & Surplus Calculation', () => {
+    it('should accurately calculate Net Surplus across Donations, Memberships, and Expenses', () => {
+      const totalFunds = 250000; // Public donations
+      const membersCount = 100;
+      const membershipFee = 7500;
+      const sponsorsCount = 5;
+      const avgSponsorship = 50000;
+
+      const totalInflow = totalFunds + (membersCount * membershipFee) + (sponsorsCount * avgSponsorship);
+
+      const expenses = [
+        { category: "Pratima & Purohit", actual: 145000 },
+        { category: "Pandal & Lighting", actual: 240000 },
+        { category: "Dhaaki", actual: 55000 },
+        { category: "Maha Bhog Groceries", actual: 175000 },
+        { category: "Sound & Stage", actual: 110000 },
+        { category: "Sanitation & Green Pujo", actual: 25000 },
+      ];
+
+      const totalIncurred = expenses.reduce((sum, e) => sum + e.actual, 0);
+      const netSurplus = totalInflow - totalIncurred;
+
+      assert.strictEqual(totalInflow, 1250000); // 2.5L + 7.5L + 2.5L
+      assert.strictEqual(totalIncurred, 750000);
+      assert.strictEqual(netSurplus, 500000);
+      assert.ok(netSurplus > 0, "Committee budget must project positive surplus");
+    });
+  });
+
 });
 

@@ -18,6 +18,8 @@ import {
   Star
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { useEffect } from "react";
+import { getStoredBranding, DEFAULT_BRANDING, SamitiBrandingConfig } from "@/config/branding";
 
 export default function SponsorsPage() {
   const [formData, setFormData] = useState({
@@ -31,6 +33,16 @@ export default function SponsorsPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [branding, setBranding] = useState<SamitiBrandingConfig>(DEFAULT_BRANDING);
+
+  useEffect(() => {
+    try {
+      setBranding(getStoredBranding());
+      const handleUpdate = () => setBranding(getStoredBranding());
+      window.addEventListener("pbel_branding_updated", handleUpdate);
+      return () => window.removeEventListener("pbel_branding_updated", handleUpdate);
+    } catch (_) {}
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,8 +200,10 @@ export default function SponsorsPage() {
               <span>Partner With Us / Request Callback</span>
             </a>
             <a
-              href="/docs/PBEL_Durgotsav_2026_Sponsorship_Deck.pdf"
-              download
+              href={branding.sponsorshipDeckPdfUrl || "/PBEL_City_Durgotsav_2026_Sponsorship_Deck.pdf"}
+              download={branding.sponsorshipDeckFileName || "PBEL_City_Durgotsav_2026_Sponsorship_Deck.pdf"}
+              target="_blank"
+              rel="noreferrer"
               className="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white px-7 py-3.5 rounded-full font-semibold text-sm transition flex items-center justify-center gap-2 backdrop-blur-md"
             >
               <Download size={16} className="text-amber-300" />

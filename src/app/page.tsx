@@ -20,6 +20,7 @@ import { supabase } from "@/utils/supabase/client";
 import { GalleryCarousel } from "@/components/GalleryCarousel";
 import { HomeQuickContribute } from "@/components/HomeQuickContribute";
 import { TowerParticipation } from "@/components/TowerParticipation";
+import { FestiveHero } from "@/components/FestiveHero";
 
 export const revalidate = 0; // Fresh data on every load
 
@@ -146,80 +147,8 @@ export default async function Home() {
   return (
     <div className="flex flex-col items-center w-full min-h-screen">
       
-      {/* 1. FESTIVE HERO SECTION */}
-      <section className="w-full bg-festive-hero text-white relative overflow-hidden py-16 md:py-24 px-4 sm:px-6 lg:px-8 border-b border-amber-500/20">
-        
-        {/* Background Mandala Glow Accent */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-red-600/20 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="max-w-4xl mx-auto text-center relative z-10 space-y-6">
-          
-          {/* Top Samiti Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/15 border border-amber-400/30 text-amber-300 text-xs md:text-sm font-semibold tracking-wide backdrop-blur-md">
-            <Sparkles size={15} className="text-amber-400 animate-pulse" />
-            <span>PBEL Sanskritik Samiti (PSS) Presents</span>
-          </div>
-
-          {/* Main Typography */}
-          <h1 className="font-heading text-4xl sm:text-6xl md:text-7xl font-bold tracking-tight text-white leading-tight">
-            PBEL City <span className="text-gold-gradient">Durgotsav 2026</span>
-          </h1>
-
-          <p className="text-base sm:text-xl text-amber-100/90 max-w-2xl mx-auto font-normal leading-relaxed">
-            Welcome to the 6-day grand celebration of devotion, heritage, cultural stage acts, and community unity in Hyderabad.
-          </p>
-
-          {/* Quick Date & Venue Cards */}
-          <div className="flex flex-wrap items-center justify-center gap-3 text-xs md:text-sm pt-2">
-            <div className="bg-black/30 backdrop-blur-md border border-amber-400/25 px-4 py-2 rounded-xl text-amber-200 flex items-center gap-2">
-              <CalendarDays size={16} className="text-amber-400" />
-              <span><strong>Dates:</strong> 15th to 20th Oct 2026 (Panchami to Dashami)</span>
-            </div>
-            <div className="bg-black/30 backdrop-blur-md border border-amber-400/25 px-4 py-2 rounded-xl text-amber-200 flex items-center gap-2">
-              <MapPin size={16} className="text-amber-400" />
-              <span><strong>Venue:</strong> PBEL City Main Ground, TSPA Junction</span>
-            </div>
-          </div>
-
-          {/* Primary Action CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 max-w-lg mx-auto pt-2">
-            <Link 
-              href="/contribute" 
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white px-7 py-3.5 rounded-full font-bold text-sm transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5 golden-glow"
-            >
-              <HeartHandshake size={18} />
-              <span>Sponsor / E-Seva</span>
-            </Link>
-            <Link 
-              href="/programs" 
-              className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white px-7 py-3.5 rounded-full font-semibold text-sm transition-all backdrop-blur-md"
-            >
-              <span>View Schedule</span>
-              <ArrowRight size={16} />
-            </Link>
-          </div>
-
-          {/* Committee & Quick Deck Access Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-            <Link
-              href="/committee"
-              className="inline-flex items-center gap-1.5 bg-amber-400/15 hover:bg-amber-400/25 border border-amber-400/35 text-amber-200 hover:text-white px-4 py-1.5 rounded-full text-xs font-semibold transition"
-            >
-              <Users size={13} className="text-amber-400" />
-              <span>👥 Organizing Committee Wings</span>
-            </Link>
-            <Link
-              href="/sponsors"
-              className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-amber-100 hover:text-white px-4 py-1.5 rounded-full text-xs font-semibold transition"
-            >
-              <Award size={13} className="text-amber-400" />
-              <span>🏢 Corporate Deck</span>
-            </Link>
-          </div>
-
-        </div>
-      </section>
+      {/* 1. DYNAMIC FESTIVE HERO SECTION (Self-Service Branding & Wallpapers) */}
+      <FestiveHero />
 
       {/* 2. LIVE PUJO FUND COUNTER BAR */}
       <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 -mt-8 relative z-20 space-y-6">
