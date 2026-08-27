@@ -1095,7 +1095,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       params.set("cu", "INR");
       if (tn) params.set("tn", tn.slice(0, 50));
 
-      const query = params.toString();
+      const query = params.toString().replace(/\+/g, '%20');
 
       switch (appScheme) {
         case "gpay":
@@ -1116,6 +1116,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       });
 
       assert.ok(uri.startsWith("upi://pay?"), "Must use upi://pay scheme");
+      assert.ok(!uri.includes("+"), "Must not include '+' characters for spaces (RFC 3986 encoding required)");
       assert.ok(uri.includes("pa=PBELSANSKRITIKSAMITI%40icici") || uri.includes("pa=PBELSANSKRITIKSAMITI@icici"));
       assert.ok(uri.includes("tr=EZYS9347708431"), "Must include official bank terminal tr");
       assert.ok(uri.includes("mc=1520"), "Must include official ICICI merchant code 1520");
