@@ -943,6 +943,17 @@ function decodeCategoryDescription(desc?: string) {
                       className="w-36 h-36 mx-auto rounded-lg"
                     />
                     <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan &amp; Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
+                    <a
+                      href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic")
+                      )}`}
+                      download={`PBEL-Durgotsav-QR-${customAmount}.png`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 text-[10px] font-bold text-amber-900 bg-amber-100/90 hover:bg-amber-200 px-2.5 py-1 rounded-md transition flex items-center justify-center gap-1"
+                    >
+                      <Download size={11} /> Save QR Image
+                    </a>
                   </div>
                 </div>
               )}
@@ -1278,12 +1289,23 @@ function decodeCategoryDescription(desc?: string) {
                 <div className="bg-white p-2.5 rounded-2xl border border-amber-300 shadow-sm inline-block">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                      generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)
+                      generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "generic")
                     )}`}
                     alt="PBEL Sanskritik Samiti UPI QR"
                     className="w-32 h-32 sm:w-36 sm:h-36 mx-auto rounded-lg"
                   />
                   <span className="text-[10px] text-gray-500 font-bold block mt-1">Scan &amp; Pay ₹{modalSeva.amount.toLocaleString("en-IN")}</span>
+                  <a
+                    href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+                      generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "generic")
+                    )}`}
+                    download={`PBEL-Seva-${modalSeva.title}.png`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-md transition flex items-center justify-center gap-1"
+                  >
+                    <Download size={10} /> Save QR
+                  </a>
                 </div>
 
                 <div className="flex items-center justify-center gap-2 text-[11px] text-gray-600 mt-2">

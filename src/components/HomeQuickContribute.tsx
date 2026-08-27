@@ -617,6 +617,17 @@ export function HomeQuickContribute() {
                   <span className="text-[10px] text-gray-500 font-bold block mt-1">
                     Pay ₹{amount ? Number(amount).toLocaleString("en-IN") : "1,001"}
                   </span>
+                  <a
+                    href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
+                      generateUpiString(Number(amount) || 1001, "generic")
+                    )}`}
+                    download={`PBEL-Durgotsav-QR-${amount || 1001}.png`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-md transition flex items-center justify-center gap-1"
+                  >
+                    <Download size={10} /> Save QR
+                  </a>
                 </div>
 
                 <div className="bg-white p-2.5 rounded-xl border border-amber-200 text-center mb-3">
