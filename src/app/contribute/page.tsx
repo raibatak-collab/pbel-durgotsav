@@ -927,6 +927,16 @@ function decodeCategoryDescription(desc?: string) {
                           <li>Paste <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> &amp; Pay ₹{Number(customAmount).toLocaleString("en-IN")}</li>
                         </ol>
                       </div>
+
+                      {/* Adaptive Pro-Tip for Google Pay / UPI amounts above Rs 2,000 */}
+                      {Number(customAmount) > 2000 && (
+                        <div className="bg-amber-100/90 border border-amber-300 p-3 rounded-2xl text-[11.5px] text-amber-950 flex items-start gap-2 shadow-2xs">
+                          <span className="text-base shrink-0">💡</span>
+                          <div className="leading-snug">
+                            <strong>Note for Google Pay (&gt; ₹2,000):</strong> Google Pay restricts remote gallery photo uploads to ₹2,000. For your contribution of <strong className="text-primary font-bold">₹{Number(customAmount).toLocaleString("en-IN")}</strong>, please use <strong className="text-amber-900">"📋 1-Tap Copy UPI ID"</strong> and pay via <em>"Pay to UPI ID"</em> in GPay for instant approval without limits, or scan this QR directly with another device.
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -945,7 +955,8 @@ function decodeCategoryDescription(desc?: string) {
                       onClick={() => saveQrCodeToGallery(generateUpiString(Number(customAmount), customPurpose || "Pujo Seva"), customAmount, customPurpose || "Pujo-Seva")}
                       className="mt-2 text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1 w-full shadow-2xs"
                     >
-                      <Download size={12} /> Save QR to Gallery / Photos
+                      <Download size={12} />
+                      <span>{Number(customAmount) > 2000 ? "Save QR (PhonePe / Paytm / <₹2k)" : "Save QR to Gallery / Photos"}</span>
                     </button>
                   </div>
                 </div>
@@ -1295,6 +1306,16 @@ function decodeCategoryDescription(desc?: string) {
                   <span className="font-bold text-gray-900 block">📱 To pay via Google Pay / PhonePe / Paytm:</span>
                   <span>1. Tap <strong>"1-Tap Copy UPI ID"</strong> ➔ 2. Open GPay/PhonePe ➔ 3. Select <strong>"Pay UPI ID"</strong> &amp; paste <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong></span>
                 </div>
+
+                {/* Adaptive Pro-Tip for Google Pay / UPI amounts above Rs 2,000 */}
+                {Number(modalSeva.amount) > 2000 && (
+                  <div className="bg-amber-100/90 border border-amber-300 p-2.5 rounded-xl text-[11px] text-amber-950 text-left flex items-start gap-1.5 shadow-2xs">
+                    <span className="text-sm shrink-0">💡</span>
+                    <div className="leading-tight">
+                      <strong>Google Pay Note (&gt; ₹2,000):</strong> GPay limits gallery photo uploads to ₹2,000. For ₹{Number(modalSeva.amount).toLocaleString("en-IN")}, please use <strong>"📋 1-Tap Copy UPI ID"</strong> and pay via <em>"Pay to UPI ID"</em> in GPay for instant approval without limits.
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

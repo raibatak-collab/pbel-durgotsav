@@ -24,179 +24,11 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent } from "@/utils/security";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
-
-interface DaySchedule {
-  id: string;
-  dayName: string;
-  bengaliName: string;
-  date: string;
-  isoDate: string;
-  theme: string;
-  rituals: { time: string; event: string; type: "ritual" | "bhog" | "aarti" | "cultural" }[];
-  culturalEvening: {
-    title: string;
-    time: string;
-    description: string;
-    pssHeadliner?: {
-      title: string;
-      time: string;
-      duration: string;
-      genre: string;
-    };
-    acts: string[];
-    residentSlotsAvailable: number;
-  };
-}
-
-const pujoSchedule: DaySchedule[] = [
-  {
-    id: "panchami",
-    dayName: "Maha Panchami",
-    bengaliName: "মহাপঞ্চমী",
-    date: "15 Oct 2026",
-    isoDate: "2026-10-15",
-    theme: "Agomoni, Anandamela & Stage Inauguration",
-    rituals: [
-      { time: "05:30 PM", event: "Pandal Inauguration & Diya Lighting Ceremony", type: "ritual" },
-      { time: "06:00 PM", event: "Anandamela Food Stalls (Resident Home Chefs)", type: "bhog" },
-      { time: "07:00 PM", event: "Agomoni Songs & Dhaak Welcome Rhythm", type: "cultural" },
-    ],
-    culturalEvening: {
-      title: "Agomoni Musical Night & Anandamela Gala",
-      time: "07:00 PM - 09:30 PM",
-      description: "Welcoming Maa Durga with heartfelt Agomoni songs, traditional Rabindra Sangeet, and resident food fiesta.",
-      acts: ["Agomoni Choral Melodies", "Kids Anandamela Performance", "Opening Classical Dance Recital"],
-      residentSlotsAvailable: 10,
-    },
-  },
-  {
-    id: "sashti",
-    dayName: "Maha Sashti",
-    bengaliName: "মহাষষ্ঠী",
-    date: "16 Oct 2026",
-    isoDate: "2026-10-16",
-    theme: "Devi Bodhon & Retro Rock Gala",
-    rituals: [
-      { time: "08:30 AM", event: "Pratima Sthapana & Kalparambho", type: "ritual" },
-      { time: "06:30 PM", event: "Devi Bodhon, Amantran & Adhibas Rituals", type: "ritual" },
-      { time: "07:45 PM", event: "Grand Sandhya Aarti with Dhaak Beats", type: "aarti" },
-      { time: "08:30 PM", event: "Prasad & Mishti Distribution", type: "bhog" },
-    ],
-    culturalEvening: {
-      title: "Pratibimb Stage: Dance Extravaganza & Retro Rock",
-      time: "06:30 PM - 10:30 PM",
-      description: "Resident dance showcases followed by the electrifying flagship Retro Rock concert.",
-      pssHeadliner: {
-        title: "🎸 Retro Rock by Fushmontor",
-        time: "08:15 PM Start",
-        duration: "1.5 Hours (90 mins)",
-        genre: "Live Bengali & Bollywood Retro Rock Fusion",
-      },
-      acts: ["Resident Opening Dance Medley (06:30 PM)", "Kids Dance & Vocals (07:15 PM)", "⭐ Retro Rock by Fushmontor (08:15 PM)"],
-      residentSlotsAvailable: 8,
-    },
-  },
-  {
-    id: "saptami",
-    dayName: "Maha Saptami",
-    bengaliName: "মহাসপ্তমী",
-    date: "17 Oct 2026",
-    isoDate: "2026-10-17",
-    theme: "Nabapatrika Pravesh & Dance Drama",
-    rituals: [
-      { time: "07:30 AM", event: "Nabapatrika (Kola Bou) Snan & Pravesh", type: "ritual" },
-      { time: "10:30 AM", event: "Maha Saptami Pushpanjali (Batch 1 & 2)", type: "ritual" },
-      { time: "01:00 PM", event: "Maha Bhog Distribution (Khichuri, Labra, Payesh)", type: "bhog" },
-      { time: "07:00 PM", event: "Sandhya Aarti & Deepam Seva", type: "aarti" },
-    ],
-    culturalEvening: {
-      title: "Pratibimb: Dance Drama & Musical Melodies",
-      time: "06:30 PM - 10:30 PM",
-      description: "Resident band performances followed by the signature PSS Dance Drama production.",
-      pssHeadliner: {
-        title: "💃 Dance Drama Production by PBEL Sanskritik Samiti",
-        time: "07:45 PM Start",
-        duration: "1.0 Hour (60 mins)",
-        genre: "Thematic Bengali Cultural Dance Drama (Nritya Natya)",
-      },
-      acts: ["Resident Classical Vocals (06:30 PM)", "⭐ Dance Drama Production by PSS (07:45 PM)", "Township Acoustic Band Set (09:00 PM)"],
-      residentSlotsAvailable: 8,
-    },
-  },
-  {
-    id: "ashtami",
-    dayName: "Maha Ashtami",
-    bengaliName: "মহাষ্টমী",
-    date: "18 Oct 2026",
-    isoDate: "2026-10-18",
-    theme: "Sandhi Pujo & Grand Bangla Drama",
-    rituals: [
-      { time: "09:30 AM", event: "Maha Ashtami Pujo & Special Pushpanjali", type: "ritual" },
-      { time: "11:30 AM", event: "Sacred Kumari Puja", type: "ritual" },
-      { time: "01:30 PM", event: "Maha Bhog Feast for All Residents", type: "bhog" },
-      { time: "04:15 PM", event: "Sandhi Pujo (Offering of 108 Lotuses & 108 Deepam)", type: "ritual" },
-      { time: "07:30 PM", event: "Grand Maha Aarti & Dhunuchi Naach showcase", type: "aarti" },
-    ],
-    culturalEvening: {
-      title: "Pratibimb: Grand Bangla Drama & Dhaak Jugalbandi",
-      time: "06:30 PM - 11:00 PM",
-      description: "The peak evening featuring Dhaak beats and the acclaimed annual PSS Bangla Natok.",
-      pssHeadliner: {
-        title: "🎭 Grand Bangla Theatrical Drama (Natok) by PSS",
-        time: "07:45 PM Start",
-        duration: "1.0 Hour (60 mins)",
-        genre: "Full-Length Bengali Theatrical Play / Natok",
-      },
-      acts: ["Township Dhunuchi Dance Face-off (06:45 PM)", "⭐ Grand Bangla Drama by PSS (07:45 PM)", "Dhaak Jugalbandi Battle (09:15 PM)"],
-      residentSlotsAvailable: 8,
-    },
-  },
-  {
-    id: "nabami",
-    dayName: "Maha Nabami",
-    bengaliName: "মহানবমী",
-    date: "19 Oct 2026",
-    isoDate: "2026-10-19",
-    theme: "Maha Yajna & Grand Cultural Finale",
-    rituals: [
-      { time: "09:30 AM", event: "Maha Nabami Pujo & Pushpanjali", type: "ritual" },
-      { time: "11:00 AM", event: "Maha Navami Maha Yajna & Havan", type: "ritual" },
-      { time: "01:30 PM", event: "Special Navami Maha Bhog Feast", type: "bhog" },
-      { time: "07:30 PM", event: "Maha Aarti & Dhunuchi Dance Competition", type: "aarti" },
-    ],
-    culturalEvening: {
-      title: "Pratibimb: Cultural Grand Finale & Awards",
-      time: "07:00 PM - 11:00 PM",
-      description: "Resident awards ceremony, community talent grand finale, and festive dandiya/dhaak beats.",
-      acts: ["Anandamela & Sports Prize Distribution", "Resident Talent Champions Encore", "Festive Garba & Dandiya Beats"],
-      residentSlotsAvailable: 12,
-    },
-  },
-  {
-    id: "dashami",
-    dayName: "Vijaya Dashami",
-    bengaliName: "বিজয়াদশমী",
-    date: "20 Oct 2026",
-    isoDate: "2026-10-20",
-    theme: "Sindoor Khela, Visarjan & Subho Bijoya",
-    rituals: [
-      { time: "09:00 AM", event: "Darpan Visarjan (Mirror Immersion Ceremony)", type: "ritual" },
-      { time: "10:30 AM", event: "Devi Baran & Traditional Sindoor Khela", type: "ritual" },
-      { time: "04:30 PM", event: "Maa Durga Visarjan Shobha Yatra (Procession)", type: "ritual" },
-      { time: "08:00 PM", event: "Shanti Jal Sprinkling & Subho Bijoya Kolakoli", type: "ritual" },
-    ],
-    culturalEvening: {
-      title: "Subho Bijoya Sammilani & Dhunuchi Master Finale",
-      time: "06:30 PM - 09:30 PM",
-      description: "Traditional blessings, sweet distribution, and celebrating the triumph of good over evil.",
-      acts: ["Dhunuchi Master Showcase", "Subho Bijoya Choral Melodies", "Sweet & Mishti Sharing Gathering"],
-      residentSlotsAvailable: 6,
-    },
-  },
-];
+import { getStoredSchedule, fetchStoredSchedule, DaySchedule } from "@/config/schedule";
 
 export default function ProgramsPage() {
   const [selectedDay, setSelectedDay] = useState<string>("sashti");
+  const [schedule, setSchedule] = useState<DaySchedule[]>(getStoredSchedule());
   const [towersList, setTowersList] = useState<TowerDefinition[]>([]);
   const [selectedTower, setSelectedTower] = useState<string>("");
   const [flatUnit, setFlatUnit] = useState<string>("");
@@ -230,7 +62,7 @@ export default function ProgramsPage() {
     document.body.removeChild(link);
   };
 
-  // Sync selected day with URL query param ?day=... (e.g. from Homepage cards)
+  // Sync selected day with URL query param ?day=... and hydrate dynamic schedule + towers
   useEffect(() => {
     try {
       const stored = getStoredTowers();
@@ -243,19 +75,32 @@ export default function ProgramsPage() {
           setTowersList(cloudTowers);
         }
       });
+
+      // Hydrate dynamic Pujo Nirghanto & Pratibimb schedule
+      const localSched = getStoredSchedule();
+      setSchedule(localSched);
+      fetchStoredSchedule().then((cloudSched) => {
+        if (cloudSched && cloudSched.length > 0) {
+          setSchedule(cloudSched);
+        }
+      });
     } catch (_) {}
 
     const handleTowerUpdate = () => {
-      const stored = getStoredTowers();
-      setTowersList(stored);
+      setTowersList(getStoredTowers());
+    };
+
+    const handleScheduleUpdate = () => {
+      setSchedule(getStoredSchedule());
     };
 
     window.addEventListener("pbel_towers_updated", handleTowerUpdate);
+    window.addEventListener("pbel_schedule_updated", handleScheduleUpdate);
 
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const dayParam = params.get("day");
-      if (dayParam && pujoSchedule.some((s) => s.id === dayParam)) {
+      if (dayParam && schedule.some((s) => s.id === dayParam)) {
         setSelectedDay(dayParam);
         const dayDates: Record<string, string> = {
           panchami: "2026-10-15",
@@ -274,10 +119,11 @@ export default function ProgramsPage() {
 
     return () => {
       window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
+      window.removeEventListener("pbel_schedule_updated", handleScheduleUpdate);
     };
   }, []);
 
-  const currentSchedule = pujoSchedule.find((s) => s.id === selectedDay) || pujoSchedule[1];
+  const currentSchedule = schedule.find((s) => s.id === selectedDay) || schedule[1] || schedule[0];
 
   const handleRegisterPerformance = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -374,7 +220,7 @@ export default function ProgramsPage() {
       {/* 2. INTERACTIVE 6-DAY TIMELINE SWITCHER */}
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-8">
         <div className="flex items-center justify-start md:justify-center gap-2.5 overflow-x-auto pb-4 pt-2 no-scrollbar">
-          {pujoSchedule.map((day) => (
+          {schedule.map((day) => (
             <button
               key={day.id}
               onClick={() => {

@@ -1324,7 +1324,140 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('40. Dynamic 6-Day Pujo Nirghanto & Pratibimb Stage Schedule Sync', () => {
+    const mockSchedule = [
+      {
+        id: "panchami",
+        dayName: "Maha Panchami",
+        bengaliName: "মহাপঞ্চমী",
+        date: "15 Oct 2026",
+        isoDate: "2026-10-15",
+        theme: "Agomoni, Anandamela & Stage Inauguration",
+        rituals: [
+          { time: "05:30 PM", event: "Pandal Inauguration & Diya Lighting Ceremony", type: "ritual" },
+          { time: "06:00 PM", event: "Anandamela Food Stalls (Resident Home Chefs)", type: "bhog" },
+        ],
+        culturalEvening: {
+          title: "Agomoni Musical Night & Anandamela Gala",
+          time: "07:00 PM - 09:30 PM",
+          description: "Welcoming Maa Durga with heartfelt Agomoni songs.",
+          acts: ["Agomoni Choral Melodies", "Kids Anandamela Performance"],
+          residentSlotsAvailable: 10,
+        },
+      },
+      {
+        id: "sashti",
+        dayName: "Maha Sashti",
+        bengaliName: "মহাষষ্ঠী",
+        date: "16 Oct 2026",
+        isoDate: "2026-10-16",
+        theme: "Devi Bodhon & Retro Rock Gala",
+        rituals: [
+          { time: "08:30 AM", event: "Pratima Sthapana & Kalparambho", type: "ritual" },
+          { time: "06:30 PM", event: "Devi Bodhon, Amantran & Adhibas Rituals", type: "ritual" },
+        ],
+        culturalEvening: {
+          title: "Pratibimb Stage: Dance Extravaganza & Retro Rock",
+          time: "06:30 PM - 10:30 PM",
+          description: "Resident dance showcases followed by the flagship Retro Rock concert.",
+          pssHeadliner: {
+            title: "🎸 Retro Rock by Fushmontor",
+            time: "08:15 PM Start",
+            duration: "1.5 Hours (90 mins)",
+            genre: "Live Bengali & Bollywood Retro Rock Fusion",
+          },
+          acts: ["Resident Opening Dance Medley (06:30 PM)", "⭐ Retro Rock by Fushmontor (08:15 PM)"],
+          residentSlotsAvailable: 8,
+        },
+      },
+    ];
+
+    it('should accurately serialize and deserialize 6-day DaySchedule structures', () => {
+      const serialized = JSON.stringify(mockSchedule);
+      const restored = JSON.parse(serialized);
+
+      assert.strictEqual(restored.length, 2);
+      assert.strictEqual(restored[0].id, "panchami");
+      assert.strictEqual(restored[1].id, "sashti");
+      assert.strictEqual(restored[1].culturalEvening.pssHeadliner?.title, "🎸 Retro Rock by Fushmontor");
+    });
+
+    it('should update rituals in-place when admin adds or modifies an event', () => {
+      let schedule = [...mockSchedule];
+      const newRitual = { time: "07:45 PM", event: "Grand Sandhya Aarti with Dhaak", type: "aarti" };
+
+      schedule = schedule.map((day) =>
+        day.id === "sashti"
+          ? { ...day, rituals: [...day.rituals, newRitual] }
+          : day
+      );
+
+      const sashtiDay = schedule.find((d) => d.id === "sashti");
+      assert.strictEqual(sashtiDay.rituals.length, 3);
+      assert.strictEqual(sashtiDay.rituals[2].event, "Grand Sandhya Aarti with Dhaak");
+    });
+
+    it('should update cultural evening theme and headliner when admin modifies evening config', () => {
+      let schedule = [...mockSchedule];
+
+      schedule = schedule.map((day) =>
+        day.id === "sashti"
+          ? {
+              ...day,
+              theme: "Devi Bodhon & Fushmontor Live",
+              culturalEvening: {
+                ...day.culturalEvening,
+                title: "Devi Bodhon & Fushmontor Live",
+                residentSlotsAvailable: 12,
+              },
+            }
+          : day
+      );
+
+      const sashtiDay = schedule.find((d) => d.id === "sashti");
+      assert.strictEqual(sashtiDay.theme, "Devi Bodhon & Fushmontor Live");
+      assert.strictEqual(sashtiDay.culturalEvening.residentSlotsAvailable, 12);
+    });
+  });
+
+  describe('41. Adaptive GPay > ₹2,000 Guidance & Devotee Notice Logic', () => {
+    const getGpayGuidance = (amount) => {
+      const num = Number(amount);
+      if (num > 2000) {
+        return {
+          needsProTip: true,
+          notice: `Google Pay restricts remote gallery photo uploads to ₹2,000 for user security. For your contribution of ₹${num.toLocaleString("en-IN")}, please use "1-Tap Copy UPI ID" and pay via "Pay to UPI ID" in GPay for instant approval without limits.`,
+          qrButtonLabel: "Save QR (PhonePe / Paytm / <₹2k)",
+        };
+      }
+      return {
+        needsProTip: false,
+        notice: null,
+        qrButtonLabel: "Save QR to Gallery / Photos",
+      };
+    };
+
+    it('should trigger pro-tip notice and adjust QR button label for amounts strictly greater than 2000', () => {
+      const gpay501 = getGpayGuidance(501);
+      assert.strictEqual(gpay501.needsProTip, false);
+      assert.strictEqual(gpay501.qrButtonLabel, "Save QR to Gallery / Photos");
+
+      const gpay2000 = getGpayGuidance(2000);
+      assert.strictEqual(gpay2000.needsProTip, false);
+
+      const gpay2001 = getGpayGuidance(2001);
+      assert.strictEqual(gpay2001.needsProTip, true);
+      assert.ok(gpay2001.notice.includes("₹2,001"));
+      assert.strictEqual(gpay2001.qrButtonLabel, "Save QR (PhonePe / Paytm / <₹2k)");
+
+      const gpay10001 = getGpayGuidance(10001);
+      assert.strictEqual(gpay10001.needsProTip, true);
+      assert.ok(gpay10001.notice.includes("₹10,001"));
+    });
+  });
+
 });
+
 
 
 

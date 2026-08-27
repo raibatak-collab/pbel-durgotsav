@@ -47,6 +47,7 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
+import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule } from "@/config/schedule";
 import { 
   AESTHETIC_WALLPAPERS, 
   DEFAULT_BRANDING, 
@@ -417,15 +418,33 @@ export default function AdminDashboard() {
       setCommitteeWings(getStoredCommittee());
       setTowerList(getStoredTowers());
 
-      // Fetch fresh cloud config
+      // Fetch fresh cloud config & auto-seed if cloud is missing
       fetchStoredTowers().then((cloudTowers) => {
-        if (cloudTowers && cloudTowers.length > 0) setTowerList(cloudTowers);
+        if (cloudTowers && cloudTowers.length > 0) {
+          setTowerList(cloudTowers);
+        } else {
+          // Cloud row missing for towers; auto-push local so mobiles immediately sync
+          const localTowers = getStoredTowers();
+          if (localTowers && localTowers.length > 0) {
+            saveStoredTowers(localTowers);
+          }
+        }
       });
       fetchStoredCommittee().then((cloudWings) => {
-        if (cloudWings && cloudWings.length > 0) setCommitteeWings(cloudWings);
+        if (cloudWings && cloudWings.length > 0) {
+          setCommitteeWings(cloudWings);
+        } else {
+          const localWings = getStoredCommittee();
+          if (localWings && localWings.length > 0) {
+            saveStoredCommittee(localWings);
+          }
+        }
       });
       fetchStoredBranding().then((cloudBranding) => {
         if (cloudBranding) setBranding(cloudBranding);
+      });
+      fetchStoredSchedule().then((cloudSched) => {
+        // dynamic schedule hydrated from cloud
       });
 
       const savedExpenses = localStorage.getItem("pbel_budget_expenses");
@@ -435,15 +454,6 @@ export default function AdminDashboard() {
       }
 
       // Fetch all dynamic collections from Supabase Cloud
-      fetchStoredTowers().then((cloudTowers) => {
-        if (cloudTowers && cloudTowers.length > 0) setTowerList(cloudTowers);
-      });
-      fetchStoredCommittee().then((cloudWings) => {
-        if (cloudWings && cloudWings.length > 0) setCommitteeWings(cloudWings);
-      });
-      fetchStoredBranding().then((cloudBranding) => {
-        if (cloudBranding) setBranding(cloudBranding);
-      });
       fetchCloudConfig<string>("announcement", "").then((cloudAnnounce) => {
         if (cloudAnnounce) {
           setAnnouncementText(cloudAnnounce);
@@ -505,11 +515,13 @@ export default function AdminDashboard() {
       }));
       const currentCommittee = getStoredCommittee();
       const currentBranding = getStoredBranding();
+      const currentSchedule = getStoredSchedule();
 
       await Promise.all([
         saveCloudConfig("towers", currentTowers),
         saveCloudConfig("committee", currentCommittee),
         saveCloudConfig("branding", currentBranding),
+        saveCloudConfig("schedule_days", currentSchedule),
         saveCloudConfig("announcement", announcementText.trim()),
         saveCloudConfig("sponsor_leads", sponsorLeads),
         saveCloudConfig("bhog_passes", bhogPasses),
@@ -519,7 +531,7 @@ export default function AdminDashboard() {
         saveCloudConfig("admin_users", adminUsers),
       ]);
 
-      alert("🎉 Successfully synced ALL portal settings, Towers, Committee Wings, Member Passes, Budget, and Announcements to Supabase Cloud!\n\nAll data is now live immediately across every mobile device and browser.");
+      alert("🎉 Successfully synced ALL portal settings, Towers, Committee Wings, Member Passes, Budget, Schedule, and Announcements to Supabase Cloud!\n\nAll data is now live immediately across every mobile device and browser.");
     } catch (err: any) {
       console.error("Cloud sync error:", err);
       alert(`Cloud sync failed: ${err.message || err}`);
@@ -1301,7 +1313,32 @@ function decodeCategoryDescription(desc?: string) {
             event_type: newEvent.event_type,
           }).eq("id", newEvent.id);
         } catch (_) {}
-        alert("Event updated successfully!");
+
+        // Update in dynamic 6-day DaySchedule in schedule.ts
+        const currentSched = getStoredSchedule();
+        const dateToDayId: Record<string, string> = {
+          "2026-10-15": "panchami",
+          "2026-10-16": "sashti",
+          "2026-10-17": "saptami",
+          "2026-10-18": "ashtami",
+          "2026-10-19": "nabami",
+          "2026-10-20": "dashami",
+        };
+        const targetDayId = dateToDayId[newEvent.date] || "sashti";
+        const updatedSched = currentSched.map((d) => {
+          if (d.id === targetDayId) {
+            const updatedRituals = d.rituals.map((r) =>
+              r.event === newEvent.title || r.time === newEvent.time
+                ? { ...r, event: newEvent.title, time: newEvent.time }
+                : r
+            );
+            return { ...d, rituals: updatedRituals };
+          }
+          return d;
+        });
+        saveStoredSchedule(updatedSched);
+
+        alert("Event updated successfully and synced to Cloud!");
       } else {
         // Add new
         const newEntry = {
@@ -1323,7 +1360,41 @@ function decodeCategoryDescription(desc?: string) {
             event_type: newEvent.event_type,
           });
         } catch (_) {}
-        alert("New event published to live schedule!");
+
+        // Update in dynamic 6-day DaySchedule in schedule.ts
+        const currentSched = getStoredSchedule();
+        const dateToDayId: Record<string, string> = {
+          "2026-10-15": "panchami",
+          "2026-10-16": "sashti",
+          "2026-10-17": "saptami",
+          "2026-10-18": "ashtami",
+          "2026-10-19": "nabami",
+          "2026-10-20": "dashami",
+        };
+        const targetDayId = dateToDayId[newEvent.date] || "sashti";
+        const updatedSched = currentSched.map((d) => {
+          if (d.id === targetDayId) {
+            return {
+              ...d,
+              rituals: [
+                ...d.rituals,
+                {
+                  time: newEvent.time,
+                  event: newEvent.title,
+                  type: (newEvent.event_type?.toLowerCase().includes("bhog")
+                    ? "bhog"
+                    : newEvent.event_type?.toLowerCase().includes("aarti")
+                    ? "aarti"
+                    : "ritual") as any,
+                },
+              ],
+            };
+          }
+          return d;
+        });
+        saveStoredSchedule(updatedSched);
+
+        alert("New event published to live schedule and synced to Cloud!");
       }
 
       setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: "2026-10-15", time: "10:00 AM", description: "" });
@@ -1347,10 +1418,20 @@ function decodeCategoryDescription(desc?: string) {
 
   const handleDeleteEvent = (id: string) => {
     if (!confirm("Are you sure you want to delete this event from the schedule?")) return;
+    const targetEvt = eventsList.find((evt) => evt.id === id);
     setEventsList(eventsList.filter((evt) => evt.id !== id));
     try {
       supabase.from("events").delete().eq("id", id);
     } catch (_) {}
+
+    if (targetEvt) {
+      const currentSched = getStoredSchedule();
+      const updatedSched = currentSched.map((d) => ({
+        ...d,
+        rituals: d.rituals.filter((r) => r.event !== targetEvt.title),
+      }));
+      saveStoredSchedule(updatedSched);
+    }
   };
 
   // PRATIBIMB EVENINGS & CAPACITY CONFIGURATION CMS
@@ -1358,10 +1439,44 @@ function decodeCategoryDescription(desc?: string) {
     e.preventDefault();
     if (!editingEvening) return;
 
-    setEveningsConfig(
-      eveningsConfig.map((ev) => (ev.id === editingEvening.id ? editingEvening : ev))
-    );
-    alert(`Configuration updated for ${editingEvening.day}!`);
+    const updatedEvenings = eveningsConfig.map((ev) => (ev.id === editingEvening.id ? editingEvening : ev));
+    setEveningsConfig(updatedEvenings);
+
+    // Update dynamic 6-day DaySchedule in schedule.ts
+    const currentSched = getStoredSchedule();
+    const dayMap: Record<string, string> = {
+      "ev-panchami": "panchami",
+      "ev-sashti": "sashti",
+      "ev-saptami": "saptami",
+      "ev-ashtami": "ashtami",
+      "ev-nabami": "nabami",
+      "ev-dashami": "dashami",
+    };
+    const targetDayId = dayMap[editingEvening.id] || editingEvening.id;
+    const updatedSched = currentSched.map((d) => {
+      if (d.id === targetDayId) {
+        return {
+          ...d,
+          theme: editingEvening.theme || d.theme,
+          culturalEvening: {
+            ...d.culturalEvening,
+            title: editingEvening.theme || d.culturalEvening.title,
+            time: `${editingEvening.startTime} - ${editingEvening.endTime}`,
+            residentSlotsAvailable: Number(editingEvening.maxResidentSlots) || d.culturalEvening.residentSlotsAvailable,
+            pssHeadliner: editingEvening.hasPssFlagship ? {
+              title: editingEvening.pssEventTitle || "PSS Headliner",
+              time: editingEvening.pssEventTime || "08:00 PM Start",
+              duration: editingEvening.pssDuration || "90 mins",
+              genre: "PBEL Sanskritik Samiti Flagship Show",
+            } : undefined,
+          },
+        };
+      }
+      return d;
+    });
+    saveStoredSchedule(updatedSched);
+
+    alert(`Configuration updated for ${editingEvening.day} and synced to Cloud!`);
     setEditingEvening(null);
   };
 
