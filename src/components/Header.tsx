@@ -18,7 +18,7 @@ import {
   Drama
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { getStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
+import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -44,6 +44,9 @@ export function Header() {
   useEffect(() => {
     try {
       setBranding(getStoredBranding());
+      fetchStoredBranding().then((cloudBranding) => {
+        if (cloudBranding) setBranding(cloudBranding);
+      });
 
       const handleBrandingUpdate = () => {
         setBranding(getStoredBranding());

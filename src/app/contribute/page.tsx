@@ -25,8 +25,9 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { DevotionalShareModal } from "@/components/DevotionalShareModal";
 import { TowerParticipation } from "@/components/TowerParticipation";
-import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { buildUpiPayUri } from "@/utils/security";
+import { saveQrCodeToGallery } from "@/utils/qrDownload";
 
 // Official Society Bank Account UPI Configuration
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
@@ -424,6 +425,11 @@ function decodeCategoryDescription(desc?: string) {
         setCustomTower(def);
         setModalTower(def);
       }
+      fetchStoredTowers().then((cloudTowers) => {
+        if (cloudTowers && cloudTowers.length > 0) {
+          setTowersList(cloudTowers);
+        }
+      });
     } catch (_) {}
 
     const handleTowerUpdate = () => {
@@ -934,17 +940,13 @@ function decodeCategoryDescription(desc?: string) {
                       className="w-36 h-36 mx-auto rounded-xl"
                     />
                     <span className="text-[11px] text-gray-800 font-bold block mt-1.5 font-mono">Scan with Any UPI App</span>
-                    <a
-                      href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
-                      )}`}
-                      download={`PBEL-Durgotsav-QR-${customAmount}.png`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-lg transition flex items-center justify-center gap-1"
+                    <button
+                      type="button"
+                      onClick={() => saveQrCodeToGallery(generateUpiString(Number(customAmount), customPurpose || "Pujo Seva"), customAmount, customPurpose || "Pujo-Seva")}
+                      className="mt-2 text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1 w-full shadow-2xs"
                     >
-                      <Download size={11} /> Save QR Image
-                    </a>
+                      <Download size={12} /> Save QR to Gallery / Photos
+                    </button>
                   </div>
                 </div>
               ) : (
@@ -1259,17 +1261,13 @@ function decodeCategoryDescription(desc?: string) {
                   className="w-32 h-32 sm:w-36 sm:h-36 mx-auto rounded-lg"
                 />
                 <span className="text-[11px] text-gray-800 font-bold block mt-1">Scan with Any UPI App • ₹{modalSeva.amount.toLocaleString("en-IN")}</span>
-                <a
-                  href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                    generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)
-                  )}`}
-                  download={`PBEL-Seva-${modalSeva.title}.png`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-md transition flex items-center justify-center gap-1"
+                <button
+                  type="button"
+                  onClick={() => saveQrCodeToGallery(generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`), modalSeva.amount, modalSeva.title)}
+                  className="mt-1.5 text-[10px] font-bold text-amber-900 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-md transition flex items-center justify-center gap-1 w-full shadow-2xs"
                 >
-                  <Download size={10} /> Save QR Image
-                </a>
+                  <Download size={11} /> Save QR to Gallery / Photos
+                </button>
               </div>
 
               {/* 1-Tap Copy UPI ID & Banking App Link */}

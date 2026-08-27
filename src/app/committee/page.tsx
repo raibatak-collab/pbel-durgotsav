@@ -14,11 +14,13 @@ import {
 } from "lucide-react";
 import { 
   getStoredCommittee, 
+  fetchStoredCommittee,
   DEFAULT_COMMITTEE_WINGS, 
   CommitteeWing 
 } from "@/config/committee";
 import { 
   getStoredBranding, 
+  fetchStoredBranding,
   DEFAULT_BRANDING, 
   SamitiBrandingConfig 
 } from "@/config/branding";
@@ -29,8 +31,17 @@ export default function CommitteePage() {
 
   useEffect(() => {
     try {
+      // 1. Instant local/default render
       setCommitteeWings(getStoredCommittee());
       setBranding(getStoredBranding());
+
+      // 2. Fetch fresh cloud config
+      fetchStoredCommittee().then((data) => {
+        if (data) setCommitteeWings(data);
+      });
+      fetchStoredBranding().then((data) => {
+        if (data) setBranding(data);
+      });
 
       const handleCommitteeUpdate = () => {
         setCommitteeWings(getStoredCommittee());

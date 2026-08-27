@@ -104,10 +104,36 @@ export function getStoredCommittee(): CommitteeWing[] {
 }
 
 /**
- * Saves updated organizing committee wings configuration into localStorage and dispatches a live update event.
+ * Async fetch from Supabase Cloud with fallback to local/default.
+ */
+export async function fetchStoredCommittee(): Promise<CommitteeWing[]> {
+  try {
+    const { fetchCloudConfig } = await import("@/utils/cloudConfig");
+    const cloudCommittee = await fetchCloudConfig<CommitteeWing[]>("committee", []);
+    if (Array.isArray(cloudCommittee) && cloudCommittee.length > 0) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(COMMITTEE_STORAGE_KEY, JSON.stringify(cloudCommittee));
+        window.dispatchEvent(new Event("pbel_committee_updated"));
+      }
+      return cloudCommittee;
+    }
+  } catch (e) {
+    console.error("Failed fetching committee from cloud:", e);
+  }
+  return getStoredCommittee();
+}
+
+/**
+ * Saves updated organizing committee wings configuration into localStorage and syncs to Supabase Cloud.
  */
 export function saveStoredCommittee(wings: CommitteeWing[]): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(COMMITTEE_STORAGE_KEY, JSON.stringify(wings));
   window.dispatchEvent(new Event("pbel_committee_updated"));
+
+  // Background Cloud Sync to Supabase
+  import("@/utils/cloudConfig").then(({ saveCloudConfig }) => {
+    saveCloudConfig("committee", wings).catch((err) => console.error("Cloud committee save failed:", err));
+  });
 }
+

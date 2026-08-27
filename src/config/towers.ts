@@ -129,7 +129,31 @@ export function getStoredTowers(): TowerDefinition[] {
 }
 
 /**
- * Saves updated towers configuration into localStorage and dispatches a live update event.
+ * Async fetch from Supabase Cloud with fallback to local/default.
+ */
+export async function fetchStoredTowers(): Promise<TowerDefinition[]> {
+  try {
+    const { fetchCloudConfig } = await import("@/utils/cloudConfig");
+    const cloudTowers = await fetchCloudConfig<any[]>("towers", []);
+    if (Array.isArray(cloudTowers) && cloudTowers.length > 0) {
+      const parsed = cloudTowers.map((t: any) => ({
+        ...t,
+        regex: t.regex ? new RegExp(t.regex.source || t.regex, "i") : new RegExp(`${t.id}|${t.name}|${t.tower}`, "i"),
+      }));
+      if (typeof window !== "undefined") {
+        localStorage.setItem(TOWERS_STORAGE_KEY, JSON.stringify(cloudTowers));
+        window.dispatchEvent(new Event("pbel_towers_updated"));
+      }
+      return parsed;
+    }
+  } catch (e) {
+    console.error("Failed fetching towers from cloud:", e);
+  }
+  return getStoredTowers();
+}
+
+/**
+ * Saves updated towers configuration into localStorage and syncs to Supabase Cloud.
  */
 export function saveStoredTowers(towers: TowerDefinition[]): void {
   if (typeof window === "undefined") return;
@@ -140,4 +164,10 @@ export function saveStoredTowers(towers: TowerDefinition[]): void {
   }));
   localStorage.setItem(TOWERS_STORAGE_KEY, JSON.stringify(serializable));
   window.dispatchEvent(new Event("pbel_towers_updated"));
+
+  // Background Cloud Sync to Supabase
+  import("@/utils/cloudConfig").then(({ saveCloudConfig }) => {
+    saveCloudConfig("towers", serializable).catch((err) => console.error("Cloud tower save failed:", err));
+  });
 }
+

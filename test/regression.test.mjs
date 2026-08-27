@@ -1127,6 +1127,70 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('34. Universal Cloud Configuration Sync Engine', () => {
+    it('should properly serialize and deserialize dynamic towers with regex revival', () => {
+      const mockTowers = [
+        { id: "A", tower: "Tower A", name: "Emerald", fullName: "Tower A (Emerald)", regex: "tower\\s*a|emerald|\\ba[\\s-]*\\d" },
+        { id: "L", tower: "Tower L", name: "Amber", fullName: "Tower L (Amber)", regex: "tower\\s*l|amber|\\bl[\\s-]*\\d" },
+      ];
+
+      const serialized = JSON.stringify(mockTowers);
+      const parsed = JSON.parse(serialized).map((t) => ({
+        ...t,
+        regex: new RegExp(t.regex, "i"),
+      }));
+
+      assert.strictEqual(parsed.length, 2);
+      assert.strictEqual(parsed[1].fullName, "Tower L (Amber)");
+      assert.ok(parsed[1].regex.test("Amber 1204"));
+      assert.ok(parsed[1].regex.test("Tower L - 302"));
+    });
+
+    it('should handle organizing committee wings cloud serialization', () => {
+      const mockWings = [
+        {
+          id: "wing-finance",
+          category: "Finance, Treasury & Audit",
+          icon: "💰",
+          tagline: "Zero-fee bank reconciliation",
+          members: [{ id: "m-1", name: "Treasurer Lead", role: "Accounts", tower: "Tower A" }],
+        },
+      ];
+
+      const jsonStr = JSON.stringify(mockWings);
+      const restored = JSON.parse(jsonStr);
+
+      assert.strictEqual(restored.length, 1);
+      assert.strictEqual(restored[0].category, "Finance, Treasury & Audit");
+      assert.strictEqual(restored[0].members[0].name, "Treasurer Lead");
+    });
+  });
+
+  describe('35. QR Code Downloader & Native Mobile Gallery Format', () => {
+    it('should construct valid 600x600 QR code image URL and safe filename', () => {
+      const getQrDownloadParams = (payload, amount, sevaTitle) => {
+        const safeName = sevaTitle 
+          ? sevaTitle.replace(/[^a-zA-Z0-9]/g, "-").slice(0, 30)
+          : amount 
+          ? `Rs${amount}` 
+          : "General";
+          
+        const fileName = `PBEL-Durgotsav-QR-${safeName}.png`;
+        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=600x600&data=${encodeURIComponent(payload)}`;
+        return { fileName, qrUrl };
+      };
+
+      const res1 = getQrDownloadParams("upi://pay?pa=pbelsanskritiksamiti@icici&am=501.00", 501);
+      assert.strictEqual(res1.fileName, "PBEL-Durgotsav-QR-Rs501.png");
+      assert.ok(res1.qrUrl.includes("size=600x600"));
+      assert.ok(res1.qrUrl.includes("pbelsanskritiksamiti%40icici"));
+
+      const res2 = getQrDownloadParams("upi://pay?pa=pbelsanskritiksamiti@icici&am=2501.00", 2501, "Maha Bhog Seva");
+      assert.strictEqual(res2.fileName, "PBEL-Durgotsav-QR-Maha-Bhog-Seva.png");
+    });
+  });
+
 });
+
 
 

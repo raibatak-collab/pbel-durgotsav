@@ -88,10 +88,37 @@ export function getStoredBranding(): SamitiBrandingConfig {
 }
 
 /**
- * Saves updated branding configuration into localStorage and dispatches a live update event.
+ * Async fetch from Supabase Cloud with fallback to local/default.
+ */
+export async function fetchStoredBranding(): Promise<SamitiBrandingConfig> {
+  try {
+    const { fetchCloudConfig } = await import("@/utils/cloudConfig");
+    const cloudBranding = await fetchCloudConfig<SamitiBrandingConfig | null>("branding", null);
+    if (cloudBranding && typeof cloudBranding === "object") {
+      const merged = { ...DEFAULT_BRANDING, ...cloudBranding };
+      if (typeof window !== "undefined") {
+        localStorage.setItem(BRANDING_STORAGE_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new Event("pbel_branding_updated"));
+      }
+      return merged;
+    }
+  } catch (e) {
+    console.error("Failed fetching branding from cloud:", e);
+  }
+  return getStoredBranding();
+}
+
+/**
+ * Saves updated branding configuration into localStorage and syncs to Supabase Cloud.
  */
 export function saveStoredBranding(config: SamitiBrandingConfig): void {
   if (typeof window === "undefined") return;
   localStorage.setItem(BRANDING_STORAGE_KEY, JSON.stringify(config));
   window.dispatchEvent(new Event("pbel_branding_updated"));
+
+  // Background Cloud Sync to Supabase
+  import("@/utils/cloudConfig").then(({ saveCloudConfig }) => {
+    saveCloudConfig("branding", config).catch((err) => console.error("Cloud branding save failed:", err));
+  });
 }
+

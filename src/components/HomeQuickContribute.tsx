@@ -21,8 +21,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase/client";
-import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { buildUpiPayUri } from "@/utils/security";
+import { saveQrCodeToGallery } from "@/utils/qrDownload";
 
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
 const SOCIETY_NAME = "PBEL Sanskritik Samiti";
@@ -99,6 +100,11 @@ export function HomeQuickContribute() {
       if (stored.length > 0) {
         setSelectedTower((prev) => prev || stored[0].fullName || `${stored[0].tower} (${stored[0].name})`);
       }
+      fetchStoredTowers().then((cloudTowers) => {
+        if (cloudTowers && cloudTowers.length > 0) {
+          setTowersList(cloudTowers);
+        }
+      });
 
       // 2. Fetch Contributions Count (Status === "Success")
       const { count, data: contribs } = await supabase
@@ -558,17 +564,13 @@ export function HomeQuickContribute() {
                     className="w-36 h-36 mx-auto rounded-xl"
                   />
                   <span className="text-[11px] text-gray-800 font-bold block mt-1.5 font-mono">Scan with Any UPI App</span>
-                  <a
-                    href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                      generateUpiString(Number(amount))
-                    )}`}
-                    download={`PBEL-Durgotsav-QR-${amount}.png`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-lg transition flex items-center justify-center gap-1"
+                  <button
+                    type="button"
+                    onClick={() => saveQrCodeToGallery(generateUpiString(Number(amount)), amount, purpose || "Pujo-Offering")}
+                    className="mt-2 text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1 w-full shadow-2xs"
                   >
-                    <Download size={11} /> Save QR Image
-                  </a>
+                    <Download size={12} /> Save QR to Gallery / Photos
+                  </button>
                 </div>
               </div>
             ) : (

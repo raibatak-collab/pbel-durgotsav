@@ -45,16 +45,18 @@ import {
   Building
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
-import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, TowerDefinition } from "@/config/towers";
-import { getStoredCommittee, saveStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
+import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
+import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
 import { 
   AESTHETIC_WALLPAPERS, 
   DEFAULT_BRANDING, 
   getStoredBranding, 
   saveStoredBranding, 
+  fetchStoredBranding,
   SamitiBrandingConfig,
   AestheticWallpaper
 } from "@/config/branding";
+import { saveCloudConfig } from "@/utils/cloudConfig";
 import { sanitizeText, validateDonationAmount, validatePhoneNumber } from "@/utils/security";
 
 export interface AdminUser {
@@ -415,6 +417,17 @@ export default function AdminDashboard() {
       setCommitteeWings(getStoredCommittee());
       setTowerList(getStoredTowers());
 
+      // Fetch fresh cloud config
+      fetchStoredTowers().then((cloudTowers) => {
+        if (cloudTowers && cloudTowers.length > 0) setTowerList(cloudTowers);
+      });
+      fetchStoredCommittee().then((cloudWings) => {
+        if (cloudWings && cloudWings.length > 0) setCommitteeWings(cloudWings);
+      });
+      fetchStoredBranding().then((cloudBranding) => {
+        if (cloudBranding) setBranding(cloudBranding);
+      });
+
       const savedExpenses = localStorage.getItem("pbel_budget_expenses");
       if (savedExpenses) {
         const parsed = JSON.parse(savedExpenses);
@@ -424,6 +437,35 @@ export default function AdminDashboard() {
       console.error("Failed loading session:", e);
     }
   }, []);
+
+  const [isSyncingCloud, setIsSyncingCloud] = useState(false);
+
+  const handleSyncAllToCloud = async () => {
+    setIsSyncingCloud(true);
+    try {
+      const { saveCloudConfig } = await import("@/utils/cloudConfig");
+      
+      const currentTowers = getStoredTowers().map((t) => ({
+        ...t,
+        regex: t.regex ? t.regex.source : "",
+      }));
+      const currentCommittee = getStoredCommittee();
+      const currentBranding = getStoredBranding();
+
+      await Promise.all([
+        saveCloudConfig("towers", currentTowers),
+        saveCloudConfig("committee", currentCommittee),
+        saveCloudConfig("branding", currentBranding),
+      ]);
+
+      alert("🎉 Successfully synced all Towers, Organizing Committee wings, and Branding to Supabase Cloud!\n\nAll changes are now active immediately on every mobile phone, computer, and device across the world!");
+    } catch (err: any) {
+      console.error("Cloud sync error:", err);
+      alert(`Cloud sync failed: ${err.message || err}`);
+    } finally {
+      setIsSyncingCloud(false);
+    }
+  };
 
   const handleSaveAnnouncement = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1419,7 +1461,16 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 self-start md:self-auto">
+            <div className="flex flex-wrap items-center gap-2 self-start md:self-auto">
+              <button
+                type="button"
+                onClick={handleSyncAllToCloud}
+                disabled={isSyncingCloud}
+                className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-md golden-glow active:scale-98"
+                title="Save and broadcast all Towers, Committee Wings, and Branding to Supabase Cloud so all mobile users see the updates immediately"
+              >
+                <span>{isSyncingCloud ? "Syncing..." : "☁️ Push All Settings to Cloud (Sync Mobiles)"}</span>
+              </button>
               <button
                 onClick={fetchData}
                 className="bg-primary hover:bg-primary-hover text-white text-xs font-semibold px-4 py-2.5 rounded-full transition flex items-center gap-1.5 shadow-sm"

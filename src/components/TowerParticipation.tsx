@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Building2, Heart, Sparkles, ArrowRight, TrendingUp } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
-import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 
 interface TowerInfo {
   id: string;
@@ -22,7 +22,11 @@ export function TowerParticipation() {
   useEffect(() => {
     async function loadLiveTowerData() {
       try {
-        const currentTowers = getStoredTowers();
+        let currentTowers = getStoredTowers();
+        const cloudTowers = await fetchStoredTowers();
+        if (cloudTowers && cloudTowers.length > 0) {
+          currentTowers = cloudTowers;
+        }
         const { data: contribs } = await supabase
           .from("contributions")
           .select("flat_number, amount, status")
