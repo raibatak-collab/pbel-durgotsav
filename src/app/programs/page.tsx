@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent } from "@/utils/security";
-import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 
 interface DaySchedule {
   id: string;
@@ -238,6 +238,11 @@ export default function ProgramsPage() {
       if (stored.length > 0) {
         setSelectedTower(stored[0].fullName || `${stored[0].tower} (${stored[0].name})`);
       }
+      fetchStoredTowers().then((cloudTowers) => {
+        if (cloudTowers && cloudTowers.length > 0) {
+          setTowersList(cloudTowers);
+        }
+      });
     } catch (_) {}
 
     const handleTowerUpdate = () => {

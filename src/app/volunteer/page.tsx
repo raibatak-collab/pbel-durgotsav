@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Users, CheckCircle2, Heart, Sparkles, Calendar, ShieldCheck, Clock, MapPin, Building } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
-import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 
 interface VolunteerRole {
   id: string;
@@ -78,6 +78,11 @@ export default function VolunteerPage() {
       if (stored.length > 0) {
         setSelectedTower(stored[0].fullName || `${stored[0].tower} (${stored[0].name})`);
       }
+      fetchStoredTowers().then((cloudTowers) => {
+        if (cloudTowers && cloudTowers.length > 0) {
+          setTowersList(cloudTowers);
+        }
+      });
     } catch (_) {}
 
     const handleTowerUpdate = () => {

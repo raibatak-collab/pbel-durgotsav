@@ -497,8 +497,11 @@ export default function AdminDashboard() {
     setIsSyncingCloud(true);
     try {
       const currentTowers = getStoredTowers().map((t) => ({
-        ...t,
-        regex: t.regex ? t.regex.source : "",
+        id: t.id,
+        tower: t.tower,
+        name: t.name,
+        fullName: t.fullName || `${t.tower} (${t.name})`,
+        regex: typeof t.regex === "string" ? t.regex : (t.regex?.source || ""),
       }));
       const currentCommittee = getStoredCommittee();
       const currentBranding = getStoredBranding();
@@ -4662,8 +4665,10 @@ function decodeCategoryDescription(desc?: string) {
                           onChange={(e) => setNewMemberForm({ ...newMemberForm, tower: e.target.value })}
                           className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                         >
-                          {PBEL_TOWER_NAMES.map((t) => (
-                            <option key={t} value={t}>{t}</option>
+                          {towerList.map((t) => (
+                            <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
+                              {t.fullName || `${t.tower} (${t.name})`}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -4885,8 +4890,10 @@ function decodeCategoryDescription(desc?: string) {
                             onChange={(e) => setEditingMember({ ...editingMember, tower: e.target.value })}
                             className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                           >
-                            {PBEL_TOWER_NAMES.map((t) => (
-                              <option key={t} value={t}>{t}</option>
+                            {towerList.map((t) => (
+                              <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
+                                {t.fullName || `${t.tower} (${t.name})`}
+                              </option>
                             ))}
                           </select>
                         </div>

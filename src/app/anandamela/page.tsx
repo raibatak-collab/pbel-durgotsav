@@ -20,7 +20,7 @@ import {
   Flame,
   Award
 } from "lucide-react";
-import { PBEL_TOWERS, PBEL_TOWER_NAMES, getStoredTowers, TowerDefinition } from "@/config/towers";
+import { PBEL_TOWERS, PBEL_TOWER_NAMES, getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { sanitizeText, validatePhoneNumber } from "@/utils/security";
 import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
 
@@ -174,6 +174,11 @@ export default function AnandamelaPage() {
           tower: storedTowers[0].fullName || `${storedTowers[0].tower} (${storedTowers[0].name})`,
         }));
       }
+      fetchStoredTowers().then((cloudTowers) => {
+        if (cloudTowers && cloudTowers.length > 0) {
+          setTowersList(cloudTowers);
+        }
+      });
 
       const stored = localStorage.getItem("pbel_anandamela_stalls");
       if (stored) {

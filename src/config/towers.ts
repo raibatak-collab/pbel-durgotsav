@@ -92,13 +92,19 @@ export const PBEL_TOWERS: TowerDefinition[] = [
 
 /**
  * Match a raw flat number string (e.g. "Emerald 402", "Tower B-1104", "C 603")
- * to its canonical TowerDefinition.
+ * to its canonical TowerDefinition using dynamic tower list.
  */
-export function matchTower(input: string): TowerDefinition | null {
+export function matchTower(input: string, customList?: TowerDefinition[]): TowerDefinition | null {
   if (!input) return null;
   const clean = input.trim();
-  for (const t of PBEL_TOWERS) {
-    if (t.regex.test(clean) || clean.toLowerCase().includes(t.name.toLowerCase())) {
+  const list = customList || getStoredTowers();
+  for (const t of list) {
+    if (
+      (t.regex && t.regex.test(clean)) ||
+      (t.name && clean.toLowerCase().includes(t.name.toLowerCase())) ||
+      (t.tower && clean.toLowerCase().includes(t.tower.toLowerCase())) ||
+      (t.fullName && clean.toLowerCase().includes(t.fullName.toLowerCase()))
+    ) {
       return t;
     }
   }
@@ -121,7 +127,10 @@ export function getStoredTowers(): TowerDefinition[] {
     if (!Array.isArray(parsed) || parsed.length === 0) return PBEL_TOWERS;
     return parsed.map((t: any) => ({
       ...t,
-      regex: t.regex ? new RegExp(t.regex.source || t.regex, "i") : new RegExp(`${t.id}|${t.name}|${t.tower}`, "i"),
+      fullName: t.fullName || `${t.tower} (${t.name})`,
+      regex: t.regex
+        ? new RegExp(typeof t.regex === "string" ? t.regex : (t.regex.source || t.regex), "i")
+        : new RegExp(`${t.id}|${t.name}|${t.tower}`, "i"),
     }));
   } catch {
     return PBEL_TOWERS;
@@ -138,7 +147,10 @@ export async function fetchStoredTowers(): Promise<TowerDefinition[]> {
     if (Array.isArray(cloudTowers) && cloudTowers.length > 0) {
       const parsed = cloudTowers.map((t: any) => ({
         ...t,
-        regex: t.regex ? new RegExp(t.regex.source || t.regex, "i") : new RegExp(`${t.id}|${t.name}|${t.tower}`, "i"),
+        fullName: t.fullName || `${t.tower} (${t.name})`,
+        regex: t.regex
+          ? new RegExp(typeof t.regex === "string" ? t.regex : (t.regex.source || t.regex), "i")
+          : new RegExp(`${t.id}|${t.name}|${t.tower}`, "i"),
       }));
       if (typeof window !== "undefined") {
         localStorage.setItem(TOWERS_STORAGE_KEY, JSON.stringify(cloudTowers));
@@ -159,8 +171,11 @@ export function saveStoredTowers(towers: TowerDefinition[]): void {
   if (typeof window === "undefined") return;
   // Convert RegExp to string for serialization
   const serializable = towers.map((t) => ({
-    ...t,
-    regex: t.regex ? t.regex.source : "",
+    id: t.id,
+    tower: t.tower,
+    name: t.name,
+    fullName: t.fullName || `${t.tower} (${t.name})`,
+    regex: typeof t.regex === "string" ? t.regex : (t.regex?.source || ""),
   }));
   localStorage.setItem(TOWERS_STORAGE_KEY, JSON.stringify(serializable));
   window.dispatchEvent(new Event("pbel_towers_updated"));
@@ -170,4 +185,5 @@ export function saveStoredTowers(towers: TowerDefinition[]): void {
     saveCloudConfig("towers", serializable).catch((err) => console.error("Cloud tower save failed:", err));
   });
 }
+
 

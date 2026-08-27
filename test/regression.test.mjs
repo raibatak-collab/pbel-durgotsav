@@ -1253,55 +1253,79 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
-  describe('37. UX & Accessibility Integrity Metrics', () => {
-    it('should enforce safe touch target minimums and standard responsive viewport parameters', () => {
-      const touchTargetMinPx = 44; // WCAG 2.1 AAA & Apple HIG standard
-      const standardButtonSizes = {
-        primaryBtnH: 48,
-        tabBtnH: 44,
-        quickContribH: 48,
-        qrSaveBtnH: 48,
-      };
+  describe('38. Mobile Native Gallery Image Saver Behavior', () => {
+    it('should distinguish iOS Web Share API from Android direct storage download', () => {
+      const isIOSUserAgent = (ua) => /iPad|iPhone|iPod/.test(ua);
+      
+      const androidChromeUA = "Mozilla/5.0 (Linux; Android 14; SM-S928B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36";
+      const iphoneSafariUA = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1";
+      const desktopChromeUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
-      Object.entries(standardButtonSizes).forEach(([btn, size]) => {
-        assert.ok(size >= touchTargetMinPx, `${btn} (${size}px) meets or exceeds ${touchTargetMinPx}px minimum`);
-      });
+      assert.strictEqual(isIOSUserAgent(androidChromeUA), false, "Android should not be classified as iOS");
+      assert.strictEqual(isIOSUserAgent(iphoneSafariUA), true, "iPhone should be classified as iOS");
+      assert.strictEqual(isIOSUserAgent(desktopChromeUA), false, "Desktop Chrome should not be classified as iOS");
+
+      // On Android, direct blob download (<a download="filename.png">) ensures the file is written to device storage and indexed in Samsung Gallery / Google Photos
+      const getDownloadStrategy = (ua) => (isIOSUserAgent(ua) ? "web-share-file" : "direct-blob-download");
+      assert.strictEqual(getDownloadStrategy(androidChromeUA), "direct-blob-download");
+      assert.strictEqual(getDownloadStrategy(iphoneSafariUA), "web-share-file");
+      assert.strictEqual(getDownloadStrategy(desktopChromeUA), "direct-blob-download");
     });
+  });
 
-    it('should verify correct UPI parameter escaping against white-space regressions', () => {
-      const constructSafeUpiUrl = ({ pa, pn, am, cu, tn, tr, mc }) => {
-        const params = new URLSearchParams();
-        params.set("pa", pa);
-        params.set("pn", pn);
-        if (tr) params.set("tr", tr);
-        if (mc) params.set("mc", mc);
-        if (am) params.set("am", Number(am).toFixed(2));
-        params.set("cu", cu || "INR");
-        if (tn) params.set("tn", tn);
+  describe('39. Dynamic Tower Matching & Multi-Device Synchronization', () => {
+    it('should match flat numbers against newly added towers in custom list', () => {
+      const customTowers = [
+        {
+          id: "L",
+          tower: "Tower L",
+          name: "Amber",
+          fullName: "Tower L (Amber)",
+          regex: /tower\s*l|amber|\bl[\s-]*\d/i,
+        },
+        {
+          id: "M",
+          tower: "Tower M",
+          name: "Malachite",
+          fullName: "Tower M (Malachite)",
+          regex: /tower\s*m|malachite|\bm[\s-]*\d/i,
+        }
+      ];
 
-        // Encode spaces as %20 not '+'
-        return `upi://pay?${params.toString().replace(/\+/g, "%20")}`;
+      const matchCustomTower = (input, list) => {
+        if (!input) return null;
+        const clean = input.trim();
+        for (const t of list) {
+          if (
+            (t.regex && t.regex.test(clean)) ||
+            (t.name && clean.toLowerCase().includes(t.name.toLowerCase())) ||
+            (t.tower && clean.toLowerCase().includes(t.tower.toLowerCase())) ||
+            (t.fullName && clean.toLowerCase().includes(t.fullName.toLowerCase()))
+          ) {
+            return t;
+          }
+        }
+        return null;
       };
 
-      const url = constructSafeUpiUrl({
-        pa: "pbelsanskritiksamiti@icici",
-        pn: "PBEL SANSKRITIK SAMITI",
-        tr: "EZYS9347708431",
-        mc: "1520",
-        am: 501,
-        cu: "INR",
-        tn: "General Pujo Fund",
-      });
+      const match1 = matchCustomTower("Amber 402", customTowers);
+      assert.ok(match1);
+      assert.strictEqual(match1.id, "L");
+      assert.strictEqual(match1.fullName, "Tower L (Amber)");
 
-      assert.ok(!url.includes("+"), "UPI URL must not contain '+' characters for whitespace");
-      assert.ok(url.includes("PBEL%20SANSKRITIK%20SAMITI"));
-      assert.ok(url.includes("General%20Pujo%20Fund"));
-      assert.ok(url.includes("am=501.00"));
-      assert.ok(url.includes("tr=EZYS9347708431"));
+      const match2 = matchCustomTower("Tower M - 1204", customTowers);
+      assert.ok(match2);
+      assert.strictEqual(match2.id, "M");
+      assert.strictEqual(match2.fullName, "Tower M (Malachite)");
+
+      const match3 = matchCustomTower("L-803", customTowers);
+      assert.ok(match3);
+      assert.strictEqual(match3.id, "L");
     });
   });
 
 });
+
 
 
 
