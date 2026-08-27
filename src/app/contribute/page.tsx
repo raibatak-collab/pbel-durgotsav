@@ -854,7 +854,7 @@ function decodeCategoryDescription(desc?: string) {
                 </label>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
-                  {[501, 1001, 2001, 5001, 10001].map((amt) => (
+                  {[501, 1001, 2000, 5001, 10001].map((amt) => (
                     <button
                       key={amt}
                       type="button"
