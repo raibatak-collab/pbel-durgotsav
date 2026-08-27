@@ -56,7 +56,7 @@ import {
   SamitiBrandingConfig,
   AestheticWallpaper
 } from "@/config/branding";
-import { saveCloudConfig } from "@/utils/cloudConfig";
+import { saveCloudConfig, fetchCloudConfig } from "@/utils/cloudConfig";
 import { sanitizeText, validateDonationAmount, validatePhoneNumber } from "@/utils/security";
 
 export interface AdminUser {
@@ -433,6 +433,59 @@ export default function AdminDashboard() {
         const parsed = JSON.parse(savedExpenses);
         if (Array.isArray(parsed) && parsed.length > 0) setBudgetExpenses(parsed);
       }
+
+      // Fetch all dynamic collections from Supabase Cloud
+      fetchStoredTowers().then((cloudTowers) => {
+        if (cloudTowers && cloudTowers.length > 0) setTowerList(cloudTowers);
+      });
+      fetchStoredCommittee().then((cloudWings) => {
+        if (cloudWings && cloudWings.length > 0) setCommitteeWings(cloudWings);
+      });
+      fetchStoredBranding().then((cloudBranding) => {
+        if (cloudBranding) setBranding(cloudBranding);
+      });
+      fetchCloudConfig<string>("announcement", "").then((cloudAnnounce) => {
+        if (cloudAnnounce) {
+          setAnnouncementText(cloudAnnounce);
+          localStorage.setItem("pbel_pujo_announcement", cloudAnnounce);
+        }
+      });
+      fetchCloudConfig<any[]>("sponsor_leads", []).then((cloudLeads) => {
+        if (cloudLeads && cloudLeads.length > 0) {
+          setSponsorLeads(cloudLeads);
+          localStorage.setItem("pbel_sponsor_leads", JSON.stringify(cloudLeads));
+        }
+      });
+      fetchCloudConfig<any[]>("bhog_passes", []).then((cloudPasses) => {
+        if (cloudPasses && cloudPasses.length > 0) {
+          setBhogPasses(cloudPasses);
+          localStorage.setItem("pbel_bhog_passes", JSON.stringify(cloudPasses));
+        }
+      });
+      fetchCloudConfig<any[]>("pss_members", []).then((cloudMembers) => {
+        if (cloudMembers && cloudMembers.length > 0) {
+          setPssMembers(cloudMembers);
+          localStorage.setItem("pbel_pss_members", JSON.stringify(cloudMembers));
+        }
+      });
+      fetchCloudConfig<any[]>("budget_expenses", []).then((cloudExpenses) => {
+        if (cloudExpenses && cloudExpenses.length > 0) {
+          setBudgetExpenses(cloudExpenses);
+          localStorage.setItem("pbel_budget_expenses", JSON.stringify(cloudExpenses));
+        }
+      });
+      fetchCloudConfig<any[]>("gallery", []).then((cloudGallery) => {
+        if (cloudGallery && cloudGallery.length > 0) {
+          setGalleryList(cloudGallery);
+          localStorage.setItem("pbel_custom_gallery", JSON.stringify(cloudGallery));
+        }
+      });
+      fetchCloudConfig<AdminUser[]>("admin_users", []).then((cloudUsers) => {
+        if (cloudUsers && cloudUsers.length > 0) {
+          setAdminUsers(cloudUsers);
+          localStorage.setItem("pbel_admin_users", JSON.stringify(cloudUsers));
+        }
+      });
     } catch (e) {
       console.error("Failed loading session:", e);
     }
@@ -443,8 +496,6 @@ export default function AdminDashboard() {
   const handleSyncAllToCloud = async () => {
     setIsSyncingCloud(true);
     try {
-      const { saveCloudConfig } = await import("@/utils/cloudConfig");
-      
       const currentTowers = getStoredTowers().map((t) => ({
         ...t,
         regex: t.regex ? t.regex.source : "",
@@ -456,9 +507,16 @@ export default function AdminDashboard() {
         saveCloudConfig("towers", currentTowers),
         saveCloudConfig("committee", currentCommittee),
         saveCloudConfig("branding", currentBranding),
+        saveCloudConfig("announcement", announcementText.trim()),
+        saveCloudConfig("sponsor_leads", sponsorLeads),
+        saveCloudConfig("bhog_passes", bhogPasses),
+        saveCloudConfig("pss_members", pssMembers),
+        saveCloudConfig("budget_expenses", budgetExpenses),
+        saveCloudConfig("gallery", galleryList),
+        saveCloudConfig("admin_users", adminUsers),
       ]);
 
-      alert("🎉 Successfully synced all Towers, Organizing Committee wings, and Branding to Supabase Cloud!\n\nAll changes are now active immediately on every mobile phone, computer, and device across the world!");
+      alert("🎉 Successfully synced ALL portal settings, Towers, Committee Wings, Member Passes, Budget, and Announcements to Supabase Cloud!\n\nAll data is now live immediately across every mobile device and browser.");
     } catch (err: any) {
       console.error("Cloud sync error:", err);
       alert(`Cloud sync failed: ${err.message || err}`);
@@ -469,20 +527,24 @@ export default function AdminDashboard() {
 
   const handleSaveAnnouncement = (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem("pbel_pujo_announcement", announcementText.trim());
-    alert("Live announcement updated across the platform header!");
+    const text = announcementText.trim();
+    localStorage.setItem("pbel_pujo_announcement", text);
+    saveCloudConfig("announcement", text);
+    alert("Live announcement updated and broadcast to all devices across the platform header!");
   };
 
   const handleClearSponsorLead = (index: number) => {
     const updated = sponsorLeads.filter((_, idx) => idx !== index);
     setSponsorLeads(updated);
     localStorage.setItem("pbel_sponsor_leads", JSON.stringify(updated));
+    saveCloudConfig("sponsor_leads", updated);
   };
 
   const handleClearBhogPass = (passId: string) => {
     const updated = bhogPasses.filter((p) => p.passId !== passId);
     setBhogPasses(updated);
     localStorage.setItem("pbel_bhog_passes", JSON.stringify(updated));
+    saveCloudConfig("bhog_passes", updated);
   };
 
   // Branding & Local Asset Handlers
@@ -593,6 +655,7 @@ export default function AdminDashboard() {
     const updated = [item, ...budgetExpenses];
     setBudgetExpenses(updated);
     localStorage.setItem("pbel_budget_expenses", JSON.stringify(updated));
+    saveCloudConfig("budget_expenses", updated);
     setNewExpense({
       category: "Pratima & Purohit",
       title: "",
@@ -601,7 +664,7 @@ export default function AdminDashboard() {
       paidTo: "",
       status: "Allocated",
     });
-    alert("Expense recorded in Committee Budget Ledger!");
+    alert("Expense recorded in Committee Budget Ledger and synced to Cloud!");
   };
 
   const handleSaveEditedExpense = (e: React.FormEvent) => {
@@ -622,14 +685,16 @@ export default function AdminDashboard() {
     );
     setBudgetExpenses(updated);
     localStorage.setItem("pbel_budget_expenses", JSON.stringify(updated));
+    saveCloudConfig("budget_expenses", updated);
     setEditingExpense(null);
-    alert("Expense updated successfully!");
+    alert("Expense updated and synced to Cloud successfully!");
   };
 
   const handleDeleteExpense = (id: string) => {
     const updated = budgetExpenses.filter((e) => e.id !== id);
     setBudgetExpenses(updated);
     localStorage.setItem("pbel_budget_expenses", JSON.stringify(updated));
+    saveCloudConfig("budget_expenses", updated);
   };
 
   // Organizing Committee Handlers
@@ -803,8 +868,9 @@ export default function AdminDashboard() {
     const updated = [...parsedNewMembers, ...pssMembers];
     setPssMembers(updated);
     localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
+    saveCloudConfig("pss_members", updated);
     setCsvText("");
-    alert(`Successfully imported ${parsedNewMembers.length} PSS Member families!`);
+    alert(`Successfully imported ${parsedNewMembers.length} PSS Member families and synced to Cloud!`);
   };
 
   const handleAddSingleMember = (e: React.FormEvent) => {
@@ -828,6 +894,7 @@ export default function AdminDashboard() {
     const updated = [newMember, ...pssMembers];
     setPssMembers(updated);
     localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
+    saveCloudConfig("pss_members", updated);
     setNewMemberForm({
       name: "",
       tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
@@ -836,7 +903,7 @@ export default function AdminDashboard() {
       headcount: 4,
       status: "Active",
     });
-    alert(`Added ${newMember.name} to PSS Annual Members roster!`);
+    alert(`Added ${newMember.name} to PSS Annual Members roster and synced to Cloud!`);
   };
 
   const handleDeleteMember = (id: string) => {
@@ -844,6 +911,7 @@ export default function AdminDashboard() {
       const updated = pssMembers.filter((m) => m.id !== id);
       setPssMembers(updated);
       localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
+      saveCloudConfig("pss_members", updated);
     }
   };
 
@@ -856,8 +924,9 @@ export default function AdminDashboard() {
     );
     setPssMembers(updated);
     localStorage.setItem("pbel_pss_members", JSON.stringify(updated));
+    saveCloudConfig("pss_members", updated);
     setEditingMember(null);
-    alert("Member details updated successfully!");
+    alert("Member details updated and synced to Cloud successfully!");
   };
 
   // COMMITTEE WING EDITING HANDLER
@@ -911,9 +980,10 @@ export default function AdminDashboard() {
     );
     setGalleryList(updated);
     localStorage.setItem("pbel_custom_gallery", JSON.stringify(updated));
+    saveCloudConfig("gallery", updated);
     window.dispatchEvent(new Event("pbel_gallery_updated"));
     setEditingPhoto(null);
-    alert("Gallery photo updated successfully!");
+    alert("Gallery photo updated and synced to Cloud successfully!");
   };
 
   const handleGenerateMemberPass = (member: any, dayName: string = "All 4 Pujo Days") => {
@@ -940,11 +1010,12 @@ export default function AdminDashboard() {
       }),
     };
 
-    // Save into local bhog passes registry
+    // Save into local and cloud bhog passes registry
     const existing = JSON.parse(localStorage.getItem("pbel_bhog_passes") || "[]");
     const filtered = existing.filter((p: any) => p.passId !== passId);
     filtered.unshift(pass);
     localStorage.setItem("pbel_bhog_passes", JSON.stringify(filtered));
+    saveCloudConfig("bhog_passes", filtered);
     setBhogPasses(filtered);
 
     setAdminPassModal(pass);
@@ -1042,8 +1113,9 @@ export default function AdminDashboard() {
     const updatedList = [...adminUsers, created];
     setAdminUsers(updatedList);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updatedList));
+    saveCloudConfig("admin_users", updatedList);
     setNewUser({ name: "", username: "", role: "Finance & Fund Verification", password: "" });
-    alert(`Admin User "${created.name}" created successfully!`);
+    alert(`Admin User "${created.name}" created and synced to Cloud!`);
   };
 
   const handleToggleUserStatus = (id: string) => {
@@ -1060,6 +1132,7 @@ export default function AdminDashboard() {
     });
     setAdminUsers(updated);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
+    saveCloudConfig("admin_users", updated);
   };
 
   const handleDeleteUser = (id: string) => {
@@ -1071,6 +1144,7 @@ export default function AdminDashboard() {
     const updated = adminUsers.filter((u) => u.id !== id);
     setAdminUsers(updated);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
+    saveCloudConfig("admin_users", updated);
   };
 
   useEffect(() => {
@@ -1327,13 +1401,21 @@ function decodeCategoryDescription(desc?: string) {
       category: newPhoto.category,
       emoji: newPhoto.emoji || "🌺",
     };
-    setGalleryList([newEntry, ...galleryList]);
-    alert("New photo added to the Homepage Gallery Carousel!");
+    const updated = [newEntry, ...galleryList];
+    setGalleryList(updated);
+    localStorage.setItem("pbel_custom_gallery", JSON.stringify(updated));
+    saveCloudConfig("gallery", updated);
+    window.dispatchEvent(new Event("pbel_gallery_updated"));
+    alert("New photo added to the Homepage Gallery Carousel and synced to Cloud!");
     setNewPhoto({ title: "", year: "2025", category: "Pujo Rituals", emoji: "🌺", image_url: "" });
   };
 
   const handleDeletePhoto = (id: string) => {
-    setGalleryList(galleryList.filter((p) => p.id !== id));
+    const updated = galleryList.filter((p) => p.id !== id);
+    setGalleryList(updated);
+    localStorage.setItem("pbel_custom_gallery", JSON.stringify(updated));
+    saveCloudConfig("gallery", updated);
+    window.dispatchEvent(new Event("pbel_gallery_updated"));
   };
 
   return (

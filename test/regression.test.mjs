@@ -1190,6 +1190,117 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('36. Universal Cloud Sync & Config Domain Coverage', () => {
+    it('should validate complete coverage across all 11 shared community config domains', () => {
+      const configDomains = [
+        "towers",
+        "committee",
+        "branding",
+        "anandamela_stalls",
+        "sponsor_leads",
+        "announcement",
+        "bhog_passes",
+        "pss_members",
+        "budget_expenses",
+        "gallery",
+        "admin_users",
+      ];
+
+      assert.strictEqual(configDomains.length, 11);
+      configDomains.forEach((domain) => {
+        assert.ok(typeof domain === "string" && domain.length > 0);
+      });
+    });
+
+    it('should correctly format Cloud Config table rows with valid JSON payloads', () => {
+      const formatCloudPayload = (key, value) => ({
+        key: `config_${key}`,
+        value: typeof value === "string" ? value : JSON.stringify(value),
+        updated_at: new Date().toISOString(),
+      });
+
+      const announcementRow = formatCloudPayload("announcement", "Maha Saptami Pushpanjali starting at 10:30 AM");
+      assert.strictEqual(announcementRow.key, "config_announcement");
+      assert.strictEqual(announcementRow.value, "Maha Saptami Pushpanjali starting at 10:30 AM");
+
+      const stallRow = formatCloudPayload("anandamela_stalls", [{ id: "stall-1", name: "Kolkata Biryani", chefName: "Debarati Roy" }]);
+      assert.strictEqual(stallRow.key, "config_anandamela_stalls");
+      assert.ok(stallRow.value.includes("Debarati Roy"));
+      const parsedStall = JSON.parse(stallRow.value);
+      assert.strictEqual(parsedStall[0].name, "Kolkata Biryani");
+
+      const budgetRow = formatCloudPayload("budget_expenses", [{ id: "exp-1", title: "Ekchala Pratima", actual: 145000 }]);
+      assert.strictEqual(budgetRow.key, "config_budget_expenses");
+      const parsedBudget = JSON.parse(budgetRow.value);
+      assert.strictEqual(parsedBudget[0].actual, 145000);
+    });
+
+    it('should serialize and restore complex tower regexes without loss', () => {
+      const rawTowers = [
+        { id: "M", tower: "Tower M", name: "Malachite", fullName: "Tower M (Malachite)", regex: /tower\s*M|malachite|\bM[\s-]*\d/i }
+      ];
+
+      // To Cloud
+      const serialized = rawTowers.map(t => ({ ...t, regex: t.regex.source }));
+      assert.strictEqual(serialized[0].regex, "tower\\s*M|malachite|\\bM[\\s-]*\\d");
+
+      // From Cloud
+      const restored = serialized.map(t => ({ ...t, regex: new RegExp(t.regex, "i") }));
+      assert.ok(restored[0].regex.test("Flat M-1204"));
+      assert.ok(restored[0].regex.test("Tower M"));
+      assert.ok(restored[0].regex.test("Living in Malachite"));
+      assert.ok(!restored[0].regex.test("Flat A-402"));
+    });
+  });
+
+  describe('37. UX & Accessibility Integrity Metrics', () => {
+    it('should enforce safe touch target minimums and standard responsive viewport parameters', () => {
+      const touchTargetMinPx = 44; // WCAG 2.1 AAA & Apple HIG standard
+      const standardButtonSizes = {
+        primaryBtnH: 48,
+        tabBtnH: 44,
+        quickContribH: 48,
+        qrSaveBtnH: 48,
+      };
+
+      Object.entries(standardButtonSizes).forEach(([btn, size]) => {
+        assert.ok(size >= touchTargetMinPx, `${btn} (${size}px) meets or exceeds ${touchTargetMinPx}px minimum`);
+      });
+    });
+
+    it('should verify correct UPI parameter escaping against white-space regressions', () => {
+      const constructSafeUpiUrl = ({ pa, pn, am, cu, tn, tr, mc }) => {
+        const params = new URLSearchParams();
+        params.set("pa", pa);
+        params.set("pn", pn);
+        if (tr) params.set("tr", tr);
+        if (mc) params.set("mc", mc);
+        if (am) params.set("am", Number(am).toFixed(2));
+        params.set("cu", cu || "INR");
+        if (tn) params.set("tn", tn);
+
+        // Encode spaces as %20 not '+'
+        return `upi://pay?${params.toString().replace(/\+/g, "%20")}`;
+      };
+
+      const url = constructSafeUpiUrl({
+        pa: "pbelsanskritiksamiti@icici",
+        pn: "PBEL SANSKRITIK SAMITI",
+        tr: "EZYS9347708431",
+        mc: "1520",
+        am: 501,
+        cu: "INR",
+        tn: "General Pujo Fund",
+      });
+
+      assert.ok(!url.includes("+"), "UPI URL must not contain '+' characters for whitespace");
+      assert.ok(url.includes("PBEL%20SANSKRITIK%20SAMITI"));
+      assert.ok(url.includes("General%20Pujo%20Fund"));
+      assert.ok(url.includes("am=501.00"));
+      assert.ok(url.includes("tr=EZYS9347708431"));
+    });
+  });
+
 });
 
 

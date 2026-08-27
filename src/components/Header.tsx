@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -59,6 +60,13 @@ export function Header() {
       } else {
         setCustomAnnouncement("PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)");
       }
+
+      fetchCloudConfig<string>("announcement", "").then((cloudAnnounce) => {
+        if (cloudAnnounce) {
+          setCustomAnnouncement(cloudAnnounce);
+          localStorage.setItem("pbel_pujo_announcement", cloudAnnounce);
+        }
+      });
 
       const session = localStorage.getItem("pbel_admin_session") || sessionStorage.getItem("pbel_admin_session");
       if (session) {

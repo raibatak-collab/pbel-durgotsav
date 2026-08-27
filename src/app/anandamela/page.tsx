@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, getStoredTowers, TowerDefinition } from "@/config/towers";
 import { sanitizeText, validatePhoneNumber } from "@/utils/security";
+import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
 
 export interface FoodDish {
   name: string;
@@ -178,6 +179,14 @@ export default function AnandamelaPage() {
       if (stored) {
         setStalls(JSON.parse(stored));
       }
+
+      // Fetch fresh cloud stalls
+      fetchCloudConfig<FoodStall[]>("anandamela_stalls", INITIAL_STALLS).then((cloudStalls) => {
+        if (cloudStalls && cloudStalls.length > 0) {
+          setStalls(cloudStalls);
+          localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(cloudStalls));
+        }
+      });
     } catch (e) {
       console.error(e);
     }
@@ -239,6 +248,7 @@ export default function AnandamelaPage() {
     const updated = [newStall, ...stalls];
     setStalls(updated);
     localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(updated));
+    saveCloudConfig("anandamela_stalls", updated);
     setRegSuccess(true);
     setTimeout(() => {
       setRegSuccess(false);

@@ -18,8 +18,9 @@ import {
   Star
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
-import { useEffect } from "react";
+import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
 import { getStoredBranding, DEFAULT_BRANDING, SamitiBrandingConfig } from "@/config/branding";
+import { useEffect } from "react";
 
 export default function SponsorsPage() {
   const [formData, setFormData] = useState({
@@ -49,7 +50,7 @@ export default function SponsorsPage() {
     setIsSubmitting(true);
 
     try {
-      // Save sponsor lead to Supabase or local storage fallback
+      // Save sponsor lead to Supabase
       const leadEntry = {
         name: formData.companyName,
         contact_person: formData.contactPerson,
@@ -68,10 +69,11 @@ export default function SponsorsPage() {
         });
       } catch (_) {}
 
-      // Save locally to ensure committee can view it in Admin portal
-      const existingLeads = JSON.parse(localStorage.getItem("pbel_sponsor_leads") || "[]");
-      existingLeads.unshift(leadEntry);
-      localStorage.setItem("pbel_sponsor_leads", JSON.stringify(existingLeads));
+      // Save to Cloud Config so all Committee Admins see it immediately
+      const existingLeads = await fetchCloudConfig<any[]>("sponsor_leads", []);
+      const updatedLeads = [leadEntry, ...existingLeads];
+      await saveCloudConfig("sponsor_leads", updatedLeads);
+      localStorage.setItem("pbel_sponsor_leads", JSON.stringify(updatedLeads));
 
       setSubmitted(true);
     } catch (err) {

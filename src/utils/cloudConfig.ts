@@ -2,7 +2,8 @@ import { supabase } from "@/utils/supabase/client";
 
 /**
  * Universal Cloud Configuration Sync Engine for PBEL City Durgotsav
- * Automatically syncs dynamic admin changes (Towers, Committee Roster, Branding) across all devices and browsers.
+ * Ensures 100% cloud persistence across all modules (Towers, Committee, Announcements,
+ * Anandamela Stalls, Sponsor Inquiries, PSS Members, Bhog Passes, Budget Expenses, Gallery).
  */
 
 export async function fetchCloudConfig<T>(key: string, fallback: T): Promise<T> {
@@ -11,7 +12,7 @@ export async function fetchCloudConfig<T>(key: string, fallback: T): Promise<T> 
       .from("campaigns")
       .select("redirect_link")
       .eq("title", `config_${key}`)
-      .single();
+      .maybeSingle();
 
     if (error || !data || !data.redirect_link) {
       return fallback;
@@ -59,3 +60,4 @@ export async function saveCloudConfig<T>(key: string, value: T): Promise<boolean
     return false;
   }
 }
+
