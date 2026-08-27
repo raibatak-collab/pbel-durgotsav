@@ -22,6 +22,7 @@ import {
 import Link from "next/link";
 import { supabase } from "@/utils/supabase/client";
 import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import { buildUpiPayUri } from "@/utils/security";
 
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
 const SOCIETY_NAME = "PBEL Sanskritik Samiti";
@@ -192,8 +193,15 @@ export function HomeQuickContribute() {
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
-  const generateUpiString = (amt: number) => {
-    return `upi://pay?pa=${SOCIETY_UPI_ID}&pn=${encodeURIComponent(SOCIETY_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(purpose || "Pujo Seva")}`;
+  const generateUpiString = (amt: number, appScheme?: "generic" | "gpay" | "phonepe" | "paytm") => {
+    return buildUpiPayUri({
+      pa: SOCIETY_UPI_ID,
+      pn: SOCIETY_NAME,
+      am: amt,
+      tn: purpose || "Pujo Seva",
+      mc: "8661",
+      appScheme: appScheme || "generic",
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -627,13 +635,35 @@ export function HomeQuickContribute() {
                 </div>
 
                 {/* Mobile 1-Click UPI App Opener */}
-                <a
-                  href={generateUpiString(Number(amount) || 1001)}
-                  className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2.5 rounded-xl shadow-sm transition mb-3"
-                >
-                  <Smartphone size={15} />
-                  <span>Tap to Pay via GPay / PhonePe / Paytm</span>
-                </a>
+                <div className="space-y-1.5 mb-3">
+                  <a
+                    href={generateUpiString(Number(amount) || 1001, "generic")}
+                    className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2.5 rounded-xl shadow-sm transition"
+                  >
+                    <Smartphone size={15} />
+                    <span>1-Click Pay (Any UPI App)</span>
+                  </a>
+                  <div className="grid grid-cols-3 gap-1.5 text-center">
+                    <a
+                      href={generateUpiString(Number(amount) || 1001, "gpay")}
+                      className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-1.5 rounded-lg transition"
+                    >
+                      GPay
+                    </a>
+                    <a
+                      href={generateUpiString(Number(amount) || 1001, "phonepe")}
+                      className="bg-purple-700 hover:bg-purple-800 text-white text-[11px] font-bold py-1.5 rounded-lg transition"
+                    >
+                      PhonePe
+                    </a>
+                    <a
+                      href={generateUpiString(Number(amount) || 1001, "paytm")}
+                      className="bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold py-1.5 rounded-lg transition"
+                    >
+                      Paytm
+                    </a>
+                  </div>
+                </div>
               </div>
 
               <div>

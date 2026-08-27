@@ -137,3 +137,57 @@ export function generateGoogleCalendarUrl(event: {
 
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
+
+/**
+ * Builds an NPCI-compliant UPI URI with mandatory tr (transaction ref), mc (merchant code),
+ * and mode tags to ensure high bank approval and prevent "UPI ID unavailable" intent errors.
+ */
+export function buildUpiPayUri(options: {
+  pa: string;
+  pn: string;
+  am?: number | string;
+  tn?: string;
+  mc?: string;
+  tr?: string;
+  appScheme?: "generic" | "gpay" | "phonepe" | "paytm";
+}): string {
+  const {
+    pa,
+    pn,
+    am,
+    tn = "Pujo Seva 2026",
+    mc = "8661", // Religious and Social Organizations
+    appScheme = "generic",
+  } = options;
+
+  // Generate unique transaction reference (required by NPCI when am is present)
+  const timestamp = Date.now().toString().slice(-8);
+  const rand = Math.floor(1000 + Math.random() * 9000);
+  const tr = options.tr || `PSS${timestamp}${rand}`;
+
+  const params = new URLSearchParams();
+  params.set("pa", pa);
+  params.set("pn", pn);
+  if (mc) params.set("mc", mc);
+  params.set("tr", tr);
+  if (am && Number(am) > 0) {
+    params.set("am", Number(am).toFixed(2));
+  }
+  params.set("cu", "INR");
+  params.set("tn", tn.slice(0, 50)); // Max 50 chars for note
+  params.set("mode", "02"); // Secure Web Intent
+
+  const query = params.toString();
+
+  switch (appScheme) {
+    case "gpay":
+      return `tez://upi/pay?${query}`;
+    case "phonepe":
+      return `phonepe://pay?${query}`;
+    case "paytm":
+      return `paytmmp://pay?${query}`;
+    default:
+      return `upi://pay?${query}`;
+  }
+}
+

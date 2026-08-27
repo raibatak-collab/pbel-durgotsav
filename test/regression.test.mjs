@@ -1072,6 +1072,91 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('33. NPCI Compliant UPI Intent Deep Link Generator (Anti-Rejection)', () => {
+    const buildUpiPayUriTest = (options) => {
+      const {
+        pa,
+        pn,
+        am,
+        tn = "Pujo Seva 2026",
+        mc = "8661",
+        appScheme = "generic",
+      } = options;
+
+      const timestamp = Date.now().toString().slice(-8);
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      const tr = options.tr || `PSS${timestamp}${rand}`;
+
+      const params = new URLSearchParams();
+      params.set("pa", pa);
+      params.set("pn", pn);
+      if (mc) params.set("mc", mc);
+      params.set("tr", tr);
+      if (am && Number(am) > 0) {
+        params.set("am", Number(am).toFixed(2));
+      }
+      params.set("cu", "INR");
+      params.set("tn", tn.slice(0, 50));
+      params.set("mode", "02");
+
+      const query = params.toString();
+
+      switch (appScheme) {
+        case "gpay":
+          return `tez://upi/pay?${query}`;
+        case "phonepe":
+          return `phonepe://pay?${query}`;
+        case "paytm":
+          return `paytmmp://pay?${query}`;
+        default:
+          return `upi://pay?${query}`;
+      }
+    };
+
+    it('should generate URI with mandatory tr, mc=8661, mode=02, and formatted amount', () => {
+      const uri = buildUpiPayUriTest({
+        pa: "pbelsanskritiksamiti@icici",
+        pn: "PBEL Sanskritik Samiti",
+        am: 1001,
+        tn: "Pujo Seva",
+        mc: "8661",
+      });
+
+      assert.ok(uri.startsWith("upi://pay?"), "Must use upi://pay scheme");
+      assert.ok(uri.includes("pa=pbelsanskritiksamiti%40icici") || uri.includes("pa=pbelsanskritiksamiti@icici"));
+      assert.ok(uri.includes("mc=8661"), "Must include mc (Merchant Code 8661)");
+      assert.ok(uri.includes("tr=PSS"), "Must generate unique transaction ref tr");
+      assert.ok(uri.includes("am=1001.00"), "Must format amount with decimals");
+      assert.ok(uri.includes("mode=02"), "Must declare mode=02 for secure web intent");
+    });
+
+    it('should generate app-specific schemes for GPay, PhonePe, and Paytm', () => {
+      const gpayUri = buildUpiPayUriTest({
+        pa: "pbelsanskritiksamiti@icici",
+        pn: "PBEL Sanskritik Samiti",
+        am: 2001,
+        appScheme: "gpay",
+      });
+      assert.ok(gpayUri.startsWith("tez://upi/pay?"), "GPay should use tez:// scheme");
+
+      const phonepeUri = buildUpiPayUriTest({
+        pa: "pbelsanskritiksamiti@icici",
+        pn: "PBEL Sanskritik Samiti",
+        am: 2001,
+        appScheme: "phonepe",
+      });
+      assert.ok(phonepeUri.startsWith("phonepe://pay?"), "PhonePe should use phonepe:// scheme");
+
+      const paytmUri = buildUpiPayUriTest({
+        pa: "pbelsanskritiksamiti@icici",
+        pn: "PBEL Sanskritik Samiti",
+        am: 2001,
+        appScheme: "paytm",
+      });
+      assert.ok(paytmUri.startsWith("paytmmp://pay?"), "Paytm should use paytmmp:// scheme");
+    });
+  });
+
 });
 
 

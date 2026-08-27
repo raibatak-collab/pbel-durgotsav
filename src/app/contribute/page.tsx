@@ -26,6 +26,7 @@ import { supabase } from "@/utils/supabase/client";
 import { DevotionalShareModal } from "@/components/DevotionalShareModal";
 import { TowerParticipation } from "@/components/TowerParticipation";
 import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import { buildUpiPayUri } from "@/utils/security";
 
 // Official Society Bank Account UPI Configuration
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
@@ -464,8 +465,15 @@ function decodeCategoryDescription(desc?: string) {
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
-  const generateUpiString = (amt: number, note: string) => {
-    return `upi://pay?pa=${SOCIETY_UPI_ID}&pn=${encodeURIComponent(SOCIETY_NAME)}&am=${amt}&cu=INR&tn=${encodeURIComponent(note)}`;
+  const generateUpiString = (amt: number, note: string, appScheme?: "generic" | "gpay" | "phonepe" | "paytm") => {
+    return buildUpiPayUri({
+      pa: SOCIETY_UPI_ID,
+      pn: SOCIETY_NAME,
+      am: amt,
+      tn: note,
+      mc: "8661",
+      appScheme: appScheme || "generic",
+    });
   };
 
   // Handle Direct Card Fixed-Seva Payment
@@ -871,36 +879,70 @@ function decodeCategoryDescription(desc?: string) {
 
               {/* Dynamic QR Scanner & 1-Click Mobile Widget (PLACED BEFORE DETAILS FORM FOR ZERO SCROLLING ON MOBILE) */}
               {customAmount && Number(customAmount) > 0 && (
-                <div className="bg-amber-50/80 p-5 rounded-2xl border border-amber-300 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-                  <div className="text-center md:text-left space-y-1.5 flex-1">
+                <div className="bg-gradient-to-br from-amber-50/90 to-orange-50/70 p-5 rounded-2xl border border-amber-300 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                  <div className="text-center md:text-left space-y-2 flex-1">
                     <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
-                      <QrCode size={16} className="text-primary" /> Instant 1-Click Mobile Payment & QR
+                      <Smartphone size={16} className="text-primary" /> Instant 1-Click Mobile Pay
                     </span>
                     <p className="text-sm font-bold text-gray-900">
                       Pay ₹{Number(customAmount).toLocaleString("en-IN")} directly to Society Bank Account
                     </p>
-                    <p className="text-xs text-gray-600">
-                      Beneficiary: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> (PBEL Sanskritik Samiti)
-                    </p>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs text-gray-600">
+                      <span>UPI ID: <strong className="font-mono text-primary font-bold">{SOCIETY_UPI_ID}</strong></span>
+                      <button
+                        type="button"
+                        onClick={handleCopyUpi}
+                        className="text-amber-900 hover:text-black font-semibold flex items-center gap-1 bg-amber-200/70 hover:bg-amber-200 px-2.5 py-0.5 rounded-full text-[11px] transition shadow-2xs"
+                      >
+                        {copiedUpi ? <Check size={12} className="text-green-700" /> : <Copy size={12} />}
+                        <span>{copiedUpi ? "Copied!" : "Copy UPI ID"}</span>
+                      </button>
+                    </div>
+
+                    {/* Direct App Buttons */}
                     <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
                       <a
-                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
-                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md"
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic")}
+                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md hover:shadow-lg"
                       >
-                        <Smartphone size={15} /> 1-Click Pay via GPay / PhonePe / Paytm
+                        <Smartphone size={15} /> 1-Click Pay (Any UPI App)
+                      </a>
+                      <a
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "gpay")}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                        title="Open Google Pay directly"
+                      >
+                        <span>GPay</span>
+                      </a>
+                      <a
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "phonepe")}
+                        className="bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                        title="Open PhonePe directly"
+                      >
+                        <span>PhonePe</span>
+                      </a>
+                      <a
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "paytm")}
+                        className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                        title="Open Paytm directly"
+                      >
+                        <span>Paytm</span>
                       </a>
                     </div>
+                    <p className="text-[11px] text-gray-500 pt-1">
+                      💡 <em>Tip: Tap your installed UPI app above, or scan the QR code from another device.</em>
+                    </p>
                   </div>
 
                   <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")
+                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic")
                       )}`}
                       alt="PBEL Sanskritik Samiti UPI QR"
                       className="w-36 h-36 mx-auto rounded-lg"
                     />
-                    <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan & Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
+                    <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan &amp; Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
                   </div>
                 </div>
               )}
@@ -1203,12 +1245,33 @@ function decodeCategoryDescription(desc?: string) {
               
               {/* Primary 1-Click Mobile Pay Action */}
               <a
-                href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)}
+                href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "generic")}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-md hover:shadow-lg"
               >
                 <Smartphone size={17} />
-                <span>1-Click Pay ₹{modalSeva.amount.toLocaleString("en-IN")} via GPay / PhonePe / Paytm</span>
+                <span>1-Click Pay ₹{modalSeva.amount.toLocaleString("en-IN")} (Any UPI App)</span>
               </a>
+
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                <a
+                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "gpay")}
+                  className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                >
+                  GPay
+                </a>
+                <a
+                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "phonepe")}
+                  className="bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                >
+                  PhonePe
+                </a>
+                <a
+                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "paytm")}
+                  className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
+                >
+                  Paytm
+                </a>
+              </div>
 
               {/* QR Code & Desktop Scanner */}
               <div className="pt-2 border-t border-amber-200/60 flex flex-col items-center">
