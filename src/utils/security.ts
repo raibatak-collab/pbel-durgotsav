@@ -139,39 +139,47 @@ export function generateGoogleCalendarUrl(event: {
 }
 
 /**
- * Builds a UPI URI for either P2P Web Intents (omits `am` and `mc` to avoid non-merchant bank rejection)
- * or QR Code generation (includes `am` for instant pre-filled optical camera scanning).
+ * Official ICICI Bank EazyPay Terminal Configuration for PBEL Sanskritik Samiti
+ */
+export const OFFICIAL_BANK_UPI = {
+  pa: "PBELSANSKRITIKSAMITI@icici",
+  pn: "PBEL SANSKRITIK SAMITI",
+  tr: "EZYS9347708431",
+  mc: "1520",
+  cu: "INR",
+};
+
+/**
+ * Builds an official bank-verified UPI URI for physical QR codes and mobile 1-Click Pay intents.
+ * Uses official ICICI EazyPay terminal credentials (mc=1520, tr=EZYS9347708431).
  */
 export function buildUpiPayUri(options: {
-  pa: string;
-  pn: string;
+  pa?: string;
+  pn?: string;
   am?: number | string;
   tn?: string;
   mc?: string;
   tr?: string;
   appScheme?: "generic" | "gpay" | "phonepe" | "paytm";
-  includeAmount?: boolean;
 }): string {
   const {
-    pa,
-    pn,
+    pa = OFFICIAL_BANK_UPI.pa,
+    pn = OFFICIAL_BANK_UPI.pn,
     am,
     tn = "Pujo Seva 2026",
+    mc = OFFICIAL_BANK_UPI.mc,
+    tr = OFFICIAL_BANK_UPI.tr,
     appScheme = "generic",
-    includeAmount = false, // Default false for web deep links to avoid "VPA unavailable" merchant error
   } = options;
 
   const params = new URLSearchParams();
   params.set("pa", pa);
   params.set("pn", pn);
-
-  // Only include amount for physical QR codes (which bypass merchant intent validation)
-  if (includeAmount && am && Number(am) > 0) {
+  if (tr) params.set("tr", tr);
+  if (mc) params.set("mc", mc);
+  if (am && Number(am) > 0) {
     params.set("am", Number(am).toFixed(2));
-    if (options.mc) params.set("mc", options.mc);
-    if (options.tr) params.set("tr", options.tr);
   }
-
   params.set("cu", "INR");
   if (tn) params.set("tn", tn.slice(0, 50));
 

@@ -1072,27 +1072,26 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
-  describe('33. NPCI Compliant UPI Intent Deep Link Generator (Anti-Rejection)', () => {
+  describe('33. NPCI & ICICI EazyPay Verified Terminal Deep Link Generator', () => {
     const buildUpiPayUriTest = (options) => {
       const {
-        pa,
-        pn,
+        pa = "PBELSANSKRITIKSAMITI@icici",
+        pn = "PBEL SANSKRITIK SAMITI",
         am,
         tn = "Pujo Seva 2026",
+        mc = "1520",
+        tr = "EZYS9347708431",
         appScheme = "generic",
-        includeAmount = false,
       } = options;
 
       const params = new URLSearchParams();
       params.set("pa", pa);
       params.set("pn", pn);
-
-      if (includeAmount && am && Number(am) > 0) {
+      if (tr) params.set("tr", tr);
+      if (mc) params.set("mc", mc);
+      if (am && Number(am) > 0) {
         params.set("am", Number(am).toFixed(2));
-        if (options.mc) params.set("mc", options.mc);
-        if (options.tr) params.set("tr", options.tr);
       }
-
       params.set("cu", "INR");
       if (tn) params.set("tn", tn.slice(0, 50));
 
@@ -1110,63 +1109,43 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       }
     };
 
-    it('should generate P2P web URI without am or mc tag to prevent merchant gate rejection', () => {
-      const webUri = buildUpiPayUriTest({
-        pa: "pbelsanskritiksamiti@icici",
-        pn: "PBEL Sanskritik Samiti",
+    it('should generate official ICICI EazyPay terminal URI with mc=1520 and tr=EZYS9347708431', () => {
+      const uri = buildUpiPayUriTest({
         am: 1001,
         tn: "Pujo Seva",
-        includeAmount: false,
       });
 
-      assert.ok(webUri.startsWith("upi://pay?"), "Must use upi://pay scheme");
-      assert.ok(webUri.includes("pa=pbelsanskritiksamiti%40icici") || webUri.includes("pa=pbelsanskritiksamiti@icici"));
-      assert.ok(!webUri.includes("am="), "Web link must not have locked am tag");
-      assert.ok(!webUri.includes("mc="), "Web link must not have merchant tag");
+      assert.ok(uri.startsWith("upi://pay?"), "Must use upi://pay scheme");
+      assert.ok(uri.includes("pa=PBELSANSKRITIKSAMITI%40icici") || uri.includes("pa=PBELSANSKRITIKSAMITI@icici"));
+      assert.ok(uri.includes("tr=EZYS9347708431"), "Must include official bank terminal tr");
+      assert.ok(uri.includes("mc=1520"), "Must include official ICICI merchant code 1520");
+      assert.ok(uri.includes("am=1001.00"), "Must include prefilled amount");
+      assert.ok(uri.includes("cu=INR"));
     });
 
-    it('should include amount for QR code scan generation', () => {
-      const qrUri = buildUpiPayUriTest({
-        pa: "pbelsanskritiksamiti@icici",
-        pn: "PBEL Sanskritik Samiti",
-        am: 1001,
-        tn: "Pujo Seva",
-        includeAmount: true,
-      });
-
-      assert.ok(qrUri.includes("am=1001.00"), "QR code must include prefilled amount");
-    });
-
-    it('should generate app-specific schemes for GPay, PhonePe, and Paytm without locked amount', () => {
+    it('should generate app-specific schemes for GPay, PhonePe, and Paytm with verified terminal parameters', () => {
       const gpayUri = buildUpiPayUriTest({
-        pa: "pbelsanskritiksamiti@icici",
-        pn: "PBEL Sanskritik Samiti",
         am: 2001,
         appScheme: "gpay",
-        includeAmount: false,
       });
       assert.ok(gpayUri.startsWith("tez://upi/pay?"), "GPay should use tez:// scheme");
-      assert.ok(!gpayUri.includes("am="), "GPay link must not have locked amount");
+      assert.ok(gpayUri.includes("tr=EZYS9347708431"));
+      assert.ok(gpayUri.includes("mc=1520"));
+      assert.ok(gpayUri.includes("am=2001.00"));
 
       const phonepeUri = buildUpiPayUriTest({
-        pa: "pbelsanskritiksamiti@icici",
-        pn: "PBEL Sanskritik Samiti",
         am: 2001,
         appScheme: "phonepe",
-        includeAmount: false,
       });
       assert.ok(phonepeUri.startsWith("phonepe://pay?"), "PhonePe should use phonepe:// scheme");
-      assert.ok(!phonepeUri.includes("am="), "PhonePe link must not have locked amount");
+      assert.ok(phonepeUri.includes("tr=EZYS9347708431"));
 
       const paytmUri = buildUpiPayUriTest({
-        pa: "pbelsanskritiksamiti@icici",
-        pn: "PBEL Sanskritik Samiti",
         am: 2001,
         appScheme: "paytm",
-        includeAmount: false,
       });
       assert.ok(paytmUri.startsWith("paytmmp://pay?"), "Paytm should use paytmmp:// scheme");
-      assert.ok(!paytmUri.includes("am="), "Paytm link must not have locked amount");
+      assert.ok(paytmUri.includes("tr=EZYS9347708431"));
     });
   });
 
