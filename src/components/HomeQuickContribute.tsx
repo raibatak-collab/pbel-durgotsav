@@ -502,80 +502,70 @@ export function HomeQuickContribute() {
               </div>
             </div>
 
-            {/* 2. DYNAMIC QR CODE & 1-CLICK PAY (PLACED BEFORE DETAILS FORM FOR ZERO SCROLLING ON MOBILE) */}
+            {/* 2. DYNAMIC QR CODE & 1-TAP MOBILE PAYMENT WIDGET (PLACED BEFORE DETAILS FORM FOR ZERO SCROLLING ON MOBILE) */}
             {amount && Number(amount) > 0 ? (
-              <div className="bg-gradient-to-br from-amber-50/90 to-orange-50/70 p-5 rounded-2xl border border-amber-300 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="text-center md:text-left space-y-2 flex-1">
-                  <span className="text-xs font-bold text-amber-900 uppercase flex items-center gap-1.5 justify-center md:justify-start">
-                    <Smartphone size={16} className="text-primary" /> Instant 1-Click Mobile Pay & QR
-                  </span>
-                  <p className="text-sm font-bold text-gray-900">
-                    Pay ₹{Number(amount).toLocaleString("en-IN")} directly to Society Bank Account
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 text-xs text-gray-600">
-                    <span>UPI ID: <strong className="font-mono text-primary font-bold">{SOCIETY_UPI_ID}</strong></span>
-                    <button
-                      type="button"
-                      onClick={handleCopyUpi}
-                      className="text-amber-900 hover:text-black font-semibold flex items-center gap-1 bg-amber-200/70 hover:bg-amber-200 px-2.5 py-0.5 rounded-full text-[11px] transition shadow-2xs"
-                    >
-                      {copiedUpi ? <Check size={12} className="text-green-700" /> : <Copy size={12} />}
-                      <span>{copiedUpi ? "Copied!" : "Copy UPI ID"}</span>
-                    </button>
+              <div className="bg-gradient-to-br from-amber-50/95 via-orange-50/80 to-amber-100/50 p-5 sm:p-6 rounded-3xl border border-amber-300/90 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="text-center md:text-left space-y-3 flex-1">
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-200/80 text-amber-950 text-xs font-bold">
+                    <Sparkles size={13} className="text-primary" />
+                    <span>Official Society ICICI Bank Account</span>
                   </div>
 
-                  {/* Direct 1-Click Pay Buttons (Official ICICI Bank Terminal Links) */}
-                  <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
-                    <a
-                      href={generateUpiString(Number(amount), "generic")}
-                      className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md hover:shadow-lg"
-                    >
-                      <Smartphone size={15} /> 1-Click Pay ₹{Number(amount).toLocaleString("en-IN")}
-                    </a>
-                    <a
-                      href={generateUpiString(Number(amount), "gpay")}
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
-                      title="Open Google Pay directly"
-                    >
-                      <span>GPay</span>
-                    </a>
-                    <a
-                      href={generateUpiString(Number(amount), "phonepe")}
-                      className="bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
-                      title="Open PhonePe directly"
-                    >
-                      <span>PhonePe</span>
-                    </a>
-                    <a
-                      href={generateUpiString(Number(amount), "paytm")}
-                      className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
-                      title="Open Paytm directly"
-                    >
-                      <span>Paytm</span>
-                    </a>
-                  </div>
-                  <p className="text-[11px] text-gray-500 pt-1">
-                    💡 <em>Tap your preferred app above, or scan the QR code from another phone/photos.</em>
+                  <p className="text-base font-bold text-gray-900 leading-snug">
+                    Offering Amount: <span className="text-primary font-mono text-xl">₹{Number(amount).toLocaleString("en-IN")}</span>
                   </p>
+
+                  {/* Primary 1-Tap Copy Action & Banking App Link */}
+                  <div className="space-y-2">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleCopyUpi}
+                        className="bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 active:scale-98 golden-glow"
+                      >
+                        {copiedUpi ? <Check size={16} className="text-white" /> : <Copy size={16} />}
+                        <span>{copiedUpi ? "✓ UPI ID Copied to Clipboard!" : "📋 1-Tap Copy UPI ID"}</span>
+                      </button>
+
+                      <a
+                        href={generateUpiString(Number(amount))}
+                        className="bg-white hover:bg-amber-50 text-gray-800 border border-amber-300 text-xs font-bold px-4 py-3 rounded-2xl transition flex items-center justify-center gap-1.5 shadow-2xs"
+                        title="Open banking apps that support web deep links like Kotak, BHIM"
+                      >
+                        <Smartphone size={15} className="text-primary" />
+                        <span>Open Banking App (Kotak / BHIM)</span>
+                      </a>
+                    </div>
+
+                    <div className="bg-white/80 border border-amber-200/80 rounded-xl p-2.5 text-left text-[11px] text-gray-700 space-y-1">
+                      <span className="font-bold text-gray-900 block">📱 How to Pay via Google Pay / PhonePe / Paytm:</span>
+                      <ol className="list-decimal list-inside space-y-0.5 text-gray-600">
+                        <li>Tap <strong className="text-amber-900">"1-Tap Copy UPI ID"</strong> above</li>
+                        <li>Open <strong>GPay / PhonePe / Paytm</strong> ➔ Tap <strong>"Pay UPI ID / To UPI ID"</strong></li>
+                        <li>Paste <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> &amp; Pay ₹{Number(amount).toLocaleString("en-IN")}</li>
+                      </ol>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
+                {/* QR Code */}
+                <div className="bg-white p-3.5 rounded-3xl border border-amber-300/90 shadow-md shrink-0 text-center">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                      generateUpiString(Number(amount), "generic")
+                      generateUpiString(Number(amount))
                     )}`}
                     alt="PBEL Sanskritik Samiti UPI QR"
-                    className="w-36 h-36 mx-auto rounded-lg"
+                    className="w-36 h-36 mx-auto rounded-xl"
                   />
-                  <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan &amp; Pay ₹{Number(amount).toLocaleString("en-IN")}</span>
+                  <span className="text-[11px] text-gray-800 font-bold block mt-1.5 font-mono">Scan with Any UPI App</span>
                   <a
                     href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                      generateUpiString(Number(amount), "generic")
+                      generateUpiString(Number(amount))
                     )}`}
                     download={`PBEL-Durgotsav-QR-${amount}.png`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="mt-2 text-[10px] font-bold text-amber-900 bg-amber-100/90 hover:bg-amber-200 px-2.5 py-1 rounded-md transition flex items-center justify-center gap-1"
+                    className="mt-2 text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-lg transition flex items-center justify-center gap-1"
                   >
                     <Download size={11} /> Save QR Image
                   </a>
@@ -583,7 +573,7 @@ export function HomeQuickContribute() {
               </div>
             ) : (
               <div className="bg-amber-50/50 p-4 rounded-2xl border border-dashed border-amber-300/80 text-center text-xs text-amber-900">
-                👆 <strong>Select a preset above (e.g. ₹501, ₹1,001) or enter any amount</strong> to generate your instant QR code &amp; 1-Click Pay link.
+                👆 <strong>Select a preset above (e.g. ₹501, ₹1,001) or enter any amount</strong> to generate your instant QR code &amp; 1-Tap Copy UPI details.
               </div>
             )}
 
