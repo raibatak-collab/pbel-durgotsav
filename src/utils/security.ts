@@ -142,7 +142,7 @@ export function generateGoogleCalendarUrl(event: {
  * Official ICICI Bank EazyPay Terminal Configuration for PBEL Sanskritik Samiti
  */
 export const OFFICIAL_BANK_UPI = {
-  pa: "PBELSANSKRITIKSAMITI@icici",
+  pa: "pbelsanskritiksamiti@icici",
   pn: "PBEL SANSKRITIK SAMITI",
   tr: "EZYS9347708431",
   mc: "1520",
@@ -152,6 +152,7 @@ export const OFFICIAL_BANK_UPI = {
 /**
  * Builds an official bank-verified UPI URI for physical QR codes and mobile 1-Click Pay intents.
  * Uses official ICICI EazyPay terminal credentials (mc=1520, tr=EZYS9347708431).
+ * Enforces lowercased VPA, literal '@', and NPCI standard upi://pay scheme for maximum P2M compatibility.
  */
 export function buildUpiPayUri(options: {
   pa?: string;
@@ -169,11 +170,10 @@ export function buildUpiPayUri(options: {
     tn = "Pujo Seva 2026",
     mc = OFFICIAL_BANK_UPI.mc,
     tr = OFFICIAL_BANK_UPI.tr,
-    appScheme = "generic",
   } = options;
 
   const params = new URLSearchParams();
-  params.set("pa", pa);
+  params.set("pa", pa.toLowerCase().trim());
   params.set("pn", pn);
   if (tr) params.set("tr", tr);
   if (mc) params.set("mc", mc);
@@ -185,15 +185,6 @@ export function buildUpiPayUri(options: {
 
   const query = params.toString().replace(/\+/g, '%20').replace(/%40/g, "@");
 
-  switch (appScheme) {
-    case "gpay":
-      return `tez://upi/pay?${query}`;
-    case "phonepe":
-      return `phonepe://pay?${query}`;
-    case "paytm":
-      return `paytmmp://pay?${query}`;
-    default:
-      return `upi://pay?${query}`;
-  }
+  return `upi://pay?${query}`;
 }
 

@@ -1075,17 +1075,16 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
   describe('33. NPCI & ICICI EazyPay Verified Terminal Deep Link Generator', () => {
     const buildUpiPayUriTest = (options) => {
       const {
-        pa = "PBELSANSKRITIKSAMITI@icici",
+        pa = "pbelsanskritiksamiti@icici",
         pn = "PBEL SANSKRITIK SAMITI",
         am,
         tn = "Pujo Seva 2026",
         mc = "1520",
         tr = "EZYS9347708431",
-        appScheme = "generic",
       } = options;
 
       const params = new URLSearchParams();
-      params.set("pa", pa);
+      params.set("pa", pa.toLowerCase().trim());
       params.set("pn", pn);
       if (tr) params.set("tr", tr);
       if (mc) params.set("mc", mc);
@@ -1097,16 +1096,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
 
       const query = params.toString().replace(/\+/g, '%20').replace(/%40/g, "@");
 
-      switch (appScheme) {
-        case "gpay":
-          return `tez://upi/pay?${query}`;
-        case "phonepe":
-          return `phonepe://pay?${query}`;
-        case "paytm":
-          return `paytmmp://pay?${query}`;
-        default:
-          return `upi://pay?${query}`;
-      }
+      return `upi://pay?${query}`;
     };
 
     it('should generate official ICICI EazyPay terminal URI with mc=1520 and tr=EZYS9347708431', () => {
@@ -1117,36 +1107,23 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
 
       assert.ok(uri.startsWith("upi://pay?"), "Must use upi://pay scheme");
       assert.ok(!uri.includes("+"), "Must not include '+' characters for spaces (RFC 3986 encoding required)");
-      assert.ok(uri.includes("pa=PBELSANSKRITIKSAMITI@icici"), "Must use literal '@' in pa parameter");
+      assert.ok(uri.includes("pa=pbelsanskritiksamiti@icici"), "Must use lowercased VPA with literal '@'");
       assert.ok(uri.includes("tr=EZYS9347708431"), "Must include official bank terminal tr");
       assert.ok(uri.includes("mc=1520"), "Must include official ICICI merchant code 1520");
       assert.ok(uri.includes("am=1001.00"), "Must include prefilled amount");
       assert.ok(uri.includes("cu=INR"));
     });
 
-    it('should generate app-specific schemes for GPay, PhonePe, and Paytm with verified terminal parameters', () => {
+    it('should generate standardized upi://pay NPCI scheme for all app triggers with verified terminal parameters', () => {
       const gpayUri = buildUpiPayUriTest({
         am: 2001,
         appScheme: "gpay",
       });
-      assert.ok(gpayUri.startsWith("tez://upi/pay?"), "GPay should use tez:// scheme");
+      assert.ok(gpayUri.startsWith("upi://pay?"), "Should use upi://pay standard NPCI scheme");
+      assert.ok(gpayUri.includes("pa=pbelsanskritiksamiti@icici"));
       assert.ok(gpayUri.includes("tr=EZYS9347708431"));
       assert.ok(gpayUri.includes("mc=1520"));
       assert.ok(gpayUri.includes("am=2001.00"));
-
-      const phonepeUri = buildUpiPayUriTest({
-        am: 2001,
-        appScheme: "phonepe",
-      });
-      assert.ok(phonepeUri.startsWith("phonepe://pay?"), "PhonePe should use phonepe:// scheme");
-      assert.ok(phonepeUri.includes("tr=EZYS9347708431"));
-
-      const paytmUri = buildUpiPayUriTest({
-        am: 2001,
-        appScheme: "paytm",
-      });
-      assert.ok(paytmUri.startsWith("paytmmp://pay?"), "Paytm should use paytmmp:// scheme");
-      assert.ok(paytmUri.includes("tr=EZYS9347708431"));
     });
   });
 
