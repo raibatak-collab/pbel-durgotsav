@@ -139,8 +139,8 @@ export function generateGoogleCalendarUrl(event: {
 }
 
 /**
- * Builds an NPCI-compliant UPI URI with mandatory tr (transaction ref), mc (merchant code),
- * and mode tags to ensure high bank approval and prevent "UPI ID unavailable" intent errors.
+ * Builds a UPI URI for either P2P Web Intents (omits `am` and `mc` to avoid non-merchant bank rejection)
+ * or QR Code generation (includes `am` for instant pre-filled optical camera scanning).
  */
 export function buildUpiPayUri(options: {
   pa: string;
@@ -150,32 +150,30 @@ export function buildUpiPayUri(options: {
   mc?: string;
   tr?: string;
   appScheme?: "generic" | "gpay" | "phonepe" | "paytm";
+  includeAmount?: boolean;
 }): string {
   const {
     pa,
     pn,
     am,
     tn = "Pujo Seva 2026",
-    mc = "8661", // Religious and Social Organizations
     appScheme = "generic",
+    includeAmount = false, // Default false for web deep links to avoid "VPA unavailable" merchant error
   } = options;
-
-  // Generate unique transaction reference (required by NPCI when am is present)
-  const timestamp = Date.now().toString().slice(-8);
-  const rand = Math.floor(1000 + Math.random() * 9000);
-  const tr = options.tr || `PSS${timestamp}${rand}`;
 
   const params = new URLSearchParams();
   params.set("pa", pa);
   params.set("pn", pn);
-  if (mc) params.set("mc", mc);
-  params.set("tr", tr);
-  if (am && Number(am) > 0) {
+
+  // Only include amount for physical QR codes (which bypass merchant intent validation)
+  if (includeAmount && am && Number(am) > 0) {
     params.set("am", Number(am).toFixed(2));
+    if (options.mc) params.set("mc", options.mc);
+    if (options.tr) params.set("tr", options.tr);
   }
+
   params.set("cu", "INR");
-  params.set("tn", tn.slice(0, 50)); // Max 50 chars for note
-  params.set("mode", "02"); // Secure Web Intent
+  if (tn) params.set("tn", tn.slice(0, 50));
 
   const query = params.toString();
 

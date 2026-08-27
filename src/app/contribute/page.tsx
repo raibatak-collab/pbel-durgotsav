@@ -465,7 +465,12 @@ function decodeCategoryDescription(desc?: string) {
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
-  const generateUpiString = (amt: number, note: string, appScheme?: "generic" | "gpay" | "phonepe" | "paytm") => {
+  const generateUpiString = (
+    amt: number,
+    note: string,
+    appScheme?: "generic" | "gpay" | "phonepe" | "paytm",
+    includeAmount = false
+  ) => {
     return buildUpiPayUri({
       pa: SOCIETY_UPI_ID,
       pn: SOCIETY_NAME,
@@ -473,6 +478,7 @@ function decodeCategoryDescription(desc?: string) {
       tn: note,
       mc: "8661",
       appScheme: appScheme || "generic",
+      includeAmount,
     });
   };
 
@@ -899,30 +905,30 @@ function decodeCategoryDescription(desc?: string) {
                       </button>
                     </div>
 
-                    {/* Direct App Buttons */}
+                    {/* Direct App Buttons (Opens app directly to PBEL Samiti without am tag to avoid bank rejection) */}
                     <div className="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
                       <a
-                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic")}
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic", false)}
                         className="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md hover:shadow-lg"
                       >
-                        <Smartphone size={15} /> 1-Click Pay (Any UPI App)
+                        <Smartphone size={15} /> 1-Click Open App to Pay
                       </a>
                       <a
-                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "gpay")}
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "gpay", false)}
                         className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
                         title="Open Google Pay directly"
                       >
                         <span>GPay</span>
                       </a>
                       <a
-                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "phonepe")}
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "phonepe", false)}
                         className="bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
                         title="Open PhonePe directly"
                       >
                         <span>PhonePe</span>
                       </a>
                       <a
-                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "paytm")}
+                        href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "paytm", false)}
                         className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
                         title="Open Paytm directly"
                       >
@@ -930,14 +936,14 @@ function decodeCategoryDescription(desc?: string) {
                       </a>
                     </div>
                     <p className="text-[11px] text-gray-500 pt-1">
-                      💡 <em>Tip: Tap your installed UPI app above, or scan the QR code from another device.</em>
+                      💡 <em>Tip: Tap your app above and enter ₹{Number(customAmount).toLocaleString("en-IN")}, or scan QR code.</em>
                     </p>
                   </div>
 
                   <div className="bg-white p-3 rounded-2xl border border-amber-300 shadow-sm shrink-0 text-center">
                     <img
                       src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic")
+                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic", true)
                       )}`}
                       alt="PBEL Sanskritik Samiti UPI QR"
                       className="w-36 h-36 mx-auto rounded-lg"
@@ -945,7 +951,7 @@ function decodeCategoryDescription(desc?: string) {
                     <span className="text-[10px] text-gray-500 font-semibold block mt-1">Scan &amp; Pay ₹{Number(customAmount).toLocaleString("en-IN")}</span>
                     <a
                       href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic")
+                        generateUpiString(Number(customAmount), customPurpose || "Pujo Seva", "generic", true)
                       )}`}
                       download={`PBEL-Durgotsav-QR-${customAmount}.png`}
                       target="_blank"
@@ -1256,28 +1262,28 @@ function decodeCategoryDescription(desc?: string) {
               
               {/* Primary 1-Click Mobile Pay Action */}
               <a
-                href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "generic")}
+                href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "generic", false)}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 px-4 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition shadow-md hover:shadow-lg"
               >
                 <Smartphone size={17} />
-                <span>1-Click Pay ₹{modalSeva.amount.toLocaleString("en-IN")} (Any UPI App)</span>
+                <span>1-Click Open App to Pay (Enter ₹{modalSeva.amount.toLocaleString("en-IN")})</span>
               </a>
 
               <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
                 <a
-                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "gpay")}
+                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "gpay", false)}
                   className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
                 >
                   GPay
                 </a>
                 <a
-                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "phonepe")}
+                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "phonepe", false)}
                   className="bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
                 >
                   PhonePe
                 </a>
                 <a
-                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "paytm")}
+                  href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`, "paytm", false)}
                   className="bg-sky-600 hover:bg-sky-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition"
                 >
                   Paytm

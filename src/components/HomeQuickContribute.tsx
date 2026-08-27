@@ -193,7 +193,11 @@ export function HomeQuickContribute() {
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
-  const generateUpiString = (amt: number, appScheme?: "generic" | "gpay" | "phonepe" | "paytm") => {
+  const generateUpiString = (
+    amt: number, 
+    appScheme?: "generic" | "gpay" | "phonepe" | "paytm",
+    includeAmount = false
+  ) => {
     return buildUpiPayUri({
       pa: SOCIETY_UPI_ID,
       pn: SOCIETY_NAME,
@@ -201,6 +205,7 @@ export function HomeQuickContribute() {
       tn: purpose || "Pujo Seva",
       mc: "8661",
       appScheme: appScheme || "generic",
+      includeAmount,
     });
   };
 
@@ -609,7 +614,7 @@ export function HomeQuickContribute() {
                 <div className="bg-white p-3 rounded-2xl shadow-inner border border-amber-200 w-fit mx-auto text-center mb-3">
                   <img
                     src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                      generateUpiString(Number(amount) || 1001)
+                      generateUpiString(Number(amount) || 1001, "generic", true)
                     )}`}
                     alt="PBEL Durgotsav QR"
                     className="w-36 h-36 mx-auto rounded-lg"
@@ -619,7 +624,7 @@ export function HomeQuickContribute() {
                   </span>
                   <a
                     href={`https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(
-                      generateUpiString(Number(amount) || 1001, "generic")
+                      generateUpiString(Number(amount) || 1001, "generic", true)
                     )}`}
                     download={`PBEL-Durgotsav-QR-${amount || 1001}.png`}
                     target="_blank"
@@ -645,30 +650,30 @@ export function HomeQuickContribute() {
                   </div>
                 </div>
 
-                {/* Mobile 1-Click UPI App Opener */}
+                {/* Mobile 1-Click UPI App Opener (Direct P2P Link to PBEL Samiti without am tag to avoid merchant gate rejection) */}
                 <div className="space-y-1.5 mb-3">
                   <a
-                    href={generateUpiString(Number(amount) || 1001, "generic")}
+                    href={generateUpiString(Number(amount) || 1001, "generic", false)}
                     className="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold py-2.5 rounded-xl shadow-sm transition"
                   >
                     <Smartphone size={15} />
-                    <span>1-Click Pay (Any UPI App)</span>
+                    <span>1-Click Open App to Pay</span>
                   </a>
                   <div className="grid grid-cols-3 gap-1.5 text-center">
                     <a
-                      href={generateUpiString(Number(amount) || 1001, "gpay")}
+                      href={generateUpiString(Number(amount) || 1001, "gpay", false)}
                       className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold py-1.5 rounded-lg transition"
                     >
                       GPay
                     </a>
                     <a
-                      href={generateUpiString(Number(amount) || 1001, "phonepe")}
+                      href={generateUpiString(Number(amount) || 1001, "phonepe", false)}
                       className="bg-purple-700 hover:bg-purple-800 text-white text-[11px] font-bold py-1.5 rounded-lg transition"
                     >
                       PhonePe
                     </a>
                     <a
-                      href={generateUpiString(Number(amount) || 1001, "paytm")}
+                      href={generateUpiString(Number(amount) || 1001, "paytm", false)}
                       className="bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold py-1.5 rounded-lg transition"
                     >
                       Paytm

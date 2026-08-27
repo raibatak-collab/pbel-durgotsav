@@ -1079,25 +1079,22 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
         pn,
         am,
         tn = "Pujo Seva 2026",
-        mc = "8661",
         appScheme = "generic",
+        includeAmount = false,
       } = options;
-
-      const timestamp = Date.now().toString().slice(-8);
-      const rand = Math.floor(1000 + Math.random() * 9000);
-      const tr = options.tr || `PSS${timestamp}${rand}`;
 
       const params = new URLSearchParams();
       params.set("pa", pa);
       params.set("pn", pn);
-      if (mc) params.set("mc", mc);
-      params.set("tr", tr);
-      if (am && Number(am) > 0) {
+
+      if (includeAmount && am && Number(am) > 0) {
         params.set("am", Number(am).toFixed(2));
+        if (options.mc) params.set("mc", options.mc);
+        if (options.tr) params.set("tr", options.tr);
       }
+
       params.set("cu", "INR");
-      params.set("tn", tn.slice(0, 50));
-      params.set("mode", "02");
+      if (tn) params.set("tn", tn.slice(0, 50));
 
       const query = params.toString();
 
@@ -1113,47 +1110,63 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       }
     };
 
-    it('should generate URI with mandatory tr, mc=8661, mode=02, and formatted amount', () => {
-      const uri = buildUpiPayUriTest({
+    it('should generate P2P web URI without am or mc tag to prevent merchant gate rejection', () => {
+      const webUri = buildUpiPayUriTest({
         pa: "pbelsanskritiksamiti@icici",
         pn: "PBEL Sanskritik Samiti",
         am: 1001,
         tn: "Pujo Seva",
-        mc: "8661",
+        includeAmount: false,
       });
 
-      assert.ok(uri.startsWith("upi://pay?"), "Must use upi://pay scheme");
-      assert.ok(uri.includes("pa=pbelsanskritiksamiti%40icici") || uri.includes("pa=pbelsanskritiksamiti@icici"));
-      assert.ok(uri.includes("mc=8661"), "Must include mc (Merchant Code 8661)");
-      assert.ok(uri.includes("tr=PSS"), "Must generate unique transaction ref tr");
-      assert.ok(uri.includes("am=1001.00"), "Must format amount with decimals");
-      assert.ok(uri.includes("mode=02"), "Must declare mode=02 for secure web intent");
+      assert.ok(webUri.startsWith("upi://pay?"), "Must use upi://pay scheme");
+      assert.ok(webUri.includes("pa=pbelsanskritiksamiti%40icici") || webUri.includes("pa=pbelsanskritiksamiti@icici"));
+      assert.ok(!webUri.includes("am="), "Web link must not have locked am tag");
+      assert.ok(!webUri.includes("mc="), "Web link must not have merchant tag");
     });
 
-    it('should generate app-specific schemes for GPay, PhonePe, and Paytm', () => {
+    it('should include amount for QR code scan generation', () => {
+      const qrUri = buildUpiPayUriTest({
+        pa: "pbelsanskritiksamiti@icici",
+        pn: "PBEL Sanskritik Samiti",
+        am: 1001,
+        tn: "Pujo Seva",
+        includeAmount: true,
+      });
+
+      assert.ok(qrUri.includes("am=1001.00"), "QR code must include prefilled amount");
+    });
+
+    it('should generate app-specific schemes for GPay, PhonePe, and Paytm without locked amount', () => {
       const gpayUri = buildUpiPayUriTest({
         pa: "pbelsanskritiksamiti@icici",
         pn: "PBEL Sanskritik Samiti",
         am: 2001,
         appScheme: "gpay",
+        includeAmount: false,
       });
       assert.ok(gpayUri.startsWith("tez://upi/pay?"), "GPay should use tez:// scheme");
+      assert.ok(!gpayUri.includes("am="), "GPay link must not have locked amount");
 
       const phonepeUri = buildUpiPayUriTest({
         pa: "pbelsanskritiksamiti@icici",
         pn: "PBEL Sanskritik Samiti",
         am: 2001,
         appScheme: "phonepe",
+        includeAmount: false,
       });
       assert.ok(phonepeUri.startsWith("phonepe://pay?"), "PhonePe should use phonepe:// scheme");
+      assert.ok(!phonepeUri.includes("am="), "PhonePe link must not have locked amount");
 
       const paytmUri = buildUpiPayUriTest({
         pa: "pbelsanskritiksamiti@icici",
         pn: "PBEL Sanskritik Samiti",
         am: 2001,
         appScheme: "paytm",
+        includeAmount: false,
       });
       assert.ok(paytmUri.startsWith("paytmmp://pay?"), "Paytm should use paytmmp:// scheme");
+      assert.ok(!paytmUri.includes("am="), "Paytm link must not have locked amount");
     });
   });
 
