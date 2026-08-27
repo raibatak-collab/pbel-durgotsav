@@ -183,7 +183,7 @@ export function buildUpiPayUri(options: {
   params.set("cu", "INR");
   if (tn) params.set("tn", tn.slice(0, 50));
 
-  const query = params.toString().replace(/\+/g, '%20');
+  const query = params.toString().replace(/\+/g, '%20').replace(/%40/g, "@");
 
   switch (appScheme) {
     case "gpay":
