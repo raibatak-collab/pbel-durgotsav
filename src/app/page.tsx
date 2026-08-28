@@ -21,6 +21,7 @@ import { GalleryCarousel } from "@/components/GalleryCarousel";
 import { HomeQuickContribute } from "@/components/HomeQuickContribute";
 import { TowerParticipation } from "@/components/TowerParticipation";
 import { FestiveHero } from "@/components/FestiveHero";
+import { SponsorLogoCarousel } from "@/components/SponsorLogoCarousel";
 
 export const revalidate = 0; // Fresh data on every load
 
@@ -417,46 +418,18 @@ export default async function Home() {
 
           </div>
 
-          {/* Current Sponsors Grid */}
+          {/* Current Sponsors & Partner Brand Logos */}
           <div className="mt-10 pt-8 border-t border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xs uppercase font-bold text-gray-400 tracking-wider">
-                Our Esteemed Sponsors & Partners
+                Our Esteemed Sponsors &amp; Corporate Partners
               </h3>
               <Link href="/sponsors" className="text-xs text-primary font-bold hover:underline">
                 View All Partnership Tiers →
               </Link>
             </div>
             
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {sponsors && sponsors.length > 0 ? (
-                sponsors.map((s) => (
-                  <div key={s.id} className="bg-gray-50/80 p-4 rounded-xl border border-gray-100 flex flex-col items-center justify-center min-h-[100px] text-center">
-                    <span className="font-bold text-sm text-gray-800">{s.name}</span>
-                    <span className="text-[10px] text-amber-700 font-medium">{s.tier} Partner</span>
-                  </div>
-                ))
-              ) : (
-                <>
-                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 flex flex-col items-center justify-center min-h-[90px] text-center">
-                    <span className="text-gray-700 font-bold text-sm">Platinum Partner</span>
-                    <span className="text-[11px] text-amber-700">Available</span>
-                  </div>
-                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 flex flex-col items-center justify-center min-h-[90px] text-center">
-                    <span className="text-gray-700 font-bold text-sm">Gold Partner</span>
-                    <span className="text-[11px] text-amber-700">Available</span>
-                  </div>
-                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 flex flex-col items-center justify-center min-h-[90px] text-center">
-                    <span className="text-gray-700 font-bold text-sm">Food & Bhog Partner</span>
-                    <span className="text-[11px] text-amber-700">Available</span>
-                  </div>
-                  <div className="bg-gray-50 p-6 rounded-xl border border-gray-100 flex flex-col items-center justify-center min-h-[90px] text-center">
-                    <span className="text-gray-700 font-bold text-sm">Cultural Stage Partner</span>
-                    <span className="text-[11px] text-amber-700">Available</span>
-                  </div>
-                </>
-              )}
-            </div>
+            <SponsorLogoCarousel sponsors={sponsors} />
           </div>
 
         </div>

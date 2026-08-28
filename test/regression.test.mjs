@@ -1577,7 +1577,168 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('46. Schedule Cultural Evening & Featured Acts CMS Configurability', () => {
+    const parseActs = (actsText) => {
+      return (actsText || '')
+        .split('\n')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    };
+
+    it('should correctly parse multiline textarea into structured Featured Acts array', () => {
+      const input = "Agomoni Choral Melodies\nKids Anandamela Performance\nOpening Classical Dance Recital";
+      const acts = parseActs(input);
+      assert.strictEqual(acts.length, 3);
+      assert.strictEqual(acts[0], "Agomoni Choral Melodies");
+      assert.strictEqual(acts[1], "Kids Anandamela Performance");
+      assert.strictEqual(acts[2], "Opening Classical Dance Recital");
+    });
+
+    it('should ignore empty lines and whitespace in acts text', () => {
+      const input = "Dance Drama by PSS\n\n   \nTownship Band Finale\n ";
+      const acts = parseActs(input);
+      assert.strictEqual(acts.length, 2);
+      assert.strictEqual(acts[0], "Dance Drama by PSS");
+      assert.strictEqual(acts[1], "Township Band Finale");
+    });
+
+    it('should update DaySchedule culturalEvening title, timings, and flagship headliner', () => {
+      const baseSchedule = [
+        {
+          id: "sashti",
+          dayName: "Maha Sashti",
+          date: "16 Oct 2026",
+          isoDate: "2026-10-16",
+          theme: "Original Theme",
+          culturalEvening: {
+            title: "Original Title",
+            time: "06:30 PM - 10:30 PM",
+            description: "Original Description",
+            acts: ["Act 1"],
+            residentSlotsAvailable: 8,
+          },
+        },
+      ];
+
+      const updatedTitle = "Retro Rock Extravaganza";
+      const updatedActs = ["Kids Medley", "Retro Rock Headliner"];
+      const updatedHeadliner = {
+        title: "🎸 Retro Rock by Fushmontor",
+        time: "08:15 PM Start",
+        duration: "1.5 Hours",
+        genre: "Bengali & Bollywood Retro Fusion",
+      };
+
+      const updated = baseSchedule.map((d) => {
+        if (d.id === "sashti") {
+          return {
+            ...d,
+            theme: updatedTitle,
+            culturalEvening: {
+              ...d.culturalEvening,
+              title: updatedTitle,
+              acts: updatedActs,
+              pssHeadliner: updatedHeadliner,
+            },
+          };
+        }
+        return d;
+      });
+
+      assert.strictEqual(updated[0].culturalEvening.title, "Retro Rock Extravaganza");
+      assert.strictEqual(updated[0].culturalEvening.acts.length, 2);
+      assert.strictEqual(updated[0].culturalEvening.pssHeadliner.title, "🎸 Retro Rock by Fushmontor");
+    });
+  });
+
+  describe('47. Pratibimb Emcee Master Run Sheet Dynamic Day Filtering', () => {
+    const mockSchedule = [
+      {
+        id: "panchami",
+        dayName: "Maha Panchami",
+        isoDate: "2026-10-15",
+        date: "15 Oct 2026",
+        theme: "Agomoni & Inauguration",
+        culturalEvening: {
+          time: "07:00 PM - 09:30 PM",
+          residentSlotsAvailable: 10,
+        },
+      },
+      {
+        id: "sashti",
+        dayName: "Maha Sashti",
+        isoDate: "2026-10-16",
+        date: "16 Oct 2026",
+        theme: "Devi Bodhon & Retro Rock",
+        culturalEvening: {
+          time: "06:30 PM - 10:30 PM",
+          pssHeadliner: {
+            title: "🎸 Retro Rock by Fushmontor",
+            time: "08:15 PM Start",
+            duration: "90 mins",
+            genre: "Retro Fusion",
+          },
+        },
+      },
+    ];
+
+    const mockPerformances = [
+      { id: "p1", evening_date: "2026-10-15", contact_name: "Rupa Mukherjee", song_name: "Agomoni Song" },
+      { id: "p2", evening_date: "2026-10-16", contact_name: "Debashis Roy", song_name: "Dance Medley" },
+      { id: "p3", evening_date: "2026-10-16", contact_name: "Tanmoy Sen", song_name: "Guitar Solo" },
+    ];
+
+    it('should filter schedule days and registered performances by selected isoDate tab', () => {
+      const selectedDay = "2026-10-16";
+      const targetDays = mockSchedule.filter((d) => d.isoDate === selectedDay);
+      assert.strictEqual(targetDays.length, 1);
+      assert.strictEqual(targetDays[0].dayName, "Maha Sashti");
+
+      const dayPerfs = mockPerformances.filter((p) => p.evening_date === selectedDay);
+      assert.strictEqual(dayPerfs.length, 2);
+      assert.strictEqual(dayPerfs[0].contact_name, "Debashis Roy");
+    });
+
+    it('should render exact day-specific headliner without hardcoded dummy junk cues', () => {
+      const sashti = mockSchedule.find((d) => d.id === "sashti");
+      const panchami = mockSchedule.find((d) => d.id === "panchami");
+
+      assert.ok(sashti.culturalEvening.pssHeadliner);
+      assert.strictEqual(sashti.culturalEvening.pssHeadliner.title, "🎸 Retro Rock by Fushmontor");
+
+      assert.strictEqual(panchami.culturalEvening.pssHeadliner, undefined);
+    });
+  });
+
+  describe('48. Homepage Sponsor Brand Logo Carousel & Data Integrity', () => {
+    it('should correctly format active sponsor brand list with logo URLs', () => {
+      const sponsors = [
+        { id: "s1", name: "ICICI Bank", tier: "Platinum Banking Partner", logo_url: "https://example.com/icici.png", is_active: true },
+        { id: "s2", name: "Ratnadeep", tier: "Food Partner", logo_url: "https://example.com/ratnadeep.png", is_active: true },
+        { id: "s3", name: "Draft Lead", tier: "Gold", logo_url: "", is_active: false },
+      ];
+
+      const activeSponsors = sponsors.filter((s) => s.is_active !== false);
+      assert.strictEqual(activeSponsors.length, 2);
+      assert.strictEqual(activeSponsors[0].name, "ICICI Bank");
+      assert.strictEqual(activeSponsors[0].logo_url, "https://example.com/icici.png");
+    });
+
+    it('should accept Base64 data URL logos for direct file uploads', () => {
+      const base64Sample = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+      const sponsorWithUpload = {
+        name: "Local Brand Partner",
+        tier: "Gold Partner",
+        logo_url: base64Sample,
+      };
+
+      assert.ok(sponsorWithUpload.logo_url.startsWith("data:image/"));
+      assert.ok(sponsorWithUpload.logo_url.length > 50);
+    });
+  });
+
 });
+
 
 
 

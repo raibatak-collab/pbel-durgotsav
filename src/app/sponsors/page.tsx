@@ -349,14 +349,17 @@ export default function SponsorsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp Number *</label>
+                  <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp Number (10 Digits) *</label>
                   <input
                     type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]{10}"
+                    maxLength={10}
                     required
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="e.g. +91 98765 43210"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+                    placeholder="9876543210"
+                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                   />
                 </div>
 

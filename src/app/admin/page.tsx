@@ -42,12 +42,13 @@ import {
   Copy,
   TrendingUp,
   AlertCircle,
-  Building
+  Building,
+  Upload
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
-import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule } from "@/config/schedule";
+import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE } from "@/config/schedule";
 import { 
   AESTHETIC_WALLPAPERS, 
   DEFAULT_BRANDING, 
@@ -110,87 +111,34 @@ const initialDefaultEvents = [
   { id: "e15", title: "Maa Durga Visarjan Shobha Yatra & Shanti Jal", date: "2026-10-20", time: "04:30 PM", event_type: "Nirghanto", description: "Procession and sprinkling of sanctified peace water." },
 ];
 
-// Default Evening configurations with PSS Special Flagship Events
-const initialEveningsConfig = [
-  {
-    id: "ev-panchami",
-    day: "Panchami",
-    date: "2026-10-15",
-    theme: "Agomoni & Opening Gala",
-    startTime: "07:00 PM",
-    endTime: "09:30 PM",
-    maxResidentSlots: 10,
-    hasPssFlagship: false,
-    pssEventTitle: "Agomoni Musical Night & Anandamela Opening",
-    pssEventTime: "07:00 PM - 09:30 PM",
-    pssDuration: "2.5 Hours",
-  },
-  {
-    id: "ev-sashti",
-    day: "Maha Sashti",
-    date: "2026-10-16",
-    theme: "Retro Rock Night & Dance",
-    startTime: "06:30 PM",
-    endTime: "10:30 PM",
-    maxResidentSlots: 8,
-    hasPssFlagship: true,
-    pssEventTitle: "⭐ Retro Rock by Fushmontor (PSS Headliner)",
-    pssEventTime: "08:15 PM - 09:45 PM",
-    pssDuration: "1.5 Hours (90 Mins)",
-  },
-  {
-    id: "ev-saptami",
-    day: "Maha Saptami",
-    date: "2026-10-17",
-    theme: "Dance Drama & Vocal Gala",
-    startTime: "06:30 PM",
-    endTime: "10:30 PM",
-    maxResidentSlots: 8,
-    hasPssFlagship: true,
-    pssEventTitle: "⭐ Dance Drama Production by PSS (PSS Headliner)",
-    pssEventTime: "07:45 PM - 08:45 PM",
-    pssDuration: "1.0 Hour (60 Mins)",
-  },
-  {
-    id: "ev-ashtami",
-    day: "Maha Ashtami",
-    date: "2026-10-18",
-    theme: "Grand Bangla Drama & Dhaak",
-    startTime: "06:30 PM",
-    endTime: "11:00 PM",
-    maxResidentSlots: 8,
-    hasPssFlagship: true,
-    pssEventTitle: "⭐ Grand Bangla Theatrical Drama (Natok) by PSS (PSS Headliner)",
-    pssEventTime: "07:45 PM - 08:45 PM",
-    pssDuration: "1.0 Hour (60 Mins)",
-  },
-  {
-    id: "ev-nabami",
-    day: "Maha Nabami",
-    date: "2026-10-19",
-    theme: "Cultural Stage Grand Finale",
-    startTime: "07:00 PM",
-    endTime: "11:00 PM",
-    maxResidentSlots: 12,
-    hasPssFlagship: false,
-    pssEventTitle: "Pratibimb Participant Awards & DJ Dandiya Finale",
-    pssEventTime: "07:30 PM - 11:00 PM",
-    pssDuration: "3.5 Hours",
-  },
-  {
-    id: "ev-dashami",
-    day: "Vijaya Dashami",
-    date: "2026-10-20",
-    theme: "Subho Bijoya Sammilani",
-    startTime: "06:30 PM",
-    endTime: "09:30 PM",
-    maxResidentSlots: 6,
-    hasPssFlagship: false,
-    pssEventTitle: "Dhunuchi Master Showcase & Subho Bijoya Kolakoli",
-    pssEventTime: "07:00 PM - 09:00 PM",
-    pssDuration: "2.0 Hours",
-  },
-];
+// Map dynamic 6-day DaySchedule structures into Admin Evenings CMS state
+const mapScheduleToEveningsConfig = (schedList: DaySchedule[]) => {
+  return schedList.map((day) => {
+    const times = (day.culturalEvening?.time || "06:30 PM - 10:30 PM").split(" - ");
+    const headliner = day.culturalEvening?.pssHeadliner;
+    return {
+      id: `ev-${day.id}`,
+      dayId: day.id,
+      day: day.dayName,
+      date: day.date,
+      isoDate: day.isoDate,
+      theme: day.culturalEvening?.title || day.theme,
+      description: day.culturalEvening?.description || "",
+      startTime: times[0] || "06:30 PM",
+      endTime: times[1] || "10:30 PM",
+      maxResidentSlots: day.culturalEvening?.residentSlotsAvailable || 8,
+      hasPssFlagship: Boolean(headliner),
+      pssEventTitle: headliner?.title || "",
+      pssEventTime: headliner?.time || "",
+      pssDuration: headliner?.duration || "",
+      pssGenre: headliner?.genre || "PBEL Sanskritik Samiti Flagship Show",
+      acts: day.culturalEvening?.acts || [],
+      actsText: (day.culturalEvening?.acts || []).join("\n"),
+    };
+  });
+};
+
+const initialEveningsConfig = mapScheduleToEveningsConfig(DEFAULT_PUJO_SCHEDULE);
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<
@@ -417,34 +365,12 @@ export default function AdminDashboard() {
       setBranding(getStoredBranding());
       setCommitteeWings(getStoredCommittee());
       setTowerList(getStoredTowers());
+      setEveningsConfig(mapScheduleToEveningsConfig(getStoredSchedule()));
 
-      // Fetch fresh cloud config & auto-seed if cloud is missing
-      fetchStoredTowers().then((cloudTowers) => {
-        if (cloudTowers && cloudTowers.length > 0) {
-          setTowerList(cloudTowers);
-        } else {
-          // Cloud row missing for towers; auto-push local so mobiles immediately sync
-          const localTowers = getStoredTowers();
-          if (localTowers && localTowers.length > 0) {
-            saveStoredTowers(localTowers);
-          }
-        }
-      });
-      fetchStoredCommittee().then((cloudWings) => {
-        if (cloudWings && cloudWings.length > 0) {
-          setCommitteeWings(cloudWings);
-        } else {
-          const localWings = getStoredCommittee();
-          if (localWings && localWings.length > 0) {
-            saveStoredCommittee(localWings);
-          }
-        }
-      });
-      fetchStoredBranding().then((cloudBranding) => {
-        if (cloudBranding) setBranding(cloudBranding);
-      });
       fetchStoredSchedule().then((cloudSched) => {
-        // dynamic schedule hydrated from cloud
+        if (cloudSched && cloudSched.length > 0) {
+          setEveningsConfig(mapScheduleToEveningsConfig(cloudSched));
+        }
       });
 
       const savedExpenses = localStorage.getItem("pbel_budget_expenses");
@@ -1439,7 +1365,21 @@ function decodeCategoryDescription(desc?: string) {
     e.preventDefault();
     if (!editingEvening) return;
 
-    const updatedEvenings = eveningsConfig.map((ev) => (ev.id === editingEvening.id ? editingEvening : ev));
+    // Parse acts from actsText
+    const parsedActs = (editingEvening.actsText !== undefined ? editingEvening.actsText : (editingEvening.acts || []).join("\n"))
+      .split("\n")
+      .map((s: string) => sanitizeText(s.trim()))
+      .filter((s: string) => s.length > 0);
+
+    const updatedItem = {
+      ...editingEvening,
+      theme: sanitizeText(editingEvening.theme),
+      description: sanitizeText(editingEvening.description || ""),
+      acts: parsedActs,
+      actsText: parsedActs.join("\n"),
+    };
+
+    const updatedEvenings = eveningsConfig.map((ev) => (ev.id === editingEvening.id ? updatedItem : ev));
     setEveningsConfig(updatedEvenings);
 
     // Update dynamic 6-day DaySchedule in schedule.ts
@@ -1452,22 +1392,24 @@ function decodeCategoryDescription(desc?: string) {
       "ev-nabami": "nabami",
       "ev-dashami": "dashami",
     };
-    const targetDayId = dayMap[editingEvening.id] || editingEvening.id;
+    const targetDayId = editingEvening.dayId || dayMap[editingEvening.id] || editingEvening.id.replace("ev-", "");
     const updatedSched = currentSched.map((d) => {
       if (d.id === targetDayId) {
         return {
           ...d,
-          theme: editingEvening.theme || d.theme,
+          theme: updatedItem.theme || d.theme,
           culturalEvening: {
             ...d.culturalEvening,
-            title: editingEvening.theme || d.culturalEvening.title,
-            time: `${editingEvening.startTime} - ${editingEvening.endTime}`,
-            residentSlotsAvailable: Number(editingEvening.maxResidentSlots) || d.culturalEvening.residentSlotsAvailable,
-            pssHeadliner: editingEvening.hasPssFlagship ? {
-              title: editingEvening.pssEventTitle || "PSS Headliner",
-              time: editingEvening.pssEventTime || "08:00 PM Start",
-              duration: editingEvening.pssDuration || "90 mins",
-              genre: "PBEL Sanskritik Samiti Flagship Show",
+            title: updatedItem.theme || d.culturalEvening.title,
+            time: `${updatedItem.startTime} - ${updatedItem.endTime}`,
+            description: updatedItem.description || d.culturalEvening.description,
+            residentSlotsAvailable: Number(updatedItem.maxResidentSlots) || d.culturalEvening.residentSlotsAvailable,
+            acts: parsedActs.length > 0 ? parsedActs : d.culturalEvening.acts,
+            pssHeadliner: updatedItem.hasPssFlagship && updatedItem.pssEventTitle?.trim() ? {
+              title: updatedItem.pssEventTitle,
+              time: updatedItem.pssEventTime || "08:00 PM Start",
+              duration: updatedItem.pssDuration || "90 mins",
+              genre: updatedItem.pssGenre || "PBEL Sanskritik Samiti Flagship Show",
             } : undefined,
           },
         };
@@ -1476,25 +1418,45 @@ function decodeCategoryDescription(desc?: string) {
     });
     saveStoredSchedule(updatedSched);
 
-    alert(`Configuration updated for ${editingEvening.day} and synced to Cloud!`);
+    alert(`Stage line-up & Featured Acts updated for ${editingEvening.day} and synced to Cloud!`);
     setEditingEvening(null);
   };
 
   // SPONSORS CMS
   const handleAddSponsor = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newSponsor.name.trim()) {
+      alert("Please provide Sponsor / Company Name.");
+      return;
+    }
     setIsSubmittingSponsor(true);
     try {
-      const { error } = await supabase.from("sponsors").insert({
-        name: newSponsor.name,
-        tier: newSponsor.tier,
+      const sponsorItem = {
+        id: `sp-${Date.now()}`,
+        name: sanitizeText(newSponsor.name),
+        tier: sanitizeText(newSponsor.tier),
         logo_url: newSponsor.logo_url || null,
+        website: (newSponsor as any).website ? sanitizeText((newSponsor as any).website) : null,
+        is_active: true,
+      };
+
+      // 1. Insert to Supabase DB
+      await supabase.from("sponsors").insert({
+        name: sponsorItem.name,
+        tier: sponsorItem.tier,
+        logo_url: sponsorItem.logo_url,
         is_active: true,
       });
 
-      if (error) throw error;
-      alert("New corporate sponsor published to homepage!");
-      setNewSponsor({ name: "", tier: "Gold", logo_url: "" });
+      // 2. Sync to Cloud Config & Local Storage
+      const updatedSponsors = [sponsorItem, ...sponsorsList];
+      setSponsorsList(updatedSponsors);
+      localStorage.setItem("pbel_sponsors_list", JSON.stringify(updatedSponsors));
+      saveCloudConfig("sponsors", updatedSponsors);
+      window.dispatchEvent(new Event("pbel_sponsors_updated"));
+
+      alert("New corporate sponsor with brand logo published to homepage!");
+      setNewSponsor({ name: "", tier: "Gold", logo_url: "", website: "" } as any);
       fetchData();
     } catch (err) {
       console.error("Error adding sponsor:", err);
@@ -1506,6 +1468,11 @@ function decodeCategoryDescription(desc?: string) {
   const handleDeleteSponsor = async (id: string) => {
     if (!confirm("Are you sure you want to remove this sponsor?")) return;
     await supabase.from("sponsors").delete().eq("id", id);
+    const updatedSponsors = sponsorsList.filter((s) => s.id !== id);
+    setSponsorsList(updatedSponsors);
+    localStorage.setItem("pbel_sponsors_list", JSON.stringify(updatedSponsors));
+    saveCloudConfig("sponsors", updatedSponsors);
+    window.dispatchEvent(new Event("pbel_sponsors_updated"));
     fetchData();
   };
 
@@ -2525,8 +2492,8 @@ function decodeCategoryDescription(desc?: string) {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {eveningsConfig.map((ev) => (
                     <div key={ev.id} className="bg-gray-50/80 rounded-2xl p-5 border border-gray-200 flex flex-col justify-between relative group hover:border-amber-400 transition">
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
                           <span className="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full uppercase">
                             {ev.day} ({ev.date})
                           </span>
@@ -2537,11 +2504,16 @@ function decodeCategoryDescription(desc?: string) {
                           )}
                         </div>
 
-                        <h4 className="font-heading text-lg font-bold text-gray-900 mb-1">{ev.theme}</h4>
+                        <div>
+                          <h4 className="font-heading text-base font-bold text-gray-900 mb-1">{ev.theme}</h4>
+                          {ev.description && (
+                            <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">{ev.description}</p>
+                          )}
+                        </div>
                         
-                        <div className="space-y-1.5 text-xs text-gray-600 mt-3 pt-3 border-t border-gray-200">
+                        <div className="space-y-1.5 text-xs text-gray-600 pt-2.5 border-t border-gray-200">
                           <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Evening Timings:</span>
+                            <span className="text-gray-500">Stage Timings:</span>
                             <span className="font-bold text-gray-900">{ev.startTime} - {ev.endTime}</span>
                           </div>
                           <div className="flex items-center justify-between">
@@ -2550,21 +2522,42 @@ function decodeCategoryDescription(desc?: string) {
                           </div>
                         </div>
 
+                        {/* Featured Acts Lineup */}
+                        {ev.acts && ev.acts.length > 0 && (
+                          <div className="pt-2 border-t border-gray-200/80">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                              Featured Acts Lineup ({ev.acts.length}):
+                            </span>
+                            <ul className="space-y-1">
+                              {ev.acts.map((act: string, idx: number) => (
+                                <li key={idx} className="text-[11px] text-gray-700 flex items-start gap-1 font-medium">
+                                  <span className="text-primary font-bold">›</span>
+                                  <span>{act}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
                         {/* PSS Flagship Details */}
                         {ev.hasPssFlagship && (
-                          <div className="mt-3 p-3 bg-amber-100/70 rounded-xl border border-amber-300 text-xs">
-                            <span className="text-[10px] font-bold text-amber-900 uppercase block mb-0.5">⭐ Flagship Show:</span>
+                          <div className="p-3 bg-amber-100/70 rounded-xl border border-amber-300 text-xs space-y-0.5">
+                            <span className="text-[10px] font-bold text-amber-900 uppercase block">⭐ Flagship Show:</span>
                             <p className="font-bold text-gray-900">{ev.pssEventTitle}</p>
-                            <span className="text-amber-800 font-semibold text-[11px]">{ev.pssEventTime} ({ev.pssDuration})</span>
+                            <span className="text-amber-800 font-semibold text-[11px] block">{ev.pssEventTime} ({ev.pssDuration})</span>
+                            {ev.pssGenre && <span className="text-gray-600 text-[10px] block italic">{ev.pssGenre}</span>}
                           </div>
                         )}
                       </div>
 
                       <button
-                        onClick={() => setEditingEvening({ ...ev })}
-                        className="mt-4 w-full bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 py-2 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5"
+                        onClick={() => setEditingEvening({
+                          ...ev,
+                          actsText: (ev.acts || []).join("\n"),
+                        })}
+                        className="mt-4 w-full bg-white hover:bg-amber-50 text-gray-800 hover:text-primary border border-gray-300 hover:border-amber-300 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
                       >
-                        <Settings size={13} /> Edit Timing &amp; Capacity
+                        <Settings size={13} /> Edit Theme, Featured Acts &amp; Headliner
                       </button>
                     </div>
                   ))}
@@ -2636,103 +2629,187 @@ function decodeCategoryDescription(desc?: string) {
             </div>
           )}
 
-          {/* Edit Modal for Evening Timing & Capacity */}
+          {/* Edit Modal for Evening Timing, Featured Acts & Headliner */}
           {editingEvening && (
             <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-amber-400/40 shadow-2xl relative">
+              <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
                 <button onClick={() => setEditingEvening(null)} className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition">
                   <X size={18} />
                 </button>
 
-                <h3 className="font-heading text-2xl font-bold text-primary mb-1">
-                  Edit {editingEvening.day} Configuration
-                </h3>
-                <p className="text-xs text-gray-500 mb-6">{editingEvening.date}</p>
+                <div className="mb-4 pb-2 border-b border-gray-100">
+                  <span className="text-xs font-bold bg-amber-100 text-amber-900 px-3 py-1 rounded-full uppercase">
+                    {editingEvening.day} ({editingEvening.date})
+                  </span>
+                  <h3 className="font-heading text-2xl font-bold text-gray-900 mt-2">
+                    Edit Evening, Featured Acts &amp; Headliner
+                  </h3>
+                  <p className="text-xs text-gray-500">Updates will reflect live across the homepage and /programs schedule card.</p>
+                </div>
 
                 <form onSubmit={handleSaveEveningConfig} className="space-y-4 text-xs">
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Evening Theme / Title</label>
+                    <label className="block font-semibold text-gray-700 mb-1">Evening Theme / Main Title *</label>
                     <input
                       type="text"
                       required
                       value={editingEvening.theme}
                       onChange={(e) => setEditingEvening({ ...editingEvening, theme: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Evening Synopsis / Description</label>
+                    <textarea
+                      rows={2}
+                      value={editingEvening.description || ""}
+                      onChange={(e) => setEditingEvening({ ...editingEvening, description: e.target.value })}
+                      placeholder="Welcoming Maa Durga with heartfelt Agomoni songs, traditional Rabindra Sangeet..."
                       className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                     />
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block font-semibold text-gray-700 mb-1">Stage Start Time</label>
+                      <label className="block font-semibold text-gray-700 mb-1">Stage Start Time *</label>
                       <input
                         type="text"
                         required
                         value={editingEvening.startTime}
                         onChange={(e) => setEditingEvening({ ...editingEvening, startTime: e.target.value })}
                         placeholder="06:30 PM"
-                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block font-semibold text-gray-700 mb-1">Stage End Time</label>
+                      <label className="block font-semibold text-gray-700 mb-1">Stage End Time *</label>
                       <input
                         type="text"
                         required
                         value={editingEvening.endTime}
                         onChange={(e) => setEditingEvening({ ...editingEvening, endTime: e.target.value })}
                         placeholder="10:30 PM"
-                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Max Resident Performance Slots</label>
+                    <label className="block font-semibold text-gray-700 mb-1">Max Resident Performance Slots Capacity *</label>
                     <input
                       type="number"
                       required
                       min="1"
-                      max="30"
+                      max="40"
                       value={editingEvening.maxResidentSlots}
                       onChange={(e) => setEditingEvening({ ...editingEvening, maxResidentSlots: Number(e.target.value) })}
                       className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold text-primary"
                     />
                   </div>
 
-                  {/* PSS Flagship Toggle */}
-                  <div className="pt-2 border-t border-gray-100 space-y-2">
-                    <label className="font-semibold text-gray-700 block">PSS Special Flagship Headliner</label>
-                    <input
-                      type="text"
-                      value={editingEvening.pssEventTitle}
-                      onChange={(e) => setEditingEvening({ ...editingEvening, pssEventTitle: e.target.value })}
-                      placeholder="Title of PSS Show"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        value={editingEvening.pssEventTime}
-                        onChange={(e) => setEditingEvening({ ...editingEvening, pssEventTime: e.target.value })}
-                        placeholder="08:15 PM - 09:45 PM"
-                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                      />
-                      <input
-                        type="text"
-                        value={editingEvening.pssDuration}
-                        onChange={(e) => setEditingEvening({ ...editingEvening, pssDuration: e.target.value })}
-                        placeholder="1.5 Hours"
-                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                      />
+                  {/* FEATURED ACTS OF THE EVENING (BULLET POINTS) */}
+                  <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block font-bold text-gray-900">
+                        Featured Acts of the Evening (Program Lineup)
+                      </label>
+                      <span className="text-[10px] text-gray-400 font-semibold">1 act per line</span>
                     </div>
+                    <p className="text-[11px] text-gray-500">
+                      These bullet points appear under "Featured Acts of the Evening" on the Cultural Stage Card.
+                    </p>
+                    <textarea
+                      rows={3}
+                      value={editingEvening.actsText !== undefined ? editingEvening.actsText : (editingEvening.acts || []).join("\n")}
+                      onChange={(e) => setEditingEvening({ ...editingEvening, actsText: e.target.value })}
+                      placeholder="Agomoni Choral Melodies&#10;Kids Anandamela Performance&#10;Opening Classical Dance Recital"
+                      className="w-full p-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono text-xs bg-white"
+                    />
                   </div>
 
-                  <button
-                    type="submit"
-                    className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm mt-4"
-                  >
-                    Save &amp; Apply Configuration
-                  </button>
+                  {/* PSS FLAGSHIP HEADLINER SECTION */}
+                  <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/60 rounded-2xl border border-amber-300 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <label className="font-bold text-amber-950 flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(editingEvening.hasPssFlagship)}
+                          onChange={(e) => setEditingEvening({ ...editingEvening, hasPssFlagship: e.target.checked })}
+                          className="w-4 h-4 text-primary rounded"
+                        />
+                        <span>Enable PSS Flagship Headliner Show</span>
+                      </label>
+                      {editingEvening.hasPssFlagship && (
+                        <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">
+                          <Star size={10} className="fill-amber-600 text-amber-600" /> Active Headliner
+                        </span>
+                      )}
+                    </div>
+
+                    {editingEvening.hasPssFlagship && (
+                      <div className="space-y-3 pt-2 border-t border-amber-200/80">
+                        <div>
+                          <label className="block font-bold text-gray-800 mb-1">Show / Artist Title *</label>
+                          <input
+                            type="text"
+                            value={editingEvening.pssEventTitle || ""}
+                            onChange={(e) => setEditingEvening({ ...editingEvening, pssEventTitle: e.target.value })}
+                            placeholder="e.g. 🎸 Retro Rock by Fushmontor"
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold bg-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="block font-semibold text-gray-700 mb-1">Genre &amp; Performance Style</label>
+                          <input
+                            type="text"
+                            value={editingEvening.pssGenre || ""}
+                            onChange={(e) => setEditingEvening({ ...editingEvening, pssGenre: e.target.value })}
+                            placeholder="e.g. Live Bengali & Bollywood Retro Rock Fusion"
+                            className="w-full p-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none bg-white text-xs"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="block font-semibold text-gray-700 mb-1">Headliner Stage Time</label>
+                            <input
+                              type="text"
+                              value={editingEvening.pssEventTime || ""}
+                              onChange={(e) => setEditingEvening({ ...editingEvening, pssEventTime: e.target.value })}
+                              placeholder="08:15 PM Start"
+                              className="w-full p-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none bg-white text-xs font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block font-semibold text-gray-700 mb-1">Duration</label>
+                            <input
+                              type="text"
+                              value={editingEvening.pssDuration || ""}
+                              onChange={(e) => setEditingEvening({ ...editingEvening, pssDuration: e.target.value })}
+                              placeholder="1.5 Hours (90 mins)"
+                              className="w-full p-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none bg-white text-xs font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditingEvening(null)}
+                      className="px-4 py-2.5 text-xs font-semibold text-gray-600 hover:bg-gray-100 rounded-xl transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="bg-primary hover:bg-primary-hover text-white py-2.5 px-6 rounded-xl font-bold transition shadow-sm golden-glow"
+                    >
+                      Save &amp; Sync Live to Website
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
@@ -2859,33 +2936,94 @@ function decodeCategoryDescription(desc?: string) {
                   required
                   value={newSponsor.name}
                   onChange={(e) => setNewSponsor({ ...newSponsor, name: e.target.value })}
-                  placeholder="e.g. HDFC Bank / Tata Motors"
+                  placeholder="e.g. ICICI Bank / Ratnadeep"
                   className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-gray-700 mb-1">Sponsorship Tier</label>
+                <label className="block font-semibold text-gray-700 mb-1">Sponsorship Tier *</label>
                 <select
                   value={newSponsor.tier}
                   onChange={(e) => setNewSponsor({ ...newSponsor, tier: e.target.value })}
                   className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                 >
-                  <option value="Platinum">Title / Platinum Partner</option>
-                  <option value="Gold">Gold Partner</option>
-                  <option value="Silver">Silver Partner</option>
-                  <option value="Food & Bhog">Food & Bhog Partner</option>
-                  <option value="Cultural">Cultural Stage Partner</option>
+                  <option value="Platinum Banking Partner">Title / Platinum Partner</option>
+                  <option value="Gold Partner">Gold Partner</option>
+                  <option value="Silver Partner">Silver Partner</option>
+                  <option value="Food &amp; Bhog Partner">Food &amp; Bhog Partner</option>
+                  <option value="Sweet &amp; Prasad Partner">Sweet &amp; Prasad Partner</option>
+                  <option value="Cultural Stage Partner">Cultural Stage Partner</option>
+                  <option value="Healthcare &amp; Safety Partner">Healthcare &amp; Safety Partner</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Logo Image URL (Optional)</label>
+              {/* Sponsor Brand Logo Upload & URL */}
+              <div className="space-y-2">
+                <label className="block font-semibold text-gray-700">Brand Logo Image</label>
+                
+                {/* File Upload Button */}
+                <div className="flex items-center gap-2">
+                  <label className="cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+                    <Upload size={13} />
+                    <span>Upload Logo File</span>
+                    <input
+                      type="file"
+                      accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 2 * 1024 * 1024) {
+                            alert("Please select a logo image smaller than 2MB.");
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onload = () => {
+                            if (typeof reader.result === "string") {
+                              setNewSponsor({ ...newSponsor, logo_url: reader.result });
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                  <span className="text-[10px] text-gray-400">PNG, SVG, or JPG</span>
+                </div>
+
+                <div className="text-[10px] text-gray-400 text-center uppercase font-bold tracking-wider">— OR PASTE URL —</div>
+
                 <input
                   type="url"
                   value={newSponsor.logo_url}
                   onChange={(e) => setNewSponsor({ ...newSponsor, logo_url: e.target.value })}
-                  placeholder="https://example.com/logo.png"
+                  placeholder="https://example.com/brand-logo.png"
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                />
+
+                {/* Logo Preview if available */}
+                {newSponsor.logo_url && (
+                  <div className="p-3 bg-gray-50 border border-amber-200 rounded-xl flex items-center gap-3">
+                    <img
+                      src={newSponsor.logo_url}
+                      alt="Logo preview"
+                      className="h-10 max-w-[100px] object-contain"
+                    />
+                    <div className="text-[11px] text-green-700 font-semibold flex items-center gap-1">
+                      <span>✓ Logo ready for preview</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Company Website URL (Optional)</label>
+                <input
+                  type="url"
+                  value={(newSponsor as any).website || ""}
+                  onChange={(e) => setNewSponsor({ ...newSponsor, website: e.target.value } as any)}
+                  placeholder="https://www.company.com"
                   className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                 />
               </div>
@@ -2893,27 +3031,54 @@ function decodeCategoryDescription(desc?: string) {
               <button
                 type="submit"
                 disabled={isSubmittingSponsor}
-                className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm"
+                className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm golden-glow"
               >
-                {isSubmittingSponsor ? "Adding..." : "Publish Sponsor to Homepage"}
+                {isSubmittingSponsor ? "Publishing..." : "Publish Sponsor with Logo"}
               </button>
             </form>
           </div>
 
           <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
-            <h3 className="font-heading text-lg font-bold text-gray-900 mb-4">Published Corporate Sponsors</h3>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="font-heading text-lg font-bold text-gray-900">
+                  Published Corporate Sponsors &amp; Brand Logos ({sponsorsList.length})
+                </h3>
+                <span className="text-xs text-gray-500">
+                  Displayed live in the brand marquee on the homepage &amp; sponsorship deck.
+                </span>
+              </div>
+            </div>
             
             {sponsorsList.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {sponsorsList.map((s) => (
-                  <div key={s.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 flex items-center justify-between">
-                    <div>
-                      <h4 className="font-bold text-sm text-gray-900">{s.name}</h4>
-                      <span className="text-xs text-amber-800 font-semibold">{s.tier} Partner</span>
+                  <div key={s.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 hover:border-amber-400 transition flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      {/* Logo Preview */}
+                      <div className="w-14 h-14 bg-white rounded-xl border border-gray-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                        {s.logo_url ? (
+                          <img src={s.logo_url} alt={s.name} className="max-h-12 max-w-full object-contain" />
+                        ) : (
+                          <span className="text-xl">🏢</span>
+                        )}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-sm text-gray-900">{s.name}</h4>
+                        <span className="text-xs text-amber-800 font-semibold bg-amber-100/70 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                          {s.tier}
+                        </span>
+                        {s.website && (
+                          <a href={s.website} target="_blank" rel="noreferrer" className="block text-[11px] text-primary hover:underline mt-0.5 truncate max-w-[160px]">
+                            {s.website}
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <button
                       onClick={() => handleDeleteSponsor(s.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition shrink-0"
+                      title="Remove Sponsor"
                     >
                       <Trash2 size={16} />
                     </button>
@@ -5326,7 +5491,7 @@ function decodeCategoryDescription(desc?: string) {
               <X size={18} />
             </button>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-gray-100">
               <div>
                 <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-2">
                   <ClipboardList size={13} className="text-primary" />
@@ -5336,7 +5501,7 @@ function decodeCategoryDescription(desc?: string) {
                   Emcee Master Run-Sheet &amp; Stage Lineup
                 </h2>
                 <p className="text-xs text-gray-500">
-                  Chronological stage cue order for Sound Engineers, Stage Leads, and Emcees.
+                  Live, chronological stage cue order for Sound Engineers, Stage Leads, and Emcees.
                 </p>
               </div>
 
@@ -5351,76 +5516,198 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
 
-            {/* Run Sheet Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-amber-50 text-amber-950 font-bold border-b border-amber-200">
-                    <th className="p-3">Cue #</th>
-                    <th className="p-3">Performance Date &amp; Day</th>
-                    <th className="p-3">Stage Time</th>
-                    <th className="p-3">Performance / Song</th>
-                    <th className="p-3">Genre &amp; Format</th>
-                    <th className="p-3">Performers &amp; Contact</th>
-                    <th className="p-3">Audio / Stage Needs</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {/* Default Flagship Openers */}
-                  <tr className="bg-amber-100/40 font-semibold">
-                    <td className="p-3 font-mono font-bold text-primary">#01</td>
-                    <td className="p-3 font-bold text-amber-900">Panchami (15 Oct)</td>
-                    <td className="p-3 font-mono">06:30 PM</td>
-                    <td className="p-3 text-primary font-bold">Dhaak Welcome &amp; Stage Diya Lighting</td>
-                    <td className="p-3">Inauguration (15 mins)</td>
-                    <td className="p-3">PSS Core Committee &amp; Priests</td>
-                    <td className="p-3 text-gray-600">2 Handheld Wireless Mics + Aarti Light Cue</td>
-                  </tr>
-
-                  {performances.map((p, idx) => (
-                    <tr key={p.id || idx} className="hover:bg-gray-50/60">
-                      <td className="p-3 font-mono font-bold text-gray-700">#{String(idx + 2).padStart(2, "0")}</td>
-                      <td className="p-3">
-                        <span className="bg-amber-100 text-amber-950 font-bold px-2 py-0.5 rounded-md text-[11px] whitespace-nowrap">
-                          {formatPerformanceDate(p)}
-                        </span>
-                      </td>
-                      <td className="p-3 font-mono font-semibold text-gray-900">
-                        {p.scheduled_time || `Slot ${idx + 1}`}
-                      </td>
-                      <td className="p-3">
-                        <span className="font-bold text-gray-900 block">{p.song_name || p.performance_type}</span>
-                        <span className="text-gray-500 text-[11px]">{p.performance_type}</span>
-                      </td>
-                      <td className="p-3">
-                        <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md font-medium">
-                          {p.format || "Solo"}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <span className="font-semibold text-gray-900 block">{p.contact_name} (Flat {p.flat_number})</span>
-                        <span className="text-gray-500 text-[11px]">{p.participant_names || "Solo"} • 📱 {p.phone}</span>
-                      </td>
-                      <td className="p-3 text-gray-600">
-                        {p.performance_type === "Dance" ? "Audio Track USB / Aux • Stage Wash" : "1 Vocal Mic + Instrument In"}
-                      </td>
-                    </tr>
-                  ))}
-
-                  {/* Flagship Show Finale */}
-                  <tr className="bg-gradient-to-r from-red-50 to-amber-50 font-semibold border-t-2 border-primary/20">
-                    <td className="p-3 font-mono font-bold text-primary">#FINAL</td>
-                    <td className="p-3 font-mono text-primary font-bold">08:15 PM</td>
-                    <td className="p-3 font-heading font-bold text-primary">
-                      ⭐ PSS Flagship Production (Fushmontor / Drama)
-                    </td>
-                    <td className="p-3">Headliner (90 mins)</td>
-                    <td className="p-3">PBEL Sanskritik Samiti Ensemble</td>
-                    <td className="p-3 text-gray-700">Full Band Setup, Drum Mics, 4 Vocal Mics &amp; LED Visuals</td>
-                  </tr>
-                </tbody>
-              </table>
+            {/* DAY SELECTION FILTER TABS */}
+            <div className="flex flex-wrap items-center gap-1.5 mb-5 p-1.5 bg-amber-50/70 rounded-2xl border border-amber-200/70">
+              {[
+                { id: "all", label: "All 6 Days", date: "" },
+                { id: "2026-10-15", label: "Panchami", date: "15 Oct" },
+                { id: "2026-10-16", label: "Maha Sashti", date: "16 Oct" },
+                { id: "2026-10-17", label: "Maha Saptami", date: "17 Oct" },
+                { id: "2026-10-18", label: "Maha Ashtami", date: "18 Oct" },
+                { id: "2026-10-19", label: "Maha Nabami", date: "19 Oct" },
+                { id: "2026-10-20", label: "Vijaya Dashami", date: "20 Oct" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setEmceeFilterDay(tab.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    emceeFilterDay === tab.id
+                      ? "bg-primary text-white shadow-xs"
+                      : "bg-white/80 hover:bg-white text-gray-700 hover:text-primary border border-amber-200/50"
+                  }`}
+                >
+                  {tab.label} {tab.date && <span className="opacity-80 text-[10px]">({tab.date})</span>}
+                </button>
+              ))}
             </div>
+
+            {/* DYNAMIC PER-DAY RUN SHEET */}
+            {(() => {
+              const currentScheduleList = getStoredSchedule();
+              const targetDays = emceeFilterDay === "all"
+                ? currentScheduleList
+                : currentScheduleList.filter((d) => d.isoDate === emceeFilterDay);
+
+              if (targetDays.length === 0) {
+                return (
+                  <div className="p-8 text-center text-xs text-gray-500 bg-gray-50 rounded-2xl">
+                    No schedule configured for this selected date.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {targetDays.map((dayItem) => {
+                    const dayPerfs = performances.filter((p) => {
+                      const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
+                      return rawDate === dayItem.isoDate;
+                    });
+
+                    const headliner = dayItem.culturalEvening?.pssHeadliner;
+                    const startTime = (dayItem.culturalEvening?.time || "06:30 PM").split(" - ")[0] || "06:30 PM";
+
+                    return (
+                      <div key={dayItem.id} className="border border-amber-300/80 rounded-2xl overflow-hidden shadow-xs">
+                        {/* Day Banner */}
+                        <div className="bg-gradient-to-r from-amber-100 via-amber-50 to-white px-4 py-3 border-b border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-primary text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                              {dayItem.dayName}
+                            </span>
+                            <span className="font-heading font-bold text-gray-900 text-sm">
+                              {dayItem.theme}
+                            </span>
+                          </div>
+                          <span className="text-xs font-semibold text-amber-900">
+                            📅 {dayItem.date} • ⏱️ {dayItem.culturalEvening?.time || "06:30 PM - 10:30 PM"}
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className="bg-amber-50/80 text-amber-950 font-bold border-b border-amber-200/80">
+                                <th className="p-3 w-16">Cue #</th>
+                                <th className="p-3 w-28">Stage Time</th>
+                                <th className="p-3">Performance / Act Title</th>
+                                <th className="p-3 w-32">Format / Genre</th>
+                                <th className="p-3">Artists / Contact</th>
+                                <th className="p-3">Audio &amp; Stage Cues</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 bg-white">
+                              {/* 1. Day Opening Cue */}
+                              <tr className="bg-amber-100/30 font-medium">
+                                <td className="p-3 font-mono font-bold text-primary">#01</td>
+                                <td className="p-3 font-mono font-bold text-gray-900">{startTime}</td>
+                                <td className="p-3">
+                                  <span className="font-bold text-primary block">
+                                    Stage Diya Lighting &amp; Agomoni Welcome
+                                  </span>
+                                  <span className="text-gray-500 text-[11px]">{dayItem.theme}</span>
+                                </td>
+                                <td className="p-3">
+                                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+                                    Inauguration
+                                  </span>
+                                </td>
+                                <td className="p-3 text-gray-700">PSS Cultural Leads &amp; Priests</td>
+                                <td className="p-3 text-gray-600">2 Wireless Handheld Mics + Aarti Light Wash Cue</td>
+                              </tr>
+
+                              {/* 2. Registered Resident Performances for this day */}
+                              {dayPerfs.map((p, pIdx) => (
+                                <tr key={p.id || pIdx} className="hover:bg-gray-50/70">
+                                  <td className="p-3 font-mono font-bold text-gray-700">
+                                    #{String(pIdx + 2).padStart(2, "0")}
+                                  </td>
+                                  <td className="p-3 font-mono font-semibold text-gray-900">
+                                    {p.scheduled_time || `Act ${pIdx + 1}`}
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="font-bold text-gray-900 block">{p.song_name || p.performance_type}</span>
+                                    <span className="text-gray-500 text-[11px]">{p.performance_type}</span>
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md font-medium text-[11px]">
+                                      {p.format || "Solo"}
+                                    </span>
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="font-semibold text-gray-900 block">{p.contact_name} (Flat {p.flat_number})</span>
+                                    <span className="text-gray-500 text-[11px]">
+                                      {p.participant_names || "Solo"} • 📱 {p.phone}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-gray-600">
+                                    {p.performance_type === "Dance"
+                                      ? "Aux / Bluetooth Audio Track • Stage Wash"
+                                      : "1 Vocal Mic + Instrument In"}
+                                  </td>
+                                </tr>
+                              ))}
+
+                              {/* If no resident performances registered for this day yet */}
+                              {dayPerfs.length === 0 && (
+                                <tr>
+                                  <td colSpan={6} className="p-4 text-center text-gray-400 italic text-[11px]">
+                                    Resident performance slots open ({dayItem.culturalEvening?.residentSlotsAvailable || 8} slots available).
+                                  </td>
+                                </tr>
+                              )}
+
+                              {/* 3. Day Flagship Headliner or Evening Finale */}
+                              {headliner ? (
+                                <tr className="bg-gradient-to-r from-red-50 to-amber-50 font-semibold border-t border-amber-200">
+                                  <td className="p-3 font-mono font-bold text-primary">#FINAL</td>
+                                  <td className="p-3 font-mono font-bold text-primary">{headliner.time}</td>
+                                  <td className="p-3">
+                                    <span className="font-heading font-bold text-primary block text-sm">
+                                      {headliner.title}
+                                    </span>
+                                    <span className="text-amber-900 text-[11px] font-medium">{headliner.genre}</span>
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md text-[11px] font-bold">
+                                      {headliner.duration}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-gray-900 font-bold">PSS Flagship Production / Artists</td>
+                                  <td className="p-3 text-gray-700">
+                                    Full Stage Sound Setup, 4 Vocal Mics, Percussion Mics &amp; LED Visuals
+                                  </td>
+                                </tr>
+                              ) : (
+                                <tr className="bg-amber-50/50 font-semibold border-t border-amber-200">
+                                  <td className="p-3 font-mono font-bold text-primary">#FINAL</td>
+                                  <td className="p-3 font-mono font-bold text-gray-900">
+                                    {(dayItem.culturalEvening?.time || "10:00 PM").split(" - ")[1] || "10:00 PM"}
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="font-heading font-bold text-primary block">
+                                      Grand Sandhya Aarti &amp; Community Farewell
+                                    </span>
+                                    <span className="text-gray-500 text-[11px]">Pratibimb Daily Stage Finale</span>
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-medium">
+                                      Community Aarti
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-gray-700">All Residents &amp; Cultural Volunteers</td>
+                                  <td className="p-3 text-gray-600">Dhaak Beats &amp; Stage Follow Spot</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
 
             <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
               <span>Pratibimb Stage Coordination Desk • PBEL Sanskritik Samiti</span>
