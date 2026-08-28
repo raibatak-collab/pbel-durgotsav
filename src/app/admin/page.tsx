@@ -1509,15 +1509,36 @@ function decodeCategoryDescription(desc?: string) {
     fetchData();
   };
 
+  // Date formatting helper for Pratibimb Stage Performances
+  const formatPerformanceDate = (p: any) => {
+    const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
+    const dateMap: Record<string, string> = {
+      "2026-10-15": "Panchami (15 Oct)",
+      "2026-10-16": "Maha Sashti (16 Oct)",
+      "2026-10-17": "Maha Saptami (17 Oct)",
+      "2026-10-18": "Maha Ashtami (18 Oct)",
+      "2026-10-19": "Maha Nabami (19 Oct)",
+      "2026-10-20": "Vijaya Dashami (20 Oct)",
+    };
+    return dateMap[rawDate] || (rawDate ? new Date(rawDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Scheduled Pujo Evening");
+  };
+
   // GALLERY CMS
   const handleAddPhoto = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newPhoto.title.trim()) {
+      alert("Please enter Photo Title.");
+      return;
+    }
     const newEntry = {
       id: Date.now().toString(),
-      title: newPhoto.title,
-      year: newPhoto.year,
-      category: newPhoto.category,
+      title: sanitizeText(newPhoto.title),
+      year: newPhoto.year || "2026",
+      category: sanitizeText(newPhoto.category) || "Pujo Celebrations",
       emoji: newPhoto.emoji || "🌺",
+      imageUrl: newPhoto.image_url || undefined,
+      image_url: newPhoto.image_url || undefined,
+      bgGradient: "from-[#850E1F]/85 via-[#610815]/90 to-[#2A0208]/95",
     };
     const updated = [newEntry, ...galleryList];
     setGalleryList(updated);
@@ -1525,7 +1546,7 @@ function decodeCategoryDescription(desc?: string) {
     saveCloudConfig("gallery", updated);
     window.dispatchEvent(new Event("pbel_gallery_updated"));
     alert("New photo added to the Homepage Gallery Carousel and synced to Cloud!");
-    setNewPhoto({ title: "", year: "2025", category: "Pujo Rituals", emoji: "🌺", image_url: "" });
+    setNewPhoto({ title: "", year: "2026", category: "Pujo Rituals", emoji: "🌺", image_url: "" });
   };
 
   const handleDeletePhoto = (id: string) => {
@@ -2576,6 +2597,7 @@ function decodeCategoryDescription(desc?: string) {
                         <th className="p-3.5">Contact Lead</th>
                         <th className="p-3.5">Flat Number</th>
                         <th className="p-3.5">WhatsApp Phone</th>
+                        <th className="p-3.5">Performance Date &amp; Day</th>
                         <th className="p-3.5">Genre</th>
                         <th className="p-3.5">Format</th>
                         <th className="p-3.5">Song / Act</th>
@@ -2587,7 +2609,12 @@ function decodeCategoryDescription(desc?: string) {
                         <tr key={p.id} className="hover:bg-gray-50/60">
                           <td className="p-3.5 font-bold text-gray-900">{p.contact_name}</td>
                           <td className="p-3.5 text-gray-700">{p.flat_number}</td>
-                          <td className="p-3.5 text-gray-600">{p.phone}</td>
+                          <td className="p-3.5 text-gray-600 font-mono">{p.phone}</td>
+                          <td className="p-3.5">
+                            <span className="bg-amber-100 text-amber-950 font-bold px-2.5 py-1 rounded-full text-[11px] whitespace-nowrap border border-amber-300/80 shadow-2xs inline-flex items-center gap-1">
+                              <span>📅</span> {formatPerformanceDate(p)}
+                            </span>
+                          </td>
                           <td className="p-3.5 font-semibold text-primary">{p.performance_type}</td>
                           <td className="p-3.5 text-gray-600">{p.format}</td>
                           <td className="p-3.5 font-medium text-amber-900">{p.song_name || "N/A"}</td>
@@ -2596,7 +2623,7 @@ function decodeCategoryDescription(desc?: string) {
                       ))}
                       {performances.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="p-6 text-center text-gray-500">
+                          <td colSpan={8} className="p-6 text-center text-gray-500">
                             No resident performance submissions recorded yet.
                           </td>
                         </tr>
@@ -4788,27 +4815,38 @@ function decodeCategoryDescription(desc?: string) {
                         </select>
                       </div>
                       <div>
-                        <label className="block font-semibold text-gray-700 mb-1">Flat / Unit *</label>
+                        <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (Digits Only) *</label>
                         <input
                           type="text"
                           required
+                          inputMode="numeric"
+                          maxLength={6}
                           value={newMemberForm.flatNumber}
-                          onChange={(e) => setNewMemberForm({ ...newMemberForm, flatNumber: e.target.value })}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                            setNewMemberForm({ ...newMemberForm, flatNumber: val });
+                          }}
                           placeholder="e.g. 402"
-                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp</label>
+                        <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp (10 Digits)</label>
                         <input
                           type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          pattern="[0-9]{10}"
                           value={newMemberForm.phone}
-                          onChange={(e) => setNewMemberForm({ ...newMemberForm, phone: e.target.value })}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                            setNewMemberForm({ ...newMemberForm, phone: val });
+                          }}
                           placeholder="e.g. 9876543210"
-                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                         />
                       </div>
                       <div>
@@ -5013,25 +5051,36 @@ function decodeCategoryDescription(desc?: string) {
                           </select>
                         </div>
                         <div>
-                          <label className="block font-semibold text-gray-700 mb-1">Flat / Unit *</label>
+                          <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (Digits Only) *</label>
                           <input
                             type="text"
                             required
+                            inputMode="numeric"
+                            maxLength={6}
                             value={editingMember.flatNumber}
-                            onChange={(e) => setEditingMember({ ...editingMember, flatNumber: e.target.value })}
-                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                              setEditingMember({ ...editingMember, flatNumber: val });
+                            }}
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                           />
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp</label>
+                          <label className="block font-semibold text-gray-700 mb-1">Mobile / WhatsApp (10 Digits)</label>
                           <input
                             type="tel"
+                            inputMode="numeric"
+                            maxLength={10}
+                            pattern="[0-9]{10}"
                             value={editingMember.phone}
-                            onChange={(e) => setEditingMember({ ...editingMember, phone: e.target.value })}
-                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                              setEditingMember({ ...editingMember, phone: val });
+                            }}
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                           />
                         </div>
                         <div>
@@ -5308,6 +5357,7 @@ function decodeCategoryDescription(desc?: string) {
                 <thead>
                   <tr className="bg-amber-50 text-amber-950 font-bold border-b border-amber-200">
                     <th className="p-3">Cue #</th>
+                    <th className="p-3">Performance Date &amp; Day</th>
                     <th className="p-3">Stage Time</th>
                     <th className="p-3">Performance / Song</th>
                     <th className="p-3">Genre &amp; Format</th>
@@ -5319,6 +5369,7 @@ function decodeCategoryDescription(desc?: string) {
                   {/* Default Flagship Openers */}
                   <tr className="bg-amber-100/40 font-semibold">
                     <td className="p-3 font-mono font-bold text-primary">#01</td>
+                    <td className="p-3 font-bold text-amber-900">Panchami (15 Oct)</td>
                     <td className="p-3 font-mono">06:30 PM</td>
                     <td className="p-3 text-primary font-bold">Dhaak Welcome &amp; Stage Diya Lighting</td>
                     <td className="p-3">Inauguration (15 mins)</td>
@@ -5329,6 +5380,11 @@ function decodeCategoryDescription(desc?: string) {
                   {performances.map((p, idx) => (
                     <tr key={p.id || idx} className="hover:bg-gray-50/60">
                       <td className="p-3 font-mono font-bold text-gray-700">#{String(idx + 2).padStart(2, "0")}</td>
+                      <td className="p-3">
+                        <span className="bg-amber-100 text-amber-950 font-bold px-2 py-0.5 rounded-md text-[11px] whitespace-nowrap">
+                          {formatPerformanceDate(p)}
+                        </span>
+                      </td>
                       <td className="p-3 font-mono font-semibold text-gray-900">
                         {p.scheduled_time || `Slot ${idx + 1}`}
                       </td>

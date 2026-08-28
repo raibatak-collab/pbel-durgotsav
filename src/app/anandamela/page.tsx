@@ -585,14 +585,20 @@ export default function AnandamelaPage() {
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">WhatsApp Mobile *</label>
+                    <label className="block font-semibold text-gray-700 mb-1">WhatsApp Mobile (10 Digits) *</label>
                     <input
                       type="tel"
                       required
+                      inputMode="numeric"
+                      maxLength={10}
+                      pattern="[0-9]{10}"
                       value={regForm.phone}
-                      onChange={(e) => setRegForm({ ...regForm, phone: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setRegForm({ ...regForm, phone: val });
+                      }}
                       placeholder="e.g. 9845000000"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                     />
                   </div>
                 </div>
@@ -614,14 +620,19 @@ export default function AnandamelaPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Flat / Unit *</label>
+                    <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (Digits Only) *</label>
                     <input
                       type="text"
                       required
+                      inputMode="numeric"
+                      maxLength={6}
                       value={regForm.flatNumber}
-                      onChange={(e) => setRegForm({ ...regForm, flatNumber: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        setRegForm({ ...regForm, flatNumber: val });
+                      }}
                       placeholder="e.g. 1104"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                     />
                   </div>
                 </div>

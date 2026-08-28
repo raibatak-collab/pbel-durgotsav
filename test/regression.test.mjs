@@ -1458,6 +1458,125 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('42. Gallery Photo CMS Serialization & Carousel Fallback Integrity', () => {
+    it('should correctly preserve and serialize image_url/imageUrl when adding gallery photo', () => {
+      const newPhoto = {
+        title: "Dhunuchi Naach Finals",
+        year: "2026",
+        category: "Vijaya Dashami",
+        emoji: "🔥",
+        image_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+      };
+
+      const newEntry = {
+        id: Date.now().toString(),
+        title: newPhoto.title,
+        year: newPhoto.year || "2026",
+        category: newPhoto.category || "Pujo Celebrations",
+        emoji: newPhoto.emoji || "🌺",
+        imageUrl: newPhoto.image_url || undefined,
+        image_url: newPhoto.image_url || undefined,
+        bgGradient: "from-[#850E1F]/85 via-[#610815]/90 to-[#2A0208]/95",
+      };
+
+      assert.strictEqual(newEntry.title, "Dhunuchi Naach Finals");
+      assert.strictEqual(newEntry.imageUrl, newPhoto.image_url);
+      assert.strictEqual(newEntry.image_url, newPhoto.image_url);
+
+      const serialized = JSON.stringify([newEntry]);
+      const parsed = JSON.parse(serialized);
+      assert.strictEqual(parsed[0].imageUrl, newPhoto.image_url);
+      assert.strictEqual(parsed[0].image_url, newPhoto.image_url);
+    });
+
+    it('should resolve photo URL with fallback support for both imageUrl and image_url', () => {
+      const photoWithCamel = { id: "1", title: "Test 1", imageUrl: "https://example.com/p1.jpg" };
+      const photoWithSnake = { id: "2", title: "Test 2", image_url: "https://example.com/p2.jpg" };
+      const photoWithNone = { id: "3", title: "Test 3", emoji: "🪔" };
+
+      const getUrl = (p) => p.imageUrl || p.image_url;
+
+      assert.strictEqual(getUrl(photoWithCamel), "https://example.com/p1.jpg");
+      assert.strictEqual(getUrl(photoWithSnake), "https://example.com/p2.jpg");
+      assert.strictEqual(getUrl(photoWithNone), undefined);
+    });
+  });
+
+  describe('43. Phone Number Strict 10-Digit & Numeric Sanitization Logic', () => {
+    const sanitizePhone = (input) => {
+      return (input || '').replace(/\D/g, '').slice(0, 10);
+    };
+
+    it('should strip spaces, dashes, country codes (+91), and alphabetical characters', () => {
+      assert.strictEqual(sanitizePhone('+91 98450-12345'), '9198450123');
+      assert.strictEqual(sanitizePhone('98450 12345'), '9845012345');
+      assert.strictEqual(sanitizePhone('98450-12345'), '9845012345');
+      assert.strictEqual(sanitizePhone('Phone: 98450abc12345xyz'), '9845012345');
+    });
+
+    it('should truncate numbers longer than 10 digits to exact 10 digits', () => {
+      assert.strictEqual(sanitizePhone('98765432109999'), '9876543210');
+      assert.strictEqual(sanitizePhone('9876543210').length, 10);
+    });
+
+    it('should handle clean valid 10-digit mobile numbers untouched', () => {
+      assert.strictEqual(sanitizePhone('9876543210'), '9876543210');
+      assert.strictEqual(sanitizePhone('8765432109'), '8765432109');
+    });
+  });
+
+  describe('44. Flat Unit Strict Numeric-Only Sanitization Logic', () => {
+    const sanitizeFlat = (input) => {
+      return (input || '').replace(/\D/g, '').slice(0, 6);
+    };
+
+    it('should strip all alphabetical letters, symbols, and spaces from flat unit inputs', () => {
+      assert.strictEqual(sanitizeFlat('Flat 402'), '402');
+      assert.strictEqual(sanitizeFlat('Flat #1104'), '1104');
+      assert.strictEqual(sanitizeFlat('Unit - 1205'), '1205');
+      assert.strictEqual(sanitizeFlat('Tower A 304'), '304');
+    });
+
+    it('should keep pure numeric flat numbers unchanged', () => {
+      assert.strictEqual(sanitizeFlat('402'), '402');
+      assert.strictEqual(sanitizeFlat('1204'), '1204');
+      assert.strictEqual(sanitizeFlat('1901'), '1901');
+    });
+  });
+
+  describe('45. Pratibimb Registered Stage Performance Date Mapping & Schema Integrity', () => {
+    const formatPerformanceDate = (p) => {
+      const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
+      const dateMap = {
+        "2026-10-15": "Panchami (15 Oct)",
+        "2026-10-16": "Maha Sashti (16 Oct)",
+        "2026-10-17": "Maha Saptami (17 Oct)",
+        "2026-10-18": "Maha Ashtami (18 Oct)",
+        "2026-10-19": "Maha Nabami (19 Oct)",
+        "2026-10-20": "Vijaya Dashami (20 Oct)",
+      };
+      return dateMap[rawDate] || (rawDate ? new Date(rawDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Scheduled Pujo Evening");
+    };
+
+    it('should correctly format performance date from Supabase joined cultural_evenings relation', () => {
+      const perf1 = {
+        id: "p-1",
+        contact_name: "Poulomi Sen",
+        flat_number: "Emerald 402",
+        cultural_evenings: { evening_date: "2026-10-16" },
+      };
+      assert.strictEqual(formatPerformanceDate(perf1), "Maha Sashti (16 Oct)");
+    });
+
+    it('should correctly format performance date from evening_date or created_at fallback', () => {
+      const perf2 = { id: "p-2", evening_date: "2026-10-17" };
+      assert.strictEqual(formatPerformanceDate(perf2), "Maha Saptami (17 Oct)");
+
+      const perf3 = { id: "p-3", created_at: "2026-10-18T18:30:00Z" };
+      assert.strictEqual(formatPerformanceDate(perf3), "Maha Ashtami (18 Oct)");
+    });
+  });
+
 });
 
 

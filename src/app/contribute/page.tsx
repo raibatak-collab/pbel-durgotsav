@@ -985,15 +985,21 @@ function decodeCategoryDescription(desc?: string) {
 
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                      WhatsApp Phone Number *
+                      WhatsApp Phone Number (10 Digits) *
                     </label>
                     <input
                       type="tel"
                       required
+                      inputMode="numeric"
+                      maxLength={10}
+                      pattern="[0-9]{10}"
                       value={customFormData.phone}
-                      onChange={(e) => setCustomFormData({ ...customFormData, phone: e.target.value })}
-                      placeholder="10-digit mobile number"
-                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm"
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                        setCustomFormData({ ...customFormData, phone: val });
+                      }}
+                      placeholder="e.g. 9845000000"
+                      className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-mono"
                     />
                   </div>
                 </div>
@@ -1020,15 +1026,20 @@ function decodeCategoryDescription(desc?: string) {
 
                   <div>
                     <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
-                      Flat / Unit Number *
+                      Flat / Unit Number (Digits Only) *
                     </label>
                     <input
                       type="text"
                       required
+                      inputMode="numeric"
+                      maxLength={6}
                       value={customFlatUnit}
-                      onChange={(e) => setCustomFlatUnit(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        setCustomFlatUnit(val);
+                      }}
                       placeholder="e.g. 402 or 1204"
-                      className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-medium"
+                      className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-medium font-mono"
                     />
                   </div>
                 </div>
@@ -1334,14 +1345,20 @@ function decodeCategoryDescription(desc?: string) {
               </div>
 
               <div>
-                <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone *</label>
+                <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone (10 Digits) *</label>
                 <input
                   type="tel"
                   required
+                  inputMode="numeric"
+                  maxLength={10}
+                  pattern="[0-9]{10}"
                   value={modalFormData.phone}
-                  onChange={(e) => setModalFormData({ ...modalFormData, phone: e.target.value })}
-                  placeholder="10-digit mobile number"
-                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setModalFormData({ ...modalFormData, phone: val });
+                  }}
+                  placeholder="e.g. 9845000000"
+                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                 />
               </div>
 
@@ -1367,15 +1384,20 @@ function decodeCategoryDescription(desc?: string) {
 
                 <div>
                   <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
-                    Flat / Unit *
+                    Flat / Unit (Digits Only) *
                   </label>
                   <input
                     type="text"
                     required
+                    inputMode="numeric"
+                    maxLength={6}
                     value={modalFlatUnit}
-                    onChange={(e) => setModalFlatUnit(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setModalFlatUnit(val);
+                    }}
                     placeholder="e.g. 402 or 1204"
-                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs font-medium"
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs font-medium font-mono"
                   />
                 </div>
               </div>

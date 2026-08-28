@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight, Maximize2, X, Sparkles, Image as ImageIcon } from "lucide-react";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
 
 export interface GalleryPhoto {
   id: string;
@@ -10,7 +11,8 @@ export interface GalleryPhoto {
   category: string;
   emoji: string;
   imageUrl?: string;
-  bgGradient: string;
+  image_url?: string;
+  bgGradient?: string;
 }
 
 const defaultPhotos: GalleryPhoto[] = [
@@ -65,12 +67,55 @@ const defaultPhotos: GalleryPhoto[] = [
 ];
 
 export function GalleryCarousel({ customPhotos }: { customPhotos?: any[] }) {
-  const photos = customPhotos && customPhotos.length > 0 ? customPhotos : defaultPhotos;
+  const [photos, setPhotos] = useState<GalleryPhoto[]>(() => {
+    if (customPhotos && customPhotos.length > 0) return customPhotos;
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("pbel_custom_gallery");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (_) {}
+    }
+    return defaultPhotos;
+  });
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [lightboxPhoto, setLightboxPhoto] = useState<GalleryPhoto | null>(null);
 
+  // Hydrate from localStorage and Supabase Cloud & listen for updates
+  useEffect(() => {
+    const loadCloudGallery = async () => {
+      try {
+        const cloud = await fetchCloudConfig<any[]>("gallery", []);
+        if (cloud && Array.isArray(cloud) && cloud.length > 0) {
+          setPhotos(cloud);
+          localStorage.setItem("pbel_custom_gallery", JSON.stringify(cloud));
+        }
+      } catch (_) {}
+    };
+    loadCloudGallery();
+
+    const handleUpdate = () => {
+      try {
+        const saved = localStorage.getItem("pbel_custom_gallery");
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPhotos(parsed);
+          }
+        }
+      } catch (_) {}
+    };
+
+    window.addEventListener("pbel_gallery_updated", handleUpdate);
+    return () => window.removeEventListener("pbel_gallery_updated", handleUpdate);
+  }, []);
+
   // Auto-slide every 5 seconds
   useEffect(() => {
+    if (photos.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % photos.length);
     }, 5000);
@@ -92,6 +137,7 @@ export function GalleryCarousel({ customPhotos }: { customPhotos?: any[] }) {
         
         {photos.map((photo, index) => {
           const isActive = index === currentIndex;
+          const photoUrl = photo.imageUrl || photo.image_url;
           return (
             <div
               key={photo.id || index}
@@ -100,10 +146,10 @@ export function GalleryCarousel({ customPhotos }: { customPhotos?: any[] }) {
               } bg-gradient-to-tr ${photo.bgGradient || "from-[#850E1F] to-[#290208]"} text-white`}
             >
               {/* If actual image URL / uploaded photo exists, render full image background */}
-              {photo.imageUrl ? (
+              {photoUrl ? (
                 <div className="absolute inset-0 z-0">
                   <img
-                    src={photo.imageUrl}
+                    src={photoUrl}
                     alt={photo.title}
                     className="w-full h-full object-cover"
                   />
@@ -126,7 +172,7 @@ export function GalleryCarousel({ customPhotos }: { customPhotos?: any[] }) {
 
               {/* Center Content / Visual */}
               <div className="my-auto text-center z-10">
-                {!photo.imageUrl && (
+                {!photoUrl && (
                   <span className="text-6xl sm:text-7xl drop-shadow-lg block mb-4 animate-bounce">
                     {photo.emoji || "🌺"}
                   </span>
@@ -221,10 +267,10 @@ export function GalleryCarousel({ customPhotos }: { customPhotos?: any[] }) {
               <X size={20} />
             </button>
 
-            {lightboxPhoto.imageUrl ? (
+            {(lightboxPhoto.imageUrl || lightboxPhoto.image_url) ? (
               <div className="w-full h-64 sm:h-80 rounded-2xl overflow-hidden mb-4 border border-amber-400/30">
                 <img
-                  src={lightboxPhoto.imageUrl}
+                  src={lightboxPhoto.imageUrl || lightboxPhoto.image_url}
                   alt={lightboxPhoto.title}
                   className="w-full h-full object-cover"
                 />
