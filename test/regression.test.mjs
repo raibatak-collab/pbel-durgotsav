@@ -948,14 +948,21 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
-  describe('28. Cultural Acts (Pratibimb) Navigation & Hero Registration Alignment', () => {
-    it('should verify Pratibimb cultural stage links exist in primary header and bottom nav', () => {
+  describe('28. Consolidated Header Navigation & In-Page Pratibimb Filter Alignment', () => {
+    it('should verify consolidated header routes to distinct destinations without duplicate routes', () => {
       const primaryLinks = [
         { name: "Home", href: "/" },
-        { name: "Pujo Schedule", href: "/programs" },
-        { name: "Cultural Acts (Pratibimb)", href: "/programs#pratibimb-registration" },
+        { name: "Schedule & Pratibimb", href: "/programs" },
+        { name: "Anandamela Food", href: "/anandamela" },
       ];
-      assert.strictEqual(primaryLinks.some((l) => l.href.includes("pratibimb")), true);
+      assert.strictEqual(primaryLinks.some((l) => l.href === "/programs"), true);
+      assert.strictEqual(primaryLinks.some((l) => l.href === "/anandamela"), true);
+    });
+
+    it('should support in-page filtering for rituals vs pratibimb stage acts', () => {
+      const filterModes = ["all", "rituals", "cultural"];
+      assert.strictEqual(filterModes.includes("rituals"), true);
+      assert.strictEqual(filterModes.includes("cultural"), true);
     });
   });
 

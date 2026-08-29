@@ -83,19 +83,18 @@ export function Header() {
     }
   }, [pathname]);
 
-  // Primary High-Frequency Desktop Links (Featuring 5-Day Pratibimb Stage)
+  // Primary High-Frequency Desktop Links (Consolidated Distinct Destinations)
   const primaryLinks = [
     { name: "Home", href: "/", icon: Sparkles },
-    { name: "Pujo Schedule", href: "/programs", icon: Calendar },
-    { name: "Cultural Acts (Pratibimb)", href: "/programs#register-performance", icon: Drama },
+    { name: "Schedule & Pratibimb", href: "/programs", icon: Calendar },
+    { name: "Anandamela Food", href: "/anandamela", icon: Utensils },
   ];
 
   // Secondary Links for Accessible "More ▾" Dropdown
   const moreLinks = [
-    { name: "Anandamela Food Fiesta", href: "/anandamela", icon: Utensils, desc: "Panchami evening home chef stalls & dishes" },
+    { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake, desc: "Join kitchen, crowd or stage seva shifts" },
     { name: "Pandal & Facilities Guide", href: "/guide", icon: Compass, desc: "Pandal map, emergency contacts & zones" },
     { name: "Organizing Committee", href: "/committee", icon: Users, desc: "Executive wings, leads & volunteer teams" },
-    { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake, desc: "Join kitchen, crowd or stage seva shifts" },
     { name: "Corporate Sponsors", href: "/sponsors", icon: Award, desc: "Brand partnerships & sponsorship brochure" },
   ];
 

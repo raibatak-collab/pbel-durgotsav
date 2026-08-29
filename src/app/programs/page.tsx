@@ -19,7 +19,8 @@ import {
   Mic,
   Tv,
   Download,
-  Building
+  Building,
+  Drama
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent } from "@/utils/security";
@@ -28,6 +29,7 @@ import { getStoredSchedule, fetchStoredSchedule, DaySchedule } from "@/config/sc
 
 export default function ProgramsPage() {
   const [selectedDay, setSelectedDay] = useState<string>("sashti");
+  const [filterView, setFilterView] = useState<"all" | "rituals" | "cultural">("all");
   const [schedule, setSchedule] = useState<DaySchedule[]>(getStoredSchedule());
   const [towersList, setTowersList] = useState<TowerDefinition[]>([]);
   const [selectedTower, setSelectedTower] = useState<string>("");
@@ -251,7 +253,60 @@ export default function ProgramsPage() {
         </div>
       </div>
 
-      {/* 3. DUAL-COLUMN SCHEDULE VIEW */}
+      {/* 2.5. IN-PAGE QUICK FILTERS & REGISTRATION CTA */}
+      <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 mb-6">
+        <div className="bg-white rounded-2xl p-2.5 sm:p-3 border border-amber-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          
+          {/* Quick Segmented Filter */}
+          <div className="flex items-center gap-1.5 bg-amber-50/80 p-1 rounded-xl border border-amber-200/60 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setFilterView("all")}
+              className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                filterView === "all"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-gray-700 hover:text-primary hover:bg-white/80"
+              }`}
+            >
+              <Sparkles size={13} />
+              <span>Combined Schedule</span>
+            </button>
+            <button
+              onClick={() => setFilterView("rituals")}
+              className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                filterView === "rituals"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-gray-700 hover:text-primary hover:bg-white/80"
+              }`}
+            >
+              <Flame size={13} />
+              <span>Sacred Rituals (Nirghanto)</span>
+            </button>
+            <button
+              onClick={() => setFilterView("cultural")}
+              className={`px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 shrink-0 ${
+                filterView === "cultural"
+                  ? "bg-primary text-white shadow-xs"
+                  : "text-gray-700 hover:text-primary hover:bg-white/80"
+              }`}
+            >
+              <Drama size={13} />
+              <span>Pratibimb Cultural Stage</span>
+            </button>
+          </div>
+
+          {/* Quick Jump to Performance Registration */}
+          <a
+            href="#register-performance"
+            className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#8B1024] to-[#680A1A] hover:from-[#A5132B] hover:to-[#8B1024] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm self-stretch sm:self-auto"
+          >
+            <Music size={14} className="text-amber-300" />
+            <span>🎤 Register Your Performance ↓</span>
+          </a>
+
+        </div>
+      </div>
+
+      {/* 3. DUAL-COLUMN / FILTERED SCHEDULE VIEW */}
       <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 pb-16">
         
         {/* Day Header Banner */}
@@ -276,13 +331,14 @@ export default function ProgramsPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* COLUMN 1: SACRED PUJO NIRGHANTO (7 Cols) */}
-          <div className="lg:col-span-7 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-amber-900/10">
-              <h3 className="font-heading text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Flame size={20} className="text-primary" />
-                <span>Sacred Pujo Nirghanto (Rituals)</span>
-              </h3>
+          {/* COLUMN 1: SACRED PUJO NIRGHANTO (7 Cols or 12 Cols when filtered) */}
+          {(filterView === "all" || filterView === "rituals") && (
+            <div className={`${filterView === "rituals" ? "lg:col-span-12 max-w-4xl mx-auto w-full" : "lg:col-span-7"} space-y-4`}>
+              <div className="flex items-center justify-between pb-3 border-b border-amber-900/10">
+                <h3 className="font-heading text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Flame size={20} className="text-primary" />
+                  <span>Sacred Pujo Nirghanto (Rituals)</span>
+                </h3>
               <span className="text-xs text-amber-800 font-semibold bg-amber-50 px-3 py-1 rounded-full border border-amber-200">
                 Purohit Guided
               </span>
@@ -361,9 +417,11 @@ export default function ProgramsPage() {
               })}
             </div>
           </div>
+        )}
 
-          {/* COLUMN 2: PRATIBIMB CULTURAL EVENING (5 Cols) */}
-          <div className="lg:col-span-5 space-y-4">
+        {/* COLUMN 2: PRATIBIMB CULTURAL EVENING (5 Cols or 12 Cols when filtered) */}
+        {(filterView === "all" || filterView === "cultural") && (
+          <div className={`${filterView === "cultural" ? "lg:col-span-12 max-w-4xl mx-auto w-full" : "lg:col-span-5"} space-y-4`}>
             <div className="flex items-center justify-between pb-3 border-b border-amber-900/10">
               <h3 className="font-heading text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Music size={20} className="text-primary" />
@@ -490,6 +548,7 @@ export default function ProgramsPage() {
             </div>
 
           </div>
+        )}
 
         </div>
 
