@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { GalleryCarousel } from "@/components/GalleryCarousel";
-import { HomeQuickContribute } from "@/components/HomeQuickContribute";
 import { TowerParticipation } from "@/components/TowerParticipation";
 import { FestiveHero } from "@/components/FestiveHero";
 import { SponsorLogoCarousel } from "@/components/SponsorLogoCarousel";
@@ -173,13 +172,13 @@ export default async function Home() {
           </div>
 
           <div className="flex flex-col sm:flex-row md:flex-col gap-3 justify-center">
-            <a
-              href="#quick-contribute-section"
-              className="bg-primary hover:bg-primary-hover text-white text-center py-3 px-6 rounded-2xl font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2"
+            <Link
+              href="/contribute"
+              className="bg-primary hover:bg-primary-hover text-white text-center py-3 px-6 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2"
             >
               <HeartHandshake size={16} />
-              <span>Quick Offering Below</span>
-            </a>
+              <span>Offer Pujo Seva (UPI / QR) →</span>
+            </Link>
             <Link
               href="/volunteer"
               className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-center py-2.5 px-6 rounded-2xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5"
@@ -189,11 +188,6 @@ export default async function Home() {
             </Link>
           </div>
 
-        </div>
-
-        {/* ZERO-FRICTION HOMEPAGE QUICK CONTRIBUTION CARD */}
-        <div id="quick-contribute-section">
-          <HomeQuickContribute />
         </div>
 
         {/* PROMINENT TOWER-WISE PARTICIPATION & DEVOTIONAL SOLIDARITY */}
