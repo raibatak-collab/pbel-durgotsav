@@ -87,7 +87,7 @@ export function Header() {
   const primaryLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Pujo Schedule", href: "/programs", icon: Calendar },
-    { name: "Cultural Acts (Pratibimb)", href: "/programs#pratibimb-registration", icon: Drama },
+    { name: "Cultural Acts (Pratibimb)", href: "/programs#register-performance", icon: Drama },
   ];
 
   // Secondary Links for Accessible "More ▾" Dropdown
@@ -96,8 +96,7 @@ export function Header() {
     { name: "Pandal & Facilities Guide", href: "/guide", icon: Compass, desc: "Pandal map, emergency contacts & zones" },
     { name: "Organizing Committee", href: "/committee", icon: Users, desc: "Executive wings, leads & volunteer teams" },
     { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake, desc: "Join kitchen, crowd or stage seva shifts" },
-    { name: "Corporate Sponsors", href: "/sponsors", icon: Award, desc: "Brand partnerships & 25MB official brochure" },
-    { name: "Admin Portal", href: "/admin", icon: ShieldCheck, desc: "Committee CRM, budget, tickets & branding", isSpecial: true },
+    { name: "Corporate Sponsors", href: "/sponsors", icon: Award, desc: "Brand partnerships & sponsorship brochure" },
   ];
 
   return (

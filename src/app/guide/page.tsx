@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
 import Link from "next/link";
 import {
   MapPin,
@@ -104,15 +105,28 @@ const FACILITY_ZONES: FacilityZone[] = [
   },
 ];
 
-const EMERGENCY_CONTACTS = [
-  { role: "Executive Emergency Desk", name: "PBEL Sanskritik Samiti Helpline", phone: "+91 98450 00000", desc: "For lost items, emergency pass verification & assistance" },
-  { role: "Security Control Room", name: "PBEL City Main Gate Security", phone: "+91 98450 00001", desc: "For vehicle parking, gates, and crowd guidance" },
-  { role: "First Aid & Medical Lead", name: "Township Medical Assistance Desk", phone: "+91 98450 00002", desc: "For urgent medical assistance and paramedic support" },
-  { role: "Food & Bhog Desk", name: "Kitchen Coordination Desk", phone: "+91 98450 00003", desc: "For dining token inquiries and special dietary help" },
+const DEFAULT_EMERGENCY_CONTACTS = [
+  { role: "Executive Emergency Desk", name: "PBEL Sanskritik Samiti Helpline", phone: "+91 98450 00000", desc: "For lost items, emergency pass verification & assistance (Configurable in Admin)" },
+  { role: "Security Control Room", name: "PBEL City Main Gate Security", phone: "+91 98450 00001", desc: "For vehicle parking, gates, and crowd guidance (Configurable in Admin)" },
+  { role: "First Aid & Medical Lead", name: "Township Medical Assistance Desk", phone: "+91 98450 00002", desc: "For urgent medical assistance and paramedic support (Configurable in Admin)" },
+  { role: "Food & Bhog Desk", name: "Kitchen Coordination Desk", phone: "+91 98450 00003", desc: "For dining token inquiries and special dietary help (Configurable in Admin)" },
 ];
 
 export default function PandalGuidePage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [emergencyContacts, setEmergencyContacts] = useState(DEFAULT_EMERGENCY_CONTACTS);
+
+  useEffect(() => {
+    const loadContacts = async () => {
+      try {
+        const data = await fetchCloudConfig('emergency_contacts', DEFAULT_EMERGENCY_CONTACTS);
+        setEmergencyContacts(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    loadContacts();
+  }, []);
 
   const categories = ["All", "Sanctum & Rituals", "Dining & Bhog", "Cultural Stage", "Amenities & Medical", "Parking & Entry"];
 
@@ -264,7 +278,7 @@ export default function PandalGuidePage() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {EMERGENCY_CONTACTS.map((c, idx) => (
+            {emergencyContacts.map((c, idx) => (
               <a
                 key={idx}
                 href={`tel:${c.phone.replace(/[^0-9+]/g, "")}`}

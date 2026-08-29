@@ -46,96 +46,7 @@ export interface FoodStall {
   status: "Approved" | "Pending";
 }
 
-const INITIAL_STALLS: FoodStall[] = [
-  {
-    id: "stall-1",
-    stallNumber: "Stall #01",
-    stallName: "Calcutta Roll Express",
-    chefName: "Anirban & Sreeparna Mukherjee",
-    tower: "Tower B (Sapphire)",
-    flatNumber: "1104",
-    phone: "9845000001",
-    category: "Rolls & Mughlai",
-    description: "Authentic Park Street style crisp Parota layered with farm eggs, spiced chicken tikka, sliced onions, green chillies & Kasundi.",
-    emoji: "🌯",
-    status: "Approved",
-    dishes: [
-      { name: "Double Egg Chicken Kathi Roll", price: 180, isVeg: false, specialty: true },
-      { name: "Paneer Tikka Roll", price: 150, isVeg: true },
-    ]
-  },
-  {
-    id: "stall-2",
-    stallNumber: "Stall #02",
-    stallName: "Dhakai Biryani & Kebabs",
-    chefName: "Debashis & Sharmila Sen",
-    tower: "Tower A (Emerald)",
-    flatNumber: "1401",
-    phone: "9845000002",
-    category: "Bengali Delicacies",
-    description: "Traditional Kolkata fragrant Dum Biryani slow-cooked with aromatic spices, tender meat, boiled egg and melted golden potato.",
-    emoji: "🍲",
-    status: "Approved",
-    dishes: [
-      { name: "Kolkata Mutton Biryani (with Aloo & Egg)", price: 320, isVeg: false, specialty: true },
-      { name: "Galouti Kebab with Roomali Roti", price: 240, isVeg: false },
-    ]
-  },
-  {
-    id: "stall-3",
-    stallNumber: "Stall #03",
-    stallName: "Mishti Mukh & Pithe Puli",
-    chefName: "Rupa Sengupta & Debolina",
-    tower: "Tower D (Topaz)",
-    flatNumber: "603",
-    phone: "9845000004",
-    category: "Sweets & Pithe",
-    description: "Home-made artisanal Bengali desserts, Nolen Gur delicacies, Kheer Patishapta, and warm baked Rosogolla straight from the oven.",
-    emoji: "🍯",
-    status: "Approved",
-    dishes: [
-      { name: "Kheer Patishapta (Plate of 2)", price: 90, isVeg: true, specialty: true },
-      { name: "Baked Nolen Gur Rosogolla (2 Pcs)", price: 80, isVeg: true },
-      { name: "Malpua with Rabdi Dip", price: 100, isVeg: true },
-    ],
-  },
-  {
-    id: "stall-4",
-    stallNumber: "Stall #04",
-    stallName: "Dacres Lane Street Delights",
-    chefName: "Debashis & Sourav",
-    tower: "Tower A (Emerald)",
-    flatNumber: "802",
-    phone: "9845000002",
-    category: "Street Food & Chaat",
-    description: "Hot Kolkata Phuchka with spiced Gondhoraj lime water, Churmur, and spicy Kolkata Mutton Ghugni with butter-toasted Pav.",
-    emoji: "🥟",
-    status: "Approved",
-    dishes: [
-      { name: "Gondhoraj Lebu Phuchka (6 Pcs)", price: 50, isVeg: true },
-      { name: "Kolkata Mutton Ghugni with Butter Pav", price: 150, isVeg: false, specialty: true },
-      { name: "Dahi Phuchka Papdi Chaat Royale", price: 80, isVeg: true },
-    ],
-  },
-  {
-    id: "stall-5",
-    stallNumber: "Stall #05",
-    stallName: "The Royal Biryani Pot",
-    chefName: "Raibatak Banerjee & Family",
-    tower: "Tower C (Coral)",
-    flatNumber: "402",
-    phone: "9845000000",
-    category: "Bengali Delicacies",
-    description: "Slow-cooked Kolkata style Basmati rice aromatic Biryani with melt-in-mouth aloo, tender chicken & boiled egg, paired with spicy raita.",
-    emoji: "🍚",
-    status: "Approved",
-    dishes: [
-      { name: "Kolkata Special Chicken Biryani (with Aloo & Egg)", price: 240, isVeg: false, specialty: true },
-      { name: "Kolkata Mutton Kassa (2 Pcs tender)", price: 280, isVeg: false, specialty: true },
-      { name: "Basanti Pulao with Chanar Dalna", price: 180, isVeg: true },
-    ],
-  },
-];
+const INITIAL_STALLS: FoodStall[] = [];
 
 export default function AnandamelaPage() {
   const [stalls, setStalls] = useState<FoodStall[]>(INITIAL_STALLS);
@@ -143,7 +54,6 @@ export default function AnandamelaPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [dietaryFilter, setDietaryFilter] = useState<"all" | "veg" | "non-veg">("all");
-  const [selectedStallModal, setSelectedStallModal] = useState<FoodStall | null>(null);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
 
   // Form State for Stall Registration
@@ -247,7 +157,7 @@ export default function AnandamelaPage() {
       description: sanitizeText(regForm.description) || "Home-cooked festive specialty prepared with love by PBEL City residents.",
       emoji: regForm.category === "Sweets & Pithe" ? "🍯" : regForm.category === "Rolls & Mughlai" ? "🌯" : "🍲",
       dishes: dishes.length > 0 ? dishes : [{ name: "Festive Specialty", price: 150, isVeg: false }],
-      status: "Approved",
+      status: "Pending",
     };
 
     const updated = [newStall, ...stalls];
@@ -279,6 +189,7 @@ export default function AnandamelaPage() {
   const categories = ["All", "Rolls & Mughlai", "Bengali Delicacies", "Street Food & Chaat", "Sweets & Pithe", "Snacks & Quick Bites"];
 
   const filteredStalls = stalls.filter((stall) => {
+    if (stall.status !== "Approved") return false;
     const matchCategory = selectedCategory === "All" || stall.category === selectedCategory;
     const q = searchQuery.toLowerCase().trim();
     const matchQuery =
@@ -488,7 +399,7 @@ export default function AnandamelaPage() {
                             {dish.name}
                           </span>
                           {dish.specialty && (
-                            <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.2 rounded shrink-0">
+                            <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded shrink-0">
                               ⭐ Must Try
                             </span>
                           )}
@@ -505,7 +416,7 @@ export default function AnandamelaPage() {
               {/* Stall Footer Actions */}
               <div className="p-5 pt-0">
                 <a
-                  href={`https://api.whatsapp.com/send?phone=${stall.phone.replace(/[^0-9]/g, "")}&text=Hello%20${encodeURIComponent(stall.chefName)}%2C%20I%20saw%20your%20Anandamela%20stall%20"${encodeURIComponent(stall.stallName)}"%20on%20the%20PBEL%20Durgotsav%20Portal!%20I%20would%20like%20to%20know%20more%20and%20pre-order.`}
+                  href={`https://api.whatsapp.com/send?phone=91${stall.phone.replace(/[^0-9]/g, "")}&text=Hello%20${encodeURIComponent(stall.chefName)}%2C%20I%20saw%20your%20Anandamela%20stall%20"${encodeURIComponent(stall.stallName)}"%20on%20the%20PBEL%20Durgotsav%20Portal!%20I%20would%20like%20to%20know%20more%20and%20pre-order.`}
                   target="_blank"
                   rel="noreferrer"
                   className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white py-2.5 px-4 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
@@ -546,6 +457,8 @@ export default function AnandamelaPage() {
             </div>
             <p className="text-xs text-gray-500 mb-6">
               Showcase your signature homemade culinary delicacies to over 1,500+ PBEL City resident families on Panchami evening (15th Oct).
+              <br /><br />
+              <strong>Notice:</strong> Your stall registration will be reviewed and approved by the Anandamela committee.
             </p>
 
             {regSuccess ? (

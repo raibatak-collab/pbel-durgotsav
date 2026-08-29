@@ -67,8 +67,8 @@ export const DEFAULT_BRANDING: SamitiBrandingConfig = {
   durgotsavLogoUrl: "", // Admin can upload or provide URL
   activeHeroWallpaperId: "traditional-ekchala",
   customWallpaperUrl: "",
-  sponsorshipDeckPdfUrl: "/PBEL_City_Durgotsav_2026_Sponsorship_Deck.pdf",
-  sponsorshipDeckFileName: "PBEL_City_Durgotsav_2026_Sponsorship_Deck.pdf",
+  sponsorshipDeckPdfUrl: "/docs/PBEL_Durgotsav_2026_Sponsorship_Deck.pdf",
+  sponsorshipDeckFileName: "PBEL_Durgotsav_2026_Sponsorship_Deck.pdf",
 };
 
 export const BRANDING_STORAGE_KEY = "pbel_branding_config";

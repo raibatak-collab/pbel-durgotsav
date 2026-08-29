@@ -142,7 +142,7 @@ const initialEveningsConfig = mapScheduleToEveningsConfig(DEFAULT_PUJO_SCHEDULE)
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<
-    "overview" | "contributions" | "pss_members" | "categories" | "schedule" | "volunteers" | "sponsors" | "budget" | "committee" | "towers" | "branding" | "gallery" | "users"
+    "overview" | "contributions" | "pss_members" | "categories" | "schedule" | "volunteers" | "anandamela" | "sponsors" | "budget" | "committee" | "towers" | "branding" | "gallery" | "users"
   >("overview");
   const [membersSubView, setMembersSubView] = useState<"roster" | "kitchen">("roster");
   const [scheduleSubView, setScheduleSubView] = useState<"schedule" | "pratibimb">("schedule");
@@ -210,6 +210,7 @@ export default function AdminDashboard() {
   const [isSubmittingSponsor, setIsSubmittingSponsor] = useState(false);
   const [sponsorLeads, setSponsorLeads] = useState<any[]>([]);
   const [bhogPasses, setBhogPasses] = useState<any[]>([]);
+  const [anandamelaStalls, setAnandamelaStalls] = useState<any[]>([]);
 
   // PSS Members Roster State - Initialized empty until Admin uploads CSV or adds members
   const [pssMembers, setPssMembers] = useState<any[]>([]);
@@ -416,6 +417,11 @@ export default function AdminDashboard() {
           localStorage.setItem("pbel_custom_gallery", JSON.stringify(cloudGallery));
         }
       });
+      fetchCloudConfig<any[]>("anandamela_stalls", []).then((cloudStalls) => {
+        if (cloudStalls && cloudStalls.length > 0) {
+          setAnandamelaStalls(cloudStalls);
+        }
+      });
       fetchCloudConfig<AdminUser[]>("admin_users", []).then((cloudUsers) => {
         if (cloudUsers && cloudUsers.length > 0) {
           setAdminUsers(cloudUsers);
@@ -454,7 +460,6 @@ export default function AdminDashboard() {
         saveCloudConfig("pss_members", pssMembers),
         saveCloudConfig("budget_expenses", budgetExpenses),
         saveCloudConfig("gallery", galleryList),
-        saveCloudConfig("admin_users", adminUsers),
       ]);
 
       alert("🎉 Successfully synced ALL portal settings, Towers, Committee Wings, Member Passes, Budget, Schedule, and Announcements to Supabase Cloud!\n\nAll data is now live immediately across every mobile device and browser.");
@@ -510,6 +515,10 @@ export default function AdminDashboard() {
       saveStoredBranding(updated);
       alert("Custom Maa Durga Wallpaper uploaded & activated across the portal!");
     };
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File size must be under 2MB. Please compress or resize the image before uploading.");
+      return;
+    }
     reader.readAsDataURL(file);
   };
 
@@ -528,6 +537,10 @@ export default function AdminDashboard() {
       saveStoredBranding(updated);
       alert("PBEL Sanskritik Samiti Logo uploaded & updated across Header & Hero!");
     };
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File size must be under 2MB. Please compress or resize the image before uploading.");
+      return;
+    }
     reader.readAsDataURL(file);
   };
 
@@ -546,6 +559,10 @@ export default function AdminDashboard() {
       saveStoredBranding(updated);
       alert("PBEL Durgotsav Festival Logo uploaded & updated!");
     };
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File size must be under 2MB. Please compress or resize the image before uploading.");
+      return;
+    }
     reader.readAsDataURL(file);
   };
 
@@ -993,8 +1010,8 @@ export default function AdminDashboard() {
       }
       setLoginForm({ username: "", password: "" });
     } else if (
-      (enteredUser === "admin" || enteredUser === "committee" || enteredUser === "pbelsanskritiksamiti@gmail.com") &&
-      (enteredPass === "PBEL@2026" || enteredPass === "admin123" || enteredPass === "2026")
+      enteredUser === "admin" &&
+      enteredPass === "PBEL@2026"
     ) {
       const masterUser: AdminUser = {
         id: "usr-master",
@@ -1054,7 +1071,8 @@ export default function AdminDashboard() {
     const updatedList = [...adminUsers, created];
     setAdminUsers(updatedList);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updatedList));
-    saveCloudConfig("admin_users", updatedList);
+    const cloudSyncList = updatedList.map(u => ({ ...u, passwordHash: "" }));
+    saveCloudConfig("admin_users", cloudSyncList);
     setNewUser({ name: "", username: "", role: "Finance & Fund Verification", password: "" });
     alert(`Admin User "${created.name}" created and synced to Cloud!`);
   };
@@ -1073,7 +1091,8 @@ export default function AdminDashboard() {
     });
     setAdminUsers(updated);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
-    saveCloudConfig("admin_users", updated);
+    const cloudSyncList = updated.map(u => ({ ...u, passwordHash: "" }));
+    saveCloudConfig("admin_users", cloudSyncList);
   };
 
   const handleDeleteUser = (id: string) => {
@@ -1085,7 +1104,8 @@ export default function AdminDashboard() {
     const updated = adminUsers.filter((u) => u.id !== id);
     setAdminUsers(updated);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
-    saveCloudConfig("admin_users", updated);
+    const cloudSyncList = updated.map(u => ({ ...u, passwordHash: "" }));
+    saveCloudConfig("admin_users", cloudSyncList);
   };
 
   useEffect(() => {
@@ -1755,6 +1775,7 @@ function decodeCategoryDescription(desc?: string) {
                     { id: "categories", label: "🌺 Seva Catalog" },
                     { id: "schedule", label: "📅 Pujo Nirghanto" },
                     { id: "volunteers", label: "🤝 Volunteer Roster" },
+                    { id: "anandamela", label: "🍲 Food Stalls" },
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -2908,6 +2929,143 @@ function decodeCategoryDescription(desc?: string) {
                     <tr>
                       <td colSpan={5} className="p-8 text-center text-gray-500">
                         No volunteer registrations recorded yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: 7. ANANDAMELA FOOD STALLS MODERATION & MANAGEMENT */}
+      {activeTab === "anandamela" && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/80 text-amber-900 text-xs font-bold mb-2">
+                <Utensils size={13} className="text-primary" />
+                <span>Anandamela Food Fiesta • Home Chef Stalls</span>
+              </div>
+              <h2 className="font-heading text-2xl font-bold text-gray-900">
+                Food Stall Registrations &amp; Moderation
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">
+                Approve or reject resident home chef stall registrations before they go live on the public festival website.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={async () => {
+                  if (!confirm("Are you sure you want to clear ALL registered food stalls?")) return;
+                  setAnandamelaStalls([]);
+                  await saveCloudConfig("anandamela_stalls", []);
+                }}
+                className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <Trash2 size={14} /> Clear All Stalls
+              </button>
+            </div>
+          </div>
+
+          {/* Stalls Table */}
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+              <span className="font-bold text-xs text-gray-700">
+                Registered Stalls ({anandamelaStalls.length}) • {anandamelaStalls.filter((s: any) => s.status === "Pending").length} Pending Approval
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-gray-50/50 text-gray-500 uppercase text-[10px] font-bold border-b border-gray-100">
+                  <tr>
+                    <th className="p-3.5">Stall &amp; Category</th>
+                    <th className="p-3.5">Chef &amp; Tower</th>
+                    <th className="p-3.5">WhatsApp</th>
+                    <th className="p-3.5">Dishes / Menu</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Moderation Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {anandamelaStalls.length > 0 ? (
+                    anandamelaStalls.map((stall: any, idx: number) => (
+                      <tr key={stall.id || idx} className="hover:bg-amber-50/30 transition">
+                        <td className="p-3.5">
+                          <span className="font-bold text-gray-900 block">{stall.stallName}</span>
+                          <span className="text-[10px] text-gray-500">{stall.category || "General"}</span>
+                        </td>
+                        <td className="p-3.5">
+                          <span className="font-semibold text-gray-800 block">{stall.chefName}</span>
+                          <span className="text-[11px] text-gray-500">{stall.flatNumber}</span>
+                        </td>
+                        <td className="p-3.5 font-mono text-gray-700">
+                          {stall.phone}
+                        </td>
+                        <td className="p-3.5 max-w-xs">
+                          {stall.dishes && stall.dishes.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {stall.dishes.map((d: any, dIdx: number) => (
+                                <div key={dIdx} className="text-[11px] text-gray-700">
+                                  • {d.name} <span className="font-bold text-green-700">(₹{d.price})</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">Specialties</span>
+                          )}
+                        </td>
+                        <td className="p-3.5">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                              stall.status === "Approved"
+                                ? "bg-green-100 text-green-800 border border-green-200"
+                                : "bg-amber-100 text-amber-800 border border-amber-200"
+                            }`}
+                          >
+                            {stall.status || "Pending"}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {stall.status !== "Approved" && (
+                              <button
+                                onClick={async () => {
+                                  const updated = anandamelaStalls.map((s: any) =>
+                                    (s.id === stall.id || s.stallName === stall.stallName) ? { ...s, status: "Approved" } : s
+                                  );
+                                  setAnandamelaStalls(updated);
+                                  await saveCloudConfig("anandamela_stalls", updated);
+                                }}
+                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-[11px] transition shadow-2xs"
+                              >
+                                Approve ✓
+                              </button>
+                            )}
+                            <button
+                              onClick={async () => {
+                                if (!confirm(`Delete stall "${stall.stallName}"?`)) return;
+                                const updated = anandamelaStalls.filter((s: any) =>
+                                  s.id ? s.id !== stall.id : s.stallName !== stall.stallName
+                                );
+                                setAnandamelaStalls(updated);
+                                await saveCloudConfig("anandamela_stalls", updated);
+                              }}
+                              className="px-2.5 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-600 rounded-lg font-bold text-[11px] transition"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-gray-500">
+                        No food stalls registered yet. New resident registrations will appear here for admin approval.
                       </td>
                     </tr>
                   )}
@@ -4449,6 +4607,10 @@ function decodeCategoryDescription(desc?: string) {
                         reader.onloadend = () => {
                           setNewPhoto({ ...newPhoto, image_url: reader.result as string });
                         };
+                        if (file.size > 2 * 1024 * 1024) {
+                          alert("File size must be under 2MB. Please compress or resize the image before uploading.");
+                          return;
+                        }
                         reader.readAsDataURL(file);
                       }
                     }}

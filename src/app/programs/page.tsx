@@ -44,6 +44,7 @@ export default function ProgramsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleDownloadIcs = (event: {
     title: string;
@@ -127,13 +128,19 @@ export default function ProgramsPage() {
 
   const handleRegisterPerformance = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
 
     const formattedFlat = selectedTower === "Other"
       ? flatUnit.trim() || "Guest Devotee"
       : `${selectedTower} - ${flatUnit.trim()}`;
 
     if (!formData.contactName.trim() || !flatUnit.trim() || !formData.phone.trim()) {
-      alert("Please enter Contact Name, Flat Number, and WhatsApp Phone.");
+      setErrorMessage("Please enter Contact Name, Flat Number, and 10-digit WhatsApp Phone Number.");
+      return;
+    }
+
+    if (formData.phone.replace(/\D/g, "").length !== 10) {
+      setErrorMessage("Please enter a valid 10-digit mobile number.");
       return;
     }
 
@@ -171,7 +178,7 @@ export default function ProgramsPage() {
       setIsSuccess(true);
     } catch (err) {
       console.error("Error submitting performance:", err);
-      alert("Submission failed. Please check database connection.");
+      setErrorMessage("Submission failed. Please check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -506,17 +513,46 @@ export default function ProgramsPage() {
               <CheckCircle2 size={48} className="text-green-600 mx-auto mb-3" />
               <h4 className="font-heading text-xl font-bold text-gray-900 mb-1">Registration Submitted!</h4>
               <p className="text-xs text-gray-600 mb-4">
-                Thank you, <strong>{formData.contactName}</strong>. The Pratibimb cultural committee will review your act and confirm your stage slot time!
+                Thank you, <strong>{formData.contactName}</strong>. The Pratibimb cultural committee will review your <strong>{formData.performanceType}</strong> act ({formData.songName || "Stage Performance"}) and confirm your slot timing!
               </p>
-              <button
-                onClick={() => setIsSuccess(false)}
-                className="bg-primary text-white text-xs font-semibold px-6 py-2 rounded-full"
-              >
-                Submit Another Act
-              </button>
+              
+              <div className="flex flex-col gap-2.5">
+                <a
+                  href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                    `🎭 Jai Maa Durga! I have registered a stage act for Pratibimb 2026 at PBEL City Durgotsav: ${formData.performanceType} - ${formData.songName || "Cultural Performance"} on ${formData.eveningDate}. Join the cultural stage at https://pbeldurgotsav.in/programs`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold px-6 py-2.5 rounded-full flex items-center justify-center gap-1.5 shadow-sm transition"
+                >
+                  <span>📲 Share on Tower WhatsApp Group</span>
+                </a>
+                <button
+                  onClick={() => {
+                    setIsSuccess(false);
+                    setFormData({
+                      ...formData,
+                      songName: "",
+                      participantNames: "",
+                      contactName: "",
+                      phone: "",
+                    });
+                    setFlatUnit("");
+                  }}
+                  className="bg-primary text-white text-xs font-semibold px-6 py-2 rounded-full hover:bg-primary-hover transition"
+                >
+                  Submit Another Act
+                </button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleRegisterPerformance} className="max-w-3xl mx-auto space-y-6 text-xs sm:text-sm">
+              {errorMessage && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{errorMessage}</span>
+                </div>
+              )}
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

@@ -169,7 +169,7 @@ export function buildUpiPayUri(options: {
     am,
     tn = "Pujo Seva 2026",
     mc = OFFICIAL_BANK_UPI.mc,
-    tr = OFFICIAL_BANK_UPI.tr,
+    tr = "PSS" + Date.now().toString(36).toUpperCase(),
   } = options;
 
   const params = new URLSearchParams();

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Award, ExternalLink, Sparkles, Building2, ChevronRight } from "lucide-react";
+import { ExternalLink, Sparkles, ChevronRight } from "lucide-react";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 
 export interface SponsorItem {
@@ -15,40 +15,7 @@ export interface SponsorItem {
   is_active?: boolean;
 }
 
-const DEFAULT_SPONSORS: SponsorItem[] = [
-  {
-    id: "sp-1",
-    name: "ICICI Bank",
-    tier: "Platinum Banking Partner",
-    logo_url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/ICICI_Bank_Logo.svg/512px-ICICI_Bank_Logo.svg.png",
-    website: "https://www.icicibank.com",
-    is_active: true,
-  },
-  {
-    id: "sp-2",
-    name: "Ratnadeep Supermarket",
-    tier: "Food & Bhog Partner",
-    logo_url: "https://www.ratnadeep.com/assets/images/logo.png",
-    website: "https://www.ratnadeep.com",
-    is_active: true,
-  },
-  {
-    id: "sp-3",
-    name: "Karachi Bakery",
-    tier: "Sweet & Prasad Partner",
-    logo_url: "https://www.karachibakery.com/assets/images/logo.png",
-    website: "https://www.karachibakery.com",
-    is_active: true,
-  },
-  {
-    id: "sp-4",
-    name: "Apollo Pharmacy",
-    tier: "Healthcare & Safety Partner",
-    logo_url: "https://www.apollopharmacy.in/assets/images/logo.svg",
-    website: "https://www.apollopharmacy.in",
-    is_active: true,
-  },
-];
+const DEFAULT_SPONSORS: SponsorItem[] = [];
 
 export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: SponsorItem[] | null }) {
   const [sponsors, setSponsors] = useState<SponsorItem[]>(() => {
@@ -64,6 +31,7 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
     }
     return DEFAULT_SPONSORS;
   });
+  const [imageError, setImageError] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const loadCloudSponsors = async () => {
@@ -115,26 +83,22 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
             >
               {/* Logo / Brand Crest */}
               <div className="w-full h-24 flex items-center justify-center p-2 mb-3 bg-gray-50/70 rounded-xl border border-gray-100 group-hover:bg-amber-50/30 transition-colors">
-                {sponsor.logo_url ? (
+                {sponsor.logo_url && !imageError.has(sponsor.id) ? (
                   <img
                     src={sponsor.logo_url}
                     alt={sponsor.name}
                     className="max-h-16 max-w-[85%] object-contain filter group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      // Fallback if image fails to load
-                      (e.target as HTMLElement).style.display = "none";
-                      const parent = (e.target as HTMLElement).parentElement;
-                      if (parent && !parent.querySelector(".fallback-brand-crest")) {
-                        const div = document.createElement("div");
-                        div.className = "fallback-brand-crest flex flex-col items-center justify-center font-bold text-gray-800 text-sm";
-                        div.innerHTML = `<span class="text-xl">🏢</span><span>${sponsor.name}</span>`;
-                        parent.appendChild(div);
-                      }
+                    onError={() => {
+                      setImageError((prev) => {
+                        const next = new Set(prev);
+                        next.add(sponsor.id);
+                        return next;
+                      });
                     }}
                   />
                 ) : (
-                  <div className="flex flex-col items-center justify-center">
-                    <span className="text-2xl mb-0.5">🏛️</span>
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-xl mb-0.5">🏢</span>
                     <span className="font-heading text-sm font-bold text-gray-800">{sponsor.name}</span>
                   </div>
                 )}

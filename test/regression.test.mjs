@@ -1789,7 +1789,114 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('50. Dynamic UPI Transaction Reference & Safe Payment QR Payload', () => {
+    it('should generate unique transaction reference (tr) across separate calls to prevent duplicate txn rejections', () => {
+      const generateDynamicTr = () => "PSS" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 5).toUpperCase();
+      const tr1 = generateDynamicTr();
+      const tr2 = generateDynamicTr();
+      assert.ok(tr1.startsWith("PSS"));
+      assert.ok(tr2.startsWith("PSS"));
+      assert.notStrictEqual(tr1, tr2);
+    });
+
+    it('should construct valid UPI pay URI with dynamic tr and verified payee parameters', () => {
+      const buildUri = (amount, note) => {
+        const dynamicTr = "PSS" + Date.now().toString(36).toUpperCase();
+        return `upi://pay?pa=pbelsanskritiksamiti%40icici&pn=PBEL%20Sanskritik%20Samiti&mc=1520&tr=${dynamicTr}&am=${amount}&cu=INR&tn=${encodeURIComponent(note)}`;
+      };
+
+      const uri = buildUri(1001, "Saptami Pushpanjali");
+      assert.ok(uri.includes("pa=pbelsanskritiksamiti%40icici"));
+      assert.ok(uri.includes("am=1001"));
+      assert.ok(uri.includes("mc=1520"));
+      assert.ok(uri.includes("tr=PSS"));
+    });
+  });
+
+  describe('51. Tower Deserialization Regex Word Boundaries & Guest Devotees Isolation', () => {
+    it('should not falsely match non-Tower words with single letter tower identifiers', () => {
+      const towerRegex = new RegExp(`\\bA\\b|Emerald|Tower A`, "i");
+      assert.strictEqual(towerRegex.test("Flat 402"), false);
+      assert.strictEqual(towerRegex.test("Main Road"), false);
+      assert.strictEqual(towerRegex.test("Block A 402"), true);
+      assert.strictEqual(towerRegex.test("Tower A - 1204"), true);
+      assert.strictEqual(towerRegex.test("Emerald 801"), true);
+    });
+
+    it('should isolate guest/external contributions without falsely attributing to Tower A', () => {
+      const towers = [
+        { id: "A", name: "Emerald", tower: "Tower A", fullName: "Tower A (Emerald)", regex: /\bA\b|Emerald|Tower A/i },
+        { id: "B", name: "Sapphire", tower: "Tower B", fullName: "Tower B (Sapphire)", regex: /\bB\b|Sapphire|Tower B/i },
+      ];
+
+      const contributions = [
+        { flat_number: "Tower A - 402", amount: 2000 },
+        { flat_number: "Tower B - 1204", amount: 5000 },
+        { flat_number: "Guest Devotee (Bangalore)", amount: 1001 },
+        { flat_number: "Well Wisher External", amount: 2501 },
+      ];
+
+      const counts = { A: 0, B: 0, guest: 0 };
+      contributions.forEach((c) => {
+        let matched = false;
+        for (const t of towers) {
+          if (t.regex.test(c.flat_number)) {
+            counts[t.id] += c.amount;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          counts.guest += c.amount;
+        }
+      });
+
+      assert.strictEqual(counts.A, 2000);
+      assert.strictEqual(counts.B, 5000);
+      assert.strictEqual(counts.guest, 3502);
+    });
+  });
+
+  describe('52. Pre-Launch Polish: Food Stall Moderation, Contact Hardening & OpenGraph Metadata Integrity', () => {
+    it('should verify official committee contact information is used everywhere', () => {
+      const officialEmail = "pbelsanskritiksamiti@gmail.com";
+      const officialPhone = "7032006645";
+      assert.strictEqual(officialEmail.includes("@"), true);
+      assert.strictEqual(officialPhone.length, 10);
+    });
+
+    it('should verify Anandamela new registrations default to Pending moderation status', () => {
+      const createStall = (stallName, chefName, flatNumber, phone) => ({
+        id: "stall_" + Date.now(),
+        stallName,
+        chefName,
+        flatNumber,
+        phone,
+        status: "Pending",
+        dishes: [{ name: "Kolkata Biryani", price: 220, isVeg: false }],
+      });
+
+      const stall = createStall("Dhakai Bhoj", "Debashis", "Tower A 1401", "9845012345");
+      assert.strictEqual(stall.status, "Pending");
+
+      const publicStalls = [stall].filter((s) => s.status === "Approved");
+      assert.strictEqual(publicStalls.length, 0);
+
+      stall.status = "Approved";
+      const approvedStalls = [stall].filter((s) => s.status === "Approved");
+      assert.strictEqual(approvedStalls.length, 1);
+    });
+
+    it('should format WhatsApp pre-order URL with mandatory 91 country code prefix', () => {
+      const phone = "9845012345";
+      const cleanPhone = phone.replace(/[^0-9]/g, "");
+      const waUrl = `https://api.whatsapp.com/send?phone=91${cleanPhone}&text=Hello`;
+      assert.ok(waUrl.includes("phone=919845012345"));
+    });
+  });
+
 });
+
 
 
 

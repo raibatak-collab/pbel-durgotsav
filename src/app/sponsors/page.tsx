@@ -61,10 +61,19 @@ export default function SponsorsPage() {
         created_at: new Date().toISOString(),
       };
 
+      const tierMap: Record<string, string> = {
+        'Title / Platinum Partner': 'Platinum',
+        'Gold Partner': 'Gold', 
+        'Silver Partner': 'Silver',
+        'Food & Bhog Partner': 'Food & Bhog',
+        'Cultural & Stage Partner': 'Cultural',
+      };
+      const dbTier = Object.entries(tierMap).find(([k]) => formData.tier.includes(k))?.[1] || 'Other';
+
       try {
         await supabase.from("sponsors").insert({
           name: `${formData.companyName} (Inquiry: ${formData.contactPerson})`,
-          tier: formData.tier.split(" ")[0],
+          tier: dbTier,
           is_active: false, // Pending committee approval
         });
       } catch (_) {}
@@ -78,8 +87,7 @@ export default function SponsorsPage() {
       setSubmitted(true);
     } catch (err) {
       console.error("Error submitting sponsor inquiry:", err);
-      alert("Inquiry submitted! Our sponsorship team will contact you shortly.");
-      setSubmitted(true);
+      alert("There was an error submitting your inquiry. Please try again or contact us directly.");
     } finally {
       setIsSubmitting(false);
     }
@@ -202,8 +210,8 @@ export default function SponsorsPage() {
               <span>Partner With Us / Request Callback</span>
             </a>
             <a
-              href={branding.sponsorshipDeckPdfUrl || "/PBEL_City_Durgotsav_2026_Sponsorship_Deck.pdf"}
-              download={branding.sponsorshipDeckFileName || "PBEL_City_Durgotsav_2026_Sponsorship_Deck.pdf"}
+              href={branding.sponsorshipDeckPdfUrl || "/docs/PBEL_Durgotsav_2026_Sponsorship_Deck.pdf"}
+              download={branding.sponsorshipDeckFileName || "PBEL_Durgotsav_2026_Sponsorship_Deck.pdf"}
               target="_blank"
               rel="noreferrer"
               className="w-full sm:w-auto bg-white/10 hover:bg-white/20 border border-white/20 text-white px-7 py-3.5 rounded-full font-semibold text-sm transition flex items-center justify-center gap-2 backdrop-blur-md"
@@ -419,11 +427,11 @@ export default function SponsorsPage() {
           <div className="mt-8 pt-6 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-gray-600">
             <div className="flex items-center gap-2">
               <Mail size={15} className="text-primary" />
-              <span>Email: <strong>raibatak@gmail.com</strong></span>
+              <span>Email: <strong>pbelsanskritiksamiti@gmail.com</strong></span>
             </div>
             <div className="flex items-center gap-2">
               <Phone size={15} className="text-primary" />
-              <span>Sponsorship Desk: <strong>+91 98450 00000 / PBEL Sanskritik Samiti</strong></span>
+              <span>Sponsorship Desk: <strong>+91 70320 06645 / PBEL Sanskritik Samiti</strong></span>
             </div>
           </div>
         </div>

@@ -311,6 +311,7 @@ export default function ContributePage() {
     upiRef: "",
     isNameVisible: true,
   });
+  const [modalFormError, setModalFormError] = useState<string | null>(null);
 
   // State for General / Open-ended Donation Form (starts empty so non-tech savvy users are not forced into ₹1001)
   const [customAmount, setCustomAmount] = useState<number | "">("");
@@ -322,6 +323,7 @@ export default function ContributePage() {
     upiRef: "",
     isNameVisible: true,
   });
+  const [customFormError, setCustomFormError] = useState<string | null>(null);
 
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -520,12 +522,18 @@ function decodeCategoryDescription(desc?: string) {
     e.preventDefault();
     if (!modalSeva) return;
 
+    setModalFormError(null);
     const formattedFlat = modalTower === "Other"
       ? modalFlatUnit.trim() || "Guest Devotee"
       : `${modalTower} - ${modalFlatUnit.trim()}`;
 
     if (!modalFormData.name.trim() || !modalFlatUnit.trim() || !modalFormData.phone.trim()) {
-      alert("Please fill in your Name, Flat Number, and Phone Number.");
+      setModalFormError("Please fill in your Name, Flat Number, and 10-digit Phone Number.");
+      return;
+    }
+
+    if (modalFormData.phone.replace(/\D/g, "").length !== 10) {
+      setModalFormError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
@@ -533,7 +541,7 @@ function decodeCategoryDescription(desc?: string) {
     const max = modalSeva.maxLimit || 5;
     const booked = modalSeva.bookedCount || 0;
     if (modalSeva.isActive === false || (max - booked <= 0)) {
-      alert("This Seva package has reached its maximum sponsorship limit. Please choose another seva or contact the committee.");
+      setModalFormError("This Seva package has reached its maximum sponsorship limit. Please choose another seva or sponsor the General Pujo Fund.");
       return;
     }
 
@@ -608,14 +616,23 @@ function decodeCategoryDescription(desc?: string) {
   // Handle General / Custom Contribution Submission
   const handleCustomDonate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customAmount || customAmount <= 0) return;
+    setCustomFormError(null);
+    if (!customAmount || customAmount <= 0) {
+      setCustomFormError("Please select or enter an offering amount.");
+      return;
+    }
 
     const formattedFlat = customTower === "Other"
       ? customFlatUnit.trim() || "Guest Devotee"
       : `${customTower} - ${customFlatUnit.trim()}`;
 
     if (!customFormData.name.trim() || !customFlatUnit.trim() || !customFormData.phone.trim()) {
-      alert("Please fill in your Name, Flat Number, and Phone Number.");
+      setCustomFormError("Please fill in your Name, Flat Number, and 10-digit Phone Number.");
+      return;
+    }
+
+    if (customFormData.phone.replace(/\D/g, "").length !== 10) {
+      setCustomFormError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
@@ -878,6 +895,12 @@ function decodeCategoryDescription(desc?: string) {
             </div>
 
             <form onSubmit={handleCustomDonate} className="space-y-6">
+              {customFormError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{customFormError}</span>
+                </div>
+              )}
               
               {/* Presets & Amount Input */}
               <div className="bg-amber-50/50 p-4 sm:p-6 rounded-2xl border border-amber-200/80">
@@ -1224,15 +1247,20 @@ function decodeCategoryDescription(desc?: string) {
                       </span>
                     </div>
 
-                    {/* Action Button: Disabled if Sold Out, Active otherwise */}
+                    {/* Action Button: Offer to General Fund if Sold Out, Sponsor Seva otherwise */}
                     {isSoldOut ? (
                       <button
                         type="button"
-                        disabled
-                        className="w-full bg-gray-200 text-gray-500 py-3 rounded-2xl font-bold text-xs cursor-not-allowed flex items-center justify-center gap-2 border border-gray-300"
+                        onClick={() => {
+                          setActiveMode("general");
+                          setCustomAmount(item.amount);
+                          setCustomPurpose(`General Fund (In honor of ${item.title})`);
+                          window.scrollTo({ top: 300, behavior: "smooth" });
+                        }}
+                        className="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 py-3 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-1.5"
                       >
-                        <Lock size={14} />
-                        <span>Seva Full • All Slots Sponsored</span>
+                        <HeartHandshake size={14} className="text-primary" />
+                        <span>Seva Full • Offer ₹{item.amount.toLocaleString("en-IN")} to General Fund →</span>
                       </button>
                     ) : (
                       <button
@@ -1250,6 +1278,21 @@ function decodeCategoryDescription(desc?: string) {
               );
             })}
           </div>
+
+          {filteredSevas.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-3xl border border-gray-100 p-8 shadow-xs">
+              <span className="text-3xl mb-2 block">🌺</span>
+              <p className="text-gray-700 font-bold text-sm">No seva offerings found for this filter.</p>
+              <p className="text-gray-500 text-xs mt-1">Please select another day or view all offerings.</p>
+              <button
+                type="button"
+                onClick={() => setCategoryFilter("all")}
+                className="mt-4 bg-primary text-white text-xs font-bold px-5 py-2 rounded-full hover:bg-primary-hover transition"
+              >
+                Show All Seva Offerings
+              </button>
+            </div>
+          )}
 
         </div>
       )}
@@ -1346,6 +1389,12 @@ function decodeCategoryDescription(desc?: string) {
 
             {/* Direct Seva Devotee Details Form */}
             <form onSubmit={handleModalCheckout} className="space-y-4 text-xs sm:text-sm">
+              {modalFormError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-2xl text-xs font-medium flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{modalFormError}</span>
+                </div>
+              )}
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">Your Full Name *</label>
                 <input

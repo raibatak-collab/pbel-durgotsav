@@ -219,16 +219,27 @@ export function HomeQuickContribute() {
     });
   };
 
+  const [formError, setFormError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || amount <= 0) return;
+    setFormError(null);
+    if (!amount || amount <= 0) {
+      setFormError("Please select or enter an offering amount.");
+      return;
+    }
 
     const formattedFlat = selectedTower === "Other"
       ? flatUnit.trim() || "Guest Devotee"
       : `${selectedTower} - ${flatUnit.trim()}`;
 
     if (!formData.name.trim() || !flatUnit.trim() || !formData.phone.trim()) {
-      alert("Please enter your Name, Flat Number, and Phone Number.");
+      setFormError("Please enter your Name, Flat Number, and 10-digit Phone Number.");
+      return;
+    }
+
+    if (formData.phone.replace(/\D/g, "").length !== 10) {
+      setFormError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
@@ -332,7 +343,30 @@ export function HomeQuickContribute() {
             </div>
           </div>
 
-          <div className="pt-3 flex justify-center gap-3">
+          <div className="bg-gradient-to-br from-[#850E1F] to-[#5C0512] text-white rounded-2xl p-5 border-2 border-amber-300 shadow-lg text-center max-w-md mx-auto relative overflow-hidden">
+            <div className="text-amber-300 font-heading text-sm tracking-widest uppercase mb-1">
+              ।। শুভ শারদীয়া ।। Joy Maa Durga!
+            </div>
+            <div className="font-heading text-lg font-bold text-white mb-2">
+              PBEL City Durgotsav 2026 Seva
+            </div>
+            <div className="text-xs text-amber-100/90 leading-relaxed bg-black/30 rounded-xl p-3 border border-amber-400/20">
+              <p>May Maa Durga shower divine blessings on <strong>{receiptData.name}</strong> &amp; family ({receiptData.flatNumber}).</p>
+              <p className="text-[11px] text-amber-300 font-semibold mt-1">Seva: {receiptData.category} • ₹{Number(receiptData.amount).toLocaleString("en-IN")}</p>
+            </div>
+            <a
+              href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
+                `🌺 ।। শুভ শারদীয়া ।। Joy Maa Durga!\n\nOur family (${receiptData.name}, ${receiptData.flatNumber}) has offered Seva for PBEL City Durgotsav 2026 (${receiptData.category}).\n\nOffer your seva and support our community pujo at https://pbeldurgotsav.in`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold text-xs py-2.5 px-6 rounded-full shadow-md transition w-full"
+            >
+              <span>📲 Share Blessing Card in Tower WhatsApp Group</span>
+            </a>
+          </div>
+
+          <div className="pt-2 flex justify-center gap-3">
             <button
               onClick={() => {
                 setIsSuccess(false);
@@ -592,6 +626,12 @@ export function HomeQuickContribute() {
 
             {/* 3. DEVOTEE PERSONAL DETAILS */}
             <div className="space-y-4 pt-2 border-t border-gray-100">
+              {formError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-2xl text-xs font-medium flex items-center gap-2">
+                  <span>⚠️</span>
+                  <span>{formError}</span>
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">

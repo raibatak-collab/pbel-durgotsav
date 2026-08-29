@@ -22,6 +22,7 @@ import { HomeQuickContribute } from "@/components/HomeQuickContribute";
 import { TowerParticipation } from "@/components/TowerParticipation";
 import { FestiveHero } from "@/components/FestiveHero";
 import { SponsorLogoCarousel } from "@/components/SponsorLogoCarousel";
+import { WallOfContributors } from "@/components/WallOfContributors";
 
 export const revalidate = 0; // Fresh data on every load
 
@@ -152,7 +153,7 @@ export default async function Home() {
       <FestiveHero />
 
       {/* 2. LIVE PUJO FUND COUNTER BAR */}
-      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 -mt-8 relative z-20 space-y-6">
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 -mt-4 relative z-20 space-y-6">
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-amber-900/10 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           
           <div className="md:col-span-2 space-y-2">
@@ -493,45 +494,7 @@ export default async function Home() {
       </section>
 
       {/* 8. WALL OF CONTRIBUTORS */}
-      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-12">
-        <div className="bg-white rounded-3xl p-8 border border-amber-900/10 shadow-sm text-center">
-          <h2 className="font-heading text-3xl text-primary font-bold mb-2">
-            Honor Roll of Contributors
-          </h2>
-          <p className="text-gray-600 text-sm max-w-md mx-auto mb-8">
-            Special gratitude to our community residents who have supported this year's Durgotsav!
-          </p>
-
-          <div className="flex flex-wrap justify-center gap-2.5 max-w-3xl mx-auto mb-8">
-            {contributionsData && contributionsData.length > 0 ? (
-              contributionsData.slice(0, 12).map((c, i) => (
-                <span 
-                  key={i}
-                  className="bg-amber-50 text-amber-900 border border-amber-200/60 px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5"
-                >
-                  <Sparkles size={12} className="text-amber-600" />
-                  {c.is_name_visible ? c.contributor_name : "Well Wisher"}
-                  {c.is_name_visible && c.flat_number && (
-                    <span className="text-gray-400 font-normal">({c.flat_number})</span>
-                  )}
-                </span>
-              ))
-            ) : (
-              <span className="text-gray-500 text-xs italic">
-                Be the first to contribute and be featured on the Wall of Contributors!
-              </span>
-            )}
-          </div>
-
-          <Link
-            href="/contribute"
-            className="inline-flex items-center gap-2 text-primary hover:text-primary-hover font-semibold text-sm hover:underline"
-          >
-            <span>Join the Wall of Contributors</span>
-            <ArrowRight size={16} />
-          </Link>
-        </div>
-      </section>
+      <WallOfContributors contributors={contributionsData || []} />
 
       {/* 9. LUXURY FOOTER */}
       <footer className="w-full bg-[#1A0307] text-amber-100/80 pt-16 pb-24 md:pb-16 px-4 sm:px-6 lg:px-8 border-t border-amber-500/20">
@@ -559,7 +522,6 @@ export default async function Home() {
               <li><Link href="/programs" className="hover:text-amber-300 transition">Pratibimb Stage Registrations</Link></li>
               <li><Link href="/volunteer" className="hover:text-amber-300 transition">Volunteer Slots & Seva</Link></li>
               <li><Link href="/contribute" className="hover:text-amber-300 transition">E-Seva & Bhog Sponsorship</Link></li>
-              <li><Link href="/admin" className="hover:text-amber-300 transition">Admin Portal</Link></li>
             </ul>
           </div>
 
@@ -572,7 +534,7 @@ export default async function Home() {
               </p>
               <p className="flex items-center gap-2">
                 <Mail size={15} className="text-amber-400 shrink-0" />
-                <span>raibatak@gmail.com</span>
+                <span>pbelsanskritiksamiti@gmail.com</span>
               </p>
             </div>
           </div>

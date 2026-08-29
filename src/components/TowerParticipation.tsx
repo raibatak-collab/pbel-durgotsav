@@ -17,7 +17,9 @@ interface TowerInfo {
 
 export function TowerParticipation() {
   const [towerData, setTowerData] = useState<TowerInfo[]>([]);
+  const [guestStats, setGuestStats] = useState({ familyCount: 0, totalAmount: 0 });
   const [loading, setLoading] = useState(true);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
     async function loadLiveTowerData() {
@@ -36,6 +38,9 @@ export function TowerParticipation() {
         currentTowers.forEach((t) => {
           counts[t.id] = { families: new Set<string>(), amount: 0 };
         });
+
+        let guestFamilies = new Set<string>();
+        let guestAmount = 0;
 
         if (contribs && contribs.length > 0) {
           contribs.forEach((c) => {
@@ -60,13 +65,10 @@ export function TowerParticipation() {
               }
             }
 
-            // If not explicitly matched and we have towers, attribute to first tower or general
-            if (!matched && flatStr && currentTowers.length > 0) {
-              const defaultKey = currentTowers[0].id;
-              if (counts[defaultKey]) {
-                counts[defaultKey].families.add(flatStr);
-                counts[defaultKey].amount += amt;
-              }
+            // Route non-resident/unmatched contributions to Guest Devotees pool
+            if (!matched && flatStr) {
+              guestFamilies.add(flatStr);
+              guestAmount += amt;
             }
           });
         }
@@ -81,6 +83,7 @@ export function TowerParticipation() {
         }));
 
         setTowerData(updated);
+        setGuestStats({ familyCount: guestFamilies.size, totalAmount: guestAmount });
       } catch (err) {
         console.error("Error loading tower participation data:", err);
       } finally {
@@ -99,14 +102,17 @@ export function TowerParticipation() {
     };
   }, []);
 
-  const totalContributingFamilies = towerData.reduce((acc, t) => acc + t.familyCount, 0);
-  const totalTowerRaised = towerData.reduce((acc, t) => acc + t.totalAmount, 0);
+  const totalContributingFamilies = towerData.reduce((acc, t) => acc + t.familyCount, 0) + guestStats.familyCount;
+  const totalTowerRaised = towerData.reduce((acc, t) => acc + t.totalAmount, 0) + guestStats.totalAmount;
 
   // Find leading tower (with at least 1 family)
   const maxFamilies = Math.max(...towerData.map((t) => t.familyCount));
   const leadingTower = maxFamilies > 0 ? towerData.find((t) => t.familyCount === maxFamilies) : null;
 
   const handleTowerSelect = (e: React.MouseEvent, towerFullName: string) => {
+    setShowConfetti(true);
+    setTimeout(() => setShowConfetti(false), 3000);
+
     if (typeof window !== "undefined") {
       window.dispatchEvent(
         new CustomEvent("pbel_select_tower", {
@@ -129,8 +135,19 @@ export function TowerParticipation() {
   };
 
   return (
-    <div className="w-full bg-gradient-to-br from-[#FFFDF9] via-[#FFF8ED] to-[#FFF4DF] rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-md">
+    <div className="w-full bg-gradient-to-br from-[#FFFDF9] via-[#FFF8ED] to-[#FFF4DF] rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-md relative overflow-hidden">
       
+      {/* Celebration Confetti Flash */}
+      {showConfetti && (
+        <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center bg-amber-500/10 backdrop-blur-[0.5px] transition-all animate-pulse">
+          <div className="text-center font-bold text-amber-900 bg-white/95 px-6 py-2 rounded-full shadow-lg border border-amber-300 text-xs sm:text-sm flex items-center gap-2">
+            <span>🎉</span>
+            <span>Selected for Seva! Scroll down to contribute.</span>
+            <span>🌸</span>
+          </div>
+        </div>
+      )}
+
       {/* 1. HEADER & DEVOTIONAL SOLIDARITY FRAMING */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-amber-900/10">
         <div>
@@ -147,11 +164,11 @@ export function TowerParticipation() {
         </div>
 
         <div className="flex items-center gap-3 shrink-0">
-          <div className="bg-white px-4 py-2.5 rounded-2xl border border-amber-200 shadow-2xs text-center">
+          <div className="bg-white px-4 py-2.5 rounded-2xl border border-amber-200 shadow-xs text-center">
             <span className="text-[10px] uppercase font-bold text-gray-500 block">Devotee Families</span>
             <span className="text-xl font-heading font-bold text-primary">{totalContributingFamilies}</span>
           </div>
-          <div className="bg-white px-4 py-2.5 rounded-2xl border border-amber-200 shadow-2xs text-center">
+          <div className="bg-white px-4 py-2.5 rounded-2xl border border-amber-200 shadow-xs text-center">
             <span className="text-[10px] uppercase font-bold text-gray-500 block">Towers Active</span>
             <span className="text-xl font-heading font-bold text-green-700">
               {towerData.filter((t) => t.familyCount > 0).length} / {towerData.length}
@@ -235,6 +252,38 @@ export function TowerParticipation() {
             </Link>
           );
         })}
+
+        {/* Guest Devotees Card (if any external contributions exist) */}
+        {guestStats.familyCount > 0 && (
+          <div className="p-3.5 rounded-2xl border border-amber-200/80 bg-white/90 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="font-heading font-bold text-sm text-amber-900">
+                  Guest Devotees
+                </span>
+                <span className="text-[10px] font-semibold text-amber-800 bg-amber-100/80 px-1.5 py-0.5 rounded">
+                  External
+                </span>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-baseline gap-1">
+                  <span className="text-base font-bold text-gray-900 font-heading">
+                    {guestStats.familyCount}
+                  </span>
+                  <span className="text-[11px] text-gray-500 font-medium">
+                    {guestStats.familyCount === 1 ? "offering" : "offerings"}
+                  </span>
+                </div>
+                <div className="text-[11px] font-semibold text-green-700">
+                  ₹{guestStats.totalAmount.toLocaleString("en-IN")}
+                </div>
+              </div>
+            </div>
+            <div className="mt-3 pt-2 border-t border-gray-100 text-[10px] text-amber-700 font-semibold">
+              Well Wishers
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 4. FOOTER NOTE */}

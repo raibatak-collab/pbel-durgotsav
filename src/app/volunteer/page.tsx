@@ -70,6 +70,7 @@ export default function VolunteerPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     try {
@@ -96,15 +97,27 @@ export default function VolunteerPage() {
     };
   }, []);
 
+  const shiftOptions = [
+    { value: "Morning (09:00 AM - 01:00 PM)", label: "🌅 Morning Shift (09:00 AM - 01:00 PM)", desc: "Bhog prep, Pushpanjali & Morning Rituals" },
+    { value: "Afternoon (12:30 PM - 04:30 PM)", label: "🍚 Afternoon Shift (12:30 PM - 04:30 PM)", desc: "Maha Bhog Distribution & Dining Desk" },
+    { value: "Evening (06:30 PM - 10:30 PM)", label: "🪔 Evening Shift (06:30 PM - 10:30 PM)", desc: "Sandhya Aarti, Pratibimb Stage & Crowd Ops" },
+  ];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
 
     const formattedFlat = selectedTower === "Other"
       ? flatUnit.trim() || "Guest Devotee"
       : `${selectedTower} - ${flatUnit.trim()}`;
 
     if (!formData.name.trim() || !flatUnit.trim() || !formData.phone.trim()) {
-      alert("Please fill in your Name, Flat Number, and WhatsApp Phone Number.");
+      setErrorMessage("Please fill in your Name, Flat Number, and 10-digit WhatsApp Phone Number.");
+      return;
+    }
+
+    if (formData.phone.replace(/\D/g, "").length !== 10) {
+      setErrorMessage("Please enter a valid 10-digit mobile number.");
       return;
     }
 
@@ -154,7 +167,7 @@ export default function VolunteerPage() {
         full_name: formData.name,
         phone: formData.phone,
         email: formData.email,
-        flat_number: formattedFlat,
+        flat_number: `${formattedFlat} [${formData.shiftTime}]`,
       });
 
       if (error) throw error;
@@ -162,13 +175,17 @@ export default function VolunteerPage() {
       setIsSuccess(true);
     } catch (error) {
       console.error("Error registering volunteer:", error);
-      alert("Registration failed. Please try again.");
+      setErrorMessage("Registration failed. Please check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (isSuccess) {
+    const waShareText = encodeURIComponent(
+      `🌺 Jai Maa Durga! I have registered for Seva at PBEL City Durgotsav 2026 for ${formData.category} on ${formData.date} (${formData.shiftTime}). Join the volunteer team at https://pbeldurgotsav.in/volunteer`
+    );
+
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center">
         <div className="bg-white rounded-3xl p-8 sm:p-12 border border-amber-900/15 shadow-2xl">
@@ -178,29 +195,34 @@ export default function VolunteerPage() {
           <span className="text-xs uppercase font-bold text-amber-800 tracking-wider bg-amber-100/60 px-3 py-1 rounded-full">
             Seva Registration Confirmed
           </span>
-          <h1 className="font-heading text-3xl sm:text-4xl text-primary font-bold mt-3 mb-2">
-            Welcome to the Seva Team!
-          </h1>
-          <p className="text-gray-600 text-sm max-w-md mx-auto mb-8 leading-relaxed">
-            Thank you, <strong>{formData.name}</strong>! Your registration for <strong>{formData.category}</strong> on <strong>{formData.date}</strong> has been confirmed. The committee coordinator will reach out to you with details.
+          <h2 className="font-heading text-3xl font-bold text-gray-900 mt-4 mb-2">
+            ধন্যবাদ, {formData.name}!
+          </h2>
+          <p className="text-gray-600 text-sm max-w-md mx-auto mb-6">
+            You have been assigned to <strong>{formData.category}</strong> for <strong>{formData.date}</strong> ({formData.shiftTime}). 
+            Our Wing Lead will connect with you on WhatsApp ({formData.phone}).
           </p>
-          <button
-            onClick={() => {
-              setIsSuccess(false);
-              setFormData({
-                name: "",
-                phone: "",
-                email: "",
-                category: "Maha Bhog & Prasad Distribution",
-                date: "2026-10-17",
-                shiftTime: "Morning (09:00 AM - 01:00 PM)",
-              });
-              setFlatUnit("");
-            }}
-            className="bg-primary hover:bg-primary-hover text-white font-semibold px-7 py-3 rounded-full text-xs transition shadow-sm"
-          >
-            Register for Another Day / Role
-          </button>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <a
+              href={`https://api.whatsapp.com/send?text=${waShareText}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full sm:w-auto bg-[#25D366] hover:bg-[#1EBE5D] text-white px-6 py-3 rounded-full font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm"
+            >
+              <span>📲 Share in Tower WhatsApp Group</span>
+            </a>
+            <button
+              onClick={() => {
+                setIsSuccess(false);
+                setFormData({ ...formData, name: "", phone: "", email: "" });
+                setFlatUnit("");
+              }}
+              className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white px-6 py-3 rounded-full font-bold text-xs transition"
+            >
+              Register Another Slot
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -291,12 +313,20 @@ export default function VolunteerPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {errorMessage && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2">
+                <span>⚠️</span>
+                <span>{errorMessage}</span>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                <label htmlFor="seva-role" className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
                   Selected Seva Role
                 </label>
                 <select
+                  id="seva-role"
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm font-semibold text-primary"
@@ -308,10 +338,11 @@ export default function VolunteerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                <label htmlFor="seva-date" className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
                   Preferred Date (15 - 20 Oct) *
                 </label>
                 <select
+                  id="seva-date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm"
@@ -323,12 +354,39 @@ export default function VolunteerPage() {
               </div>
             </div>
 
+            {/* SHIFT TIME SELECTOR */}
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                Preferred Seva Shift Time *
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                {shiftOptions.map((s) => {
+                  const isShiftSelected = formData.shiftTime === s.value;
+                  return (
+                    <div
+                      key={s.value}
+                      onClick={() => setFormData({ ...formData, shiftTime: s.value })}
+                      className={`cursor-pointer p-3 rounded-2xl border text-left transition-all ${
+                        isShiftSelected
+                          ? "bg-amber-50 border-primary shadow-xs ring-1 ring-primary/30"
+                          : "bg-white border-gray-200 hover:border-amber-400"
+                      }`}
+                    >
+                      <span className="font-bold text-xs text-gray-900 block">{s.label}</span>
+                      <span className="text-[10px] text-gray-500 block mt-0.5">{s.desc}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 border-t border-gray-100">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                <label htmlFor="volunteer-name" className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
                   Your Full Name *
                 </label>
                 <input
+                  id="volunteer-name"
                   type="text"
                   required
                   value={formData.name}
@@ -339,10 +397,11 @@ export default function VolunteerPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                <label htmlFor="volunteer-phone" className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
                   WhatsApp Phone Number (10 Digits) *
                 </label>
                 <input
+                  id="volunteer-phone"
                   type="tel"
                   required
                   inputMode="numeric"
@@ -361,10 +420,11 @@ export default function VolunteerPage() {
               {/* 1-TAP TOWER SELECTOR + FLAT UNIT */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-amber-50/60 p-4 rounded-2xl border border-amber-200 sm:col-span-2">
                 <div>
-                  <label className="block text-xs font-bold text-amber-950 uppercase mb-1 flex items-center gap-1">
+                  <label htmlFor="volunteer-tower" className="block text-xs font-bold text-amber-950 uppercase mb-1 flex items-center gap-1">
                     <Building size={13} className="text-primary" /> Select PBEL Tower *
                   </label>
                   <select
+                    id="volunteer-tower"
                     value={selectedTower}
                     onChange={(e) => setSelectedTower(e.target.value)}
                     className="w-full p-3 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold text-gray-900"
@@ -379,10 +439,11 @@ export default function VolunteerPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
+                  <label htmlFor="volunteer-flat" className="block text-xs font-bold text-amber-950 uppercase mb-1">
                     Flat / Unit Number (e.g. 402, 1204, or G01) *
                   </label>
                   <input
+                    id="volunteer-flat"
                     type="text"
                     required
                     autoCapitalize="characters"
@@ -399,10 +460,11 @@ export default function VolunteerPage() {
               </div>
 
               <div className="sm:col-span-2">
-                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
+                <label htmlFor="volunteer-email" className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-2">
                   Email Address (Optional)
                 </label>
                 <input
+                  id="volunteer-email"
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}

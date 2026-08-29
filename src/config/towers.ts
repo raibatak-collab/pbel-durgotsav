@@ -130,7 +130,7 @@ export function getStoredTowers(): TowerDefinition[] {
       fullName: t.fullName || `${t.tower} (${t.name})`,
       regex: t.regex
         ? new RegExp(typeof t.regex === "string" ? t.regex : (t.regex.source || t.regex), "i")
-        : new RegExp(`${t.id}|${t.name}|${t.tower}`, "i"),
+        : new RegExp(`\\b${t.id}\\b|${t.name}|${t.tower}`, "i"),
     }));
   } catch {
     return PBEL_TOWERS;
@@ -150,7 +150,7 @@ export async function fetchStoredTowers(): Promise<TowerDefinition[]> {
         fullName: t.fullName || `${t.tower} (${t.name})`,
         regex: t.regex
           ? new RegExp(typeof t.regex === "string" ? t.regex : (t.regex.source || t.regex), "i")
-          : new RegExp(`${t.id}|${t.name}|${t.tower}`, "i"),
+          : new RegExp(`\\b${t.id}\\b|${t.name}|${t.tower}`, "i"),
       }));
       if (typeof window !== "undefined") {
         localStorage.setItem(TOWERS_STORAGE_KEY, JSON.stringify(cloudTowers));
