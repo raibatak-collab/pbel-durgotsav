@@ -66,6 +66,16 @@ export const metadata: Metadata = {
       "Join the 6-day grand celebration of devotion, heritage, cultural stage acts, and community unity in Hyderabad (15 - 20 Oct 2026).",
     images: ["/images/wallpapers/durga_ekchala.svg"],
   },
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/apple-icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/favicon.svg",
+  },
   themeColor: "#850E1F",
 };
 

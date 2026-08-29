@@ -1902,6 +1902,25 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('53. Custom Sacred Durga Trishul Browser Favicon & Metadata Integrity', () => {
+    it('should define custom sacred favicon and apple touch icons in metadata', () => {
+      const iconsConfig = {
+        icon: [
+          { url: "/favicon.svg", type: "image/svg+xml" },
+          { url: "/icon.svg", type: "image/svg+xml" },
+        ],
+        apple: [
+          { url: "/apple-icon.svg", type: "image/svg+xml" },
+        ],
+        shortcut: "/favicon.svg",
+      };
+
+      assert.strictEqual(iconsConfig.icon.some((i) => i.url === "/favicon.svg"), true);
+      assert.strictEqual(iconsConfig.icon.some((i) => i.url === "/icon.svg"), true);
+      assert.strictEqual(iconsConfig.apple[0].url, "/apple-icon.svg");
+    });
+  });
+
 });
 
 

@@ -1,0 +1,80 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Royal Crimson Festive Gradient Background -->
+    <radialGradient id="bgGrad" cx="50%" cy="45%" r="65%">
+      <stop offset="0%" stop-color="#A5132B"/>
+      <stop offset="60%" stop-color="#700B1A"/>
+      <stop offset="100%" stop-color="#3D030C"/>
+    </radialGradient>
+
+    <!-- Radiant Divine Gold Gradient -->
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FFF5B8"/>
+      <stop offset="25%" stop-color="#FCD34D"/>
+      <stop offset="60%" stop-color="#D97706"/>
+      <stop offset="100%" stop-color="#92400E"/>
+    </linearGradient>
+
+    <!-- Glowing Aura -->
+    <radialGradient id="auraGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.6"/>
+      <stop offset="60%" stop-color="#F59E0B" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#850E1F" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Sacred Red Sindoor -->
+    <radialGradient id="sindoorRed" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FF1E38"/>
+      <stop offset="100%" stop-color="#B80018"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Circular Outer Shield -->
+  <circle cx="256" cy="256" r="246" fill="url(#bgGrad)" stroke="url(#goldGrad)" stroke-width="18"/>
+  
+  <!-- Subtle Inner Gold Ring -->
+  <circle cx="256" cy="256" r="226" fill="none" stroke="#FDE68A" stroke-width="3" stroke-dasharray="6,6" opacity="0.6"/>
+
+  <!-- Divine Aura behind Trishul -->
+  <circle cx="256" cy="240" r="160" fill="url(#auraGlow)"/>
+
+  <!-- SACRED DURGA TRISHUL (TRIDENT) & THIRD EYE -->
+  <g transform="translate(0, 5)">
+    <!-- Trishul Shaft / Central Staff -->
+    <path d="M 248 200 L 264 200 L 260 430 L 252 430 Z" fill="url(#goldGrad)"/>
+    <path d="M 244 425 L 268 425 L 256 450 Z" fill="url(#goldGrad)"/>
+
+    <!-- Trishul Base Ring / Damru accent -->
+    <ellipse cx="256" cy="205" rx="18" ry="8" fill="url(#goldGrad)"/>
+    <ellipse cx="256" cy="330" rx="14" ry="6" fill="url(#goldGrad)"/>
+
+    <!-- Center Spear Blade (Sharp Royal Trishul Spike) -->
+    <path d="M 256 70 Q 275 140 262 210 L 250 210 Q 237 140 256 70 Z" fill="url(#goldGrad)" stroke="#FFF5B8" stroke-width="2"/>
+
+    <!-- Left Trishul Curved Prong -->
+    <path d="M 250 195 C 190 200 135 150 148 100 C 158 135 200 170 248 178 Z" fill="url(#goldGrad)" stroke="#FFF5B8" stroke-width="2"/>
+    <circle cx="148" cy="100" r="8" fill="#FFF5B8"/>
+
+    <!-- Right Trishul Curved Prong -->
+    <path d="M 262 195 C 322 200 377 150 364 100 C 354 135 312 170 264 178 Z" fill="url(#goldGrad)" stroke="#FFF5B8" stroke-width="2"/>
+    <circle cx="364" cy="100" r="8" fill="#FFF5B8"/>
+
+    <!-- Sacred Trinetra (Devi Durga Divine Third Eye) -->
+    <g transform="translate(256, 275)">
+      <!-- Eye Almond Contour -->
+      <path d="M -42 0 Q 0 -26 42 0 Q 0 26 -42 0 Z" fill="#FFFDF5" stroke="url(#goldGrad)" stroke-width="3.5"/>
+      <!-- Iris / Pupil -->
+      <circle cx="0" cy="0" r="14" fill="#2E050B"/>
+      <circle cx="0" cy="0" r="8" fill="url(#sindoorRed)"/>
+      <circle cx="3" cy="-3" r="3.5" fill="#FFFFFF"/>
+
+      <!-- Sacred Chandrabindu / Top Tilak -->
+      <path d="M -16 -34 Q 0 -48 16 -34 Q 0 -40 -16 -34 Z" fill="url(#goldGrad)"/>
+      <circle cx="0" cy="-44" r="5" fill="url(#sindoorRed)"/>
+    </g>
+
+    <!-- Auspicious Lotus Petal Accents at Base -->
+    <path d="M 256 360 C 220 370 210 395 230 405 C 248 395 254 375 256 360 Z" fill="url(#goldGrad)" opacity="0.9"/>
+    <path d="M 256 360 C 292 370 302 395 282 405 C 264 395 258 375 256 360 Z" fill="url(#goldGrad)" opacity="0.9"/>
+  </g>
+</svg>
