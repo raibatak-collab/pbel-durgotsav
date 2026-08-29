@@ -620,19 +620,19 @@ export default function AnandamelaPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (Digits Only) *</label>
+                    <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (e.g. 402, 1104, or G01) *</label>
                     <input
                       type="text"
                       required
-                      inputMode="numeric"
-                      maxLength={6}
+                      autoCapitalize="characters"
+                      maxLength={8}
                       value={regForm.flatNumber}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
                         setRegForm({ ...regForm, flatNumber: val });
                       }}
-                      placeholder="e.g. 1104"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
+                      placeholder="e.g. 1104 or G01"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold font-mono"
                     />
                   </div>
                 </div>

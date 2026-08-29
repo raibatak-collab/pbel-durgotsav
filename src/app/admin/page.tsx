@@ -4980,19 +4980,19 @@ function decodeCategoryDescription(desc?: string) {
                         </select>
                       </div>
                       <div>
-                        <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (Digits Only) *</label>
+                        <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (e.g. 402, G01) *</label>
                         <input
                           type="text"
                           required
-                          inputMode="numeric"
-                          maxLength={6}
+                          autoCapitalize="characters"
+                          maxLength={8}
                           value={newMemberForm.flatNumber}
                           onChange={(e) => {
-                            const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                            const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
                             setNewMemberForm({ ...newMemberForm, flatNumber: val });
                           }}
-                          placeholder="e.g. 402"
-                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
+                          placeholder="e.g. 402 or G01"
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold font-mono"
                         />
                       </div>
                     </div>
@@ -5216,18 +5216,18 @@ function decodeCategoryDescription(desc?: string) {
                           </select>
                         </div>
                         <div>
-                          <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (Digits Only) *</label>
+                          <label className="block font-semibold text-gray-700 mb-1">Flat / Unit (e.g. 402, G01) *</label>
                           <input
                             type="text"
                             required
-                            inputMode="numeric"
-                            maxLength={6}
+                            autoCapitalize="characters"
+                            maxLength={8}
                             value={editingMember.flatNumber}
                             onChange={(e) => {
-                              const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                              const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
                               setEditingMember({ ...editingMember, flatNumber: val });
                             }}
-                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold font-mono"
                           />
                         </div>
                       </div>

@@ -130,10 +130,11 @@ export function FestiveHero() {
           </Link>
           <Link
             href="/programs"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-black/40 hover:bg-black/60 border border-white/30 text-white px-5 py-3.5 rounded-full font-semibold text-sm transition-all backdrop-blur-md"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-[#4A0812] to-[#2E050B] hover:from-[#6A0C1A] hover:to-[#4A0812] border border-amber-400/50 text-amber-200 hover:text-white px-5 py-3.5 rounded-full font-bold text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 backdrop-blur-md"
           >
+            <CalendarDays size={18} className="text-amber-400" />
             <span>Pujo Schedule</span>
-            <ArrowRight size={16} />
+            <ArrowRight size={15} className="text-amber-300" />
           </Link>
         </div>
 

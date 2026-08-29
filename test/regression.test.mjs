@@ -1525,22 +1525,28 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
-  describe('44. Flat Unit Strict Numeric-Only Sanitization Logic', () => {
+  describe('44. Flat Unit Alphanumeric & Ground Floor (G01, G02) Sanitization Logic', () => {
     const sanitizeFlat = (input) => {
-      return (input || '').replace(/\D/g, '').slice(0, 6);
+      return (input || '').toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 8);
     };
 
-    it('should strip all alphabetical letters, symbols, and spaces from flat unit inputs', () => {
-      assert.strictEqual(sanitizeFlat('Flat 402'), '402');
-      assert.strictEqual(sanitizeFlat('Flat #1104'), '1104');
-      assert.strictEqual(sanitizeFlat('Unit - 1205'), '1205');
-      assert.strictEqual(sanitizeFlat('Tower A 304'), '304');
+    it('should allow Ground Floor flat numbers with G prefix and hyphens', () => {
+      assert.strictEqual(sanitizeFlat('G01'), 'G01');
+      assert.strictEqual(sanitizeFlat('g02'), 'G02');
+      assert.strictEqual(sanitizeFlat('g-03'), 'G-03');
+      assert.strictEqual(sanitizeFlat('G04'), 'G04');
     });
 
-    it('should keep pure numeric flat numbers unchanged', () => {
+    it('should keep standard upper-floor numeric flat numbers unchanged', () => {
       assert.strictEqual(sanitizeFlat('402'), '402');
       assert.strictEqual(sanitizeFlat('1204'), '1204');
       assert.strictEqual(sanitizeFlat('1901'), '1901');
+    });
+
+    it('should strip special characters and spaces while preserving alphanumeric flat characters', () => {
+      assert.strictEqual(sanitizeFlat('G 01 @'), 'G01');
+      assert.strictEqual(sanitizeFlat('G-02 #'), 'G-02');
+      assert.strictEqual(sanitizeFlat('1204*'), '1204');
     });
   });
 
@@ -1734,6 +1740,52 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
 
       assert.ok(sponsorWithUpload.logo_url.startsWith("data:image/"));
       assert.ok(sponsorWithUpload.logo_url.length > 50);
+    });
+  });
+
+  describe('49. Tower Card Prefill Resolution, Banking App Link Removal & Hero CTA Polish', () => {
+    it('should correctly resolve tower search parameters into canonical tower names', () => {
+      const mockTowers = [
+        { id: "A", tower: "Tower A", name: "Emerald", fullName: "Tower A (Emerald)" },
+        { id: "B", tower: "Tower B", name: "Sapphire", fullName: "Tower B (Sapphire)" },
+        { id: "C", tower: "Tower C", name: "Coral", fullName: "Tower C (Coral)" },
+      ];
+
+      const resolveTowerParam = (towerParam) => {
+        if (!towerParam) return mockTowers[0].fullName;
+        const decoded = decodeURIComponent(towerParam).trim();
+        const matched = mockTowers.find(
+          (t) =>
+            t.fullName.toLowerCase() === decoded.toLowerCase() ||
+            t.tower.toLowerCase() === decoded.toLowerCase() ||
+            t.name.toLowerCase() === decoded.toLowerCase() ||
+            decoded.toLowerCase().includes(t.tower.toLowerCase()) ||
+            decoded.toLowerCase().includes(t.name.toLowerCase())
+        );
+        return matched ? matched.fullName : decoded;
+      };
+
+      assert.strictEqual(resolveTowerParam("Tower B (Sapphire)"), "Tower B (Sapphire)");
+      assert.strictEqual(resolveTowerParam("Sapphire"), "Tower B (Sapphire)");
+      assert.strictEqual(resolveTowerParam("Tower C"), "Tower C (Coral)");
+      assert.strictEqual(resolveTowerParam(""), "Tower A (Emerald)");
+    });
+
+    it('should format UPI payment payload cleanly without requiring confusing third-party banking app deep link buttons', () => {
+      const buildCleanUpiString = ({ pa, pn, am, tn }) => {
+        return `upi://pay?pa=${encodeURIComponent(pa)}&pn=${encodeURIComponent(pn)}&am=${am}&cu=INR&tn=${encodeURIComponent(tn)}`;
+      };
+
+      const upiUrl = buildCleanUpiString({
+        pa: "pbelsanskritiksamiti@icici",
+        pn: "PBEL Sanskritik Samiti",
+        am: 2000,
+        tn: "Pujo Seva",
+      });
+
+      assert.ok(upiUrl.startsWith("upi://pay?pa=pbelsanskritiksamiti%40icici"));
+      assert.ok(upiUrl.includes("am=2000"));
+      assert.ok(upiUrl.includes("cu=INR"));
     });
   });
 

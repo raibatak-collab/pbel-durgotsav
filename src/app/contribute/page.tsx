@@ -420,11 +420,33 @@ function decodeCategoryDescription(desc?: string) {
     try {
       const stored = getStoredTowers();
       setTowersList(stored);
-      if (stored.length > 0) {
-        const def = stored[0].fullName || `${stored[0].tower} (${stored[0].name})`;
-        setCustomTower(def);
-        setModalTower(def);
+
+      let prefilledTower = stored.length > 0 ? (stored[0].fullName || `${stored[0].tower} (${stored[0].name})`) : "";
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const towerParam = params.get("tower") || params.get("towerName") || params.get("tower_name");
+        if (towerParam) {
+          const decodedTower = decodeURIComponent(towerParam).trim();
+          const matched = stored.find(
+            (t) =>
+              t.fullName.toLowerCase() === decodedTower.toLowerCase() ||
+              t.tower.toLowerCase() === decodedTower.toLowerCase() ||
+              t.name.toLowerCase() === decodedTower.toLowerCase() ||
+              decodedTower.toLowerCase().includes(t.tower.toLowerCase()) ||
+              decodedTower.toLowerCase().includes(t.name.toLowerCase())
+          );
+          if (matched) {
+            prefilledTower = matched.fullName || `${matched.tower} (${matched.name})`;
+          } else {
+            prefilledTower = decodedTower;
+          }
+        }
       }
+
+      setCustomTower(prefilledTower);
+      setModalTower(prefilledTower);
+
       fetchStoredTowers().then((cloudTowers) => {
         if (cloudTowers && cloudTowers.length > 0) {
           setTowersList(cloudTowers);
@@ -437,7 +459,16 @@ function decodeCategoryDescription(desc?: string) {
       setTowersList(stored);
     };
 
+    const handleSelectTower = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      if (customEvt.detail?.tower) {
+        setCustomTower(customEvt.detail.tower);
+        setModalTower(customEvt.detail.tower);
+      }
+    };
+
     window.addEventListener("pbel_towers_updated", handleTowerUpdate);
+    window.addEventListener("pbel_select_tower", handleSelectTower);
 
     // Deep link query check
     if (typeof window !== "undefined") {
@@ -452,6 +483,7 @@ function decodeCategoryDescription(desc?: string) {
 
     return () => {
       window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
+      window.removeEventListener("pbel_select_tower", handleSelectTower);
     };
   }, []);
 
@@ -840,20 +872,25 @@ function decodeCategoryDescription(desc?: string) {
               <h2 className="font-heading text-2xl sm:text-3xl text-gray-900 font-bold">
                 General Pujo Contribution
               </h2>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                Contribute any custom amount directly to the PBEL Sanskritik Samiti Bank Account via UPI or QR Code.
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                Choose a suggested amount or enter any amount of your choice. Direct 0% fee bank transfer to PBEL Sanskritik Samiti.
               </p>
             </div>
 
             <form onSubmit={handleCustomDonate} className="space-y-6">
               
-              {/* Quick Amount Selection Chips (Starting from 501, 7501 removed) */}
-              <div>
-                <label className="block text-xs font-bold text-gray-800 uppercase tracking-wider mb-2">
-                  Select or Enter Contribution Amount (₹ INR) *
-                </label>
-                
-                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+              {/* Presets & Amount Input */}
+              <div className="bg-amber-50/50 p-4 sm:p-6 rounded-2xl border border-amber-200/80">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                    Contribution Amount (₹ INR) *
+                  </label>
+                  <span className="text-[11px] text-amber-900 font-bold">
+                    {customPurpose}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mb-3">
                   {[501, 1001, 2000, 5001, 10001].map((amt) => (
                     <button
                       key={amt}
@@ -884,7 +921,7 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
               </div>
 
-              {/* Dynamic QR Scanner & 1-Tap Mobile Payment Widget (PLACED BEFORE DETAILS FORM FOR ZERO SCROLLING ON MOBILE) */}
+              {/* Dynamic QR Scanner & 1-Tap Mobile Payment Widget */}
               {customAmount && Number(customAmount) > 0 ? (
                 <div className="bg-gradient-to-br from-amber-50/95 via-orange-50/80 to-amber-100/50 p-5 sm:p-6 rounded-3xl border border-amber-300/90 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="text-center md:text-left space-y-3 flex-1">
@@ -897,7 +934,6 @@ function decodeCategoryDescription(desc?: string) {
                       Offering Amount: <span className="text-primary font-mono text-xl">₹{Number(customAmount).toLocaleString("en-IN")}</span>
                     </p>
 
-                    {/* Primary 1-Tap Copy Action & Banking App Link */}
                     <div className="space-y-2">
                       <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                         <button
@@ -908,15 +944,6 @@ function decodeCategoryDescription(desc?: string) {
                           {copiedUpi ? <Check size={16} className="text-white" /> : <Copy size={16} />}
                           <span>{copiedUpi ? "✓ UPI ID Copied to Clipboard!" : "📋 1-Tap Copy UPI ID"}</span>
                         </button>
-
-                        <a
-                          href={generateUpiString(Number(customAmount), customPurpose || "Pujo Seva")}
-                          className="bg-white hover:bg-amber-50 text-gray-800 border border-amber-300 text-xs font-bold px-4 py-3 rounded-2xl transition flex items-center justify-center gap-1.5 shadow-2xs"
-                          title="Open banking apps that support web deep links like Kotak, BHIM"
-                        >
-                          <Smartphone size={15} className="text-primary" />
-                          <span>Open Banking App (Kotak / BHIM)</span>
-                        </a>
                       </div>
 
                       <div className="bg-white/80 border border-amber-200/80 rounded-xl p-2.5 text-left text-[11px] text-gray-700 space-y-1">
@@ -928,7 +955,6 @@ function decodeCategoryDescription(desc?: string) {
                         </ol>
                       </div>
 
-                      {/* Adaptive Pro-Tip for Google Pay / UPI amounts above Rs 2,000 */}
                       {Number(customAmount) > 2000 && (
                         <div className="bg-amber-100/90 border border-amber-300 p-3 rounded-2xl text-[11.5px] text-amber-950 flex items-start gap-2 shadow-2xs">
                           <span className="text-base shrink-0">💡</span>
@@ -952,7 +978,7 @@ function decodeCategoryDescription(desc?: string) {
                     <span className="text-[11px] text-gray-800 font-bold block mt-1.5 font-mono">Scan with Any UPI App</span>
                     <button
                       type="button"
-                      onClick={() => saveQrCodeToGallery(generateUpiString(Number(customAmount), customPurpose || "Pujo Seva"), customAmount, customPurpose || "Pujo-Seva")}
+                      onClick={() => saveQrCodeToGallery(generateUpiString(Number(customAmount), customPurpose || "Pujo Seva"), customAmount, customPurpose || "Pujo-Offering")}
                       className="mt-2 text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1 w-full shadow-2xs"
                     >
                       <Download size={12} />
@@ -960,18 +986,14 @@ function decodeCategoryDescription(desc?: string) {
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-amber-50/50 p-4 rounded-2xl border border-dashed border-amber-300/80 text-center text-xs text-amber-900">
-                  👆 <strong>Select a preset above (e.g. ₹501, ₹1,001) or enter any amount</strong> to generate your instant QR code &amp; 1-Tap Copy UPI details.
-                </div>
-              )}
+              ) : null}
 
               {/* Devotee Personal Details (FOLLOWING QR CODE) */}
               <div className="space-y-4 pt-2 border-t border-gray-100">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">
-                      Full Name *
+                      Devotee Name *
                     </label>
                     <input
                       type="text"
@@ -1026,20 +1048,20 @@ function decodeCategoryDescription(desc?: string) {
 
                   <div>
                     <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
-                      Flat / Unit Number (Digits Only) *
+                      Flat / Unit Number (e.g. 402, 1204, or G01) *
                     </label>
                     <input
                       type="text"
                       required
-                      inputMode="numeric"
-                      maxLength={6}
+                      autoCapitalize="characters"
+                      maxLength={8}
                       value={customFlatUnit}
                       onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
                         setCustomFlatUnit(val);
                       }}
-                      placeholder="e.g. 402 or 1204"
-                      className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-medium font-mono"
+                      placeholder="e.g. 402, 1204, or G01"
+                      className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-bold font-mono"
                     />
                   </div>
                 </div>
@@ -1292,25 +1314,17 @@ function decodeCategoryDescription(desc?: string) {
                 </button>
               </div>
 
-              {/* 1-Tap Copy UPI ID & Banking App Link */}
+              {/* 1-Tap Copy UPI ID */}
               <div className="space-y-2">
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2">
                   <button
                     type="button"
                     onClick={handleCopyUpi}
-                    className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
+                    className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white text-xs font-bold px-6 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     {copiedUpi ? <Check size={14} className="text-white" /> : <Copy size={14} />}
                     <span>{copiedUpi ? "✓ UPI ID Copied!" : "📋 1-Tap Copy UPI ID"}</span>
                   </button>
-                  <a
-                    href={generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`)}
-                    className="bg-white hover:bg-amber-50 text-gray-800 border border-amber-300 text-xs font-bold px-3 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5"
-                    title="Open banking apps that support web deep links like Kotak, BHIM"
-                  >
-                    <Smartphone size={14} className="text-primary" />
-                    <span>Open Banking App</span>
-                  </a>
                 </div>
 
                 <div className="bg-white/80 border border-amber-200/80 rounded-xl p-2 text-left text-[10px] text-gray-600 space-y-0.5">
@@ -1384,20 +1398,20 @@ function decodeCategoryDescription(desc?: string) {
 
                 <div>
                   <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
-                    Flat / Unit (Digits Only) *
+                    Flat / Unit (e.g. 402, 1204, or G01) *
                   </label>
                   <input
                     type="text"
                     required
-                    inputMode="numeric"
-                    maxLength={6}
+                    autoCapitalize="characters"
+                    maxLength={8}
                     value={modalFlatUnit}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
                       setModalFlatUnit(val);
                     }}
-                    placeholder="e.g. 402 or 1204"
-                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs font-medium font-mono"
+                    placeholder="e.g. 402, 1204, or G01"
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-bold font-mono"
                   />
                 </div>
               </div>

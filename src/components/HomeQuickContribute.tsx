@@ -169,12 +169,21 @@ export function HomeQuickContribute() {
       loadDynamicData();
     };
 
+    const handleSelectTower = (e: Event) => {
+      const customEvt = e as CustomEvent;
+      if (customEvt.detail?.tower) {
+        setSelectedTower(customEvt.detail.tower);
+      }
+    };
+
     window.addEventListener("pbel_towers_updated", handleTowerUpdate);
     window.addEventListener("pbel_categories_updated", handleCategoryUpdate);
+    window.addEventListener("pbel_select_tower", handleSelectTower);
 
     return () => {
       window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
       window.removeEventListener("pbel_categories_updated", handleCategoryUpdate);
+      window.removeEventListener("pbel_select_tower", handleSelectTower);
     };
   }, []);
 
@@ -521,26 +530,17 @@ export function HomeQuickContribute() {
                     Offering Amount: <span className="text-primary font-mono text-xl">₹{Number(amount).toLocaleString("en-IN")}</span>
                   </p>
 
-                  {/* Primary 1-Tap Copy Action & Banking App Link */}
+                  {/* Primary 1-Tap Copy Action */}
                   <div className="space-y-2">
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div>
                       <button
                         type="button"
                         onClick={handleCopyUpi}
-                        className="bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 active:scale-98 golden-glow"
+                        className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-bold px-6 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 active:scale-98 golden-glow"
                       >
                         {copiedUpi ? <Check size={16} className="text-white" /> : <Copy size={16} />}
                         <span>{copiedUpi ? "✓ UPI ID Copied to Clipboard!" : "📋 1-Tap Copy UPI ID"}</span>
                       </button>
-
-                      <a
-                        href={generateUpiString(Number(amount))}
-                        className="bg-white hover:bg-amber-50 text-gray-800 border border-amber-300 text-xs font-bold px-4 py-3 rounded-2xl transition flex items-center justify-center gap-1.5 shadow-2xs"
-                        title="Open banking apps that support web deep links like Kotak, BHIM"
-                      >
-                        <Smartphone size={15} className="text-primary" />
-                        <span>Open Banking App (Kotak / BHIM)</span>
-                      </a>
                     </div>
 
                     <div className="bg-white/80 border border-amber-200/80 rounded-xl p-2.5 text-left text-[11px] text-gray-700 space-y-1">
@@ -650,20 +650,20 @@ export function HomeQuickContribute() {
 
                 <div>
                   <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
-                    Flat / Unit Number (Digits Only) *
+                    Flat / Unit Number (e.g. 402, 1204, or G01) *
                   </label>
                   <input
                     type="text"
                     required
-                    inputMode="numeric"
-                    maxLength={6}
+                    autoCapitalize="characters"
+                    maxLength={8}
                     value={flatUnit}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
                       setFlatUnit(val);
                     }}
-                    placeholder="e.g. 402 or 1204"
-                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-medium font-mono"
+                    placeholder="e.g. 402, 1204, or G01"
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-bold font-mono"
                   />
                 </div>
               </div>

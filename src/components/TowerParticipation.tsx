@@ -106,6 +106,28 @@ export function TowerParticipation() {
   const maxFamilies = Math.max(...towerData.map((t) => t.familyCount));
   const leadingTower = maxFamilies > 0 ? towerData.find((t) => t.familyCount === maxFamilies) : null;
 
+  const handleTowerSelect = (e: React.MouseEvent, towerFullName: string) => {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("pbel_select_tower", {
+          detail: { tower: towerFullName },
+        })
+      );
+    }
+
+    const quickContribEl = document.getElementById("quick-contribute-section") || document.getElementById("quick-contribute");
+    if (quickContribEl) {
+      e.preventDefault();
+      quickContribEl.scrollIntoView({ behavior: "smooth" });
+    } else {
+      const topForm = document.getElementById("contribute-form-top");
+      if (topForm) {
+        e.preventDefault();
+        topForm.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+  };
+
   return (
     <div className="w-full bg-gradient-to-br from-[#FFFDF9] via-[#FFF8ED] to-[#FFF4DF] rounded-3xl p-6 sm:p-8 border-2 border-amber-300 shadow-md">
       
@@ -149,6 +171,7 @@ export function TowerParticipation() {
           </div>
           <Link
             href={`/contribute?tower=${encodeURIComponent(leadingTower.fullName)}`}
+            onClick={(e) => handleTowerSelect(e, leadingTower.fullName)}
             className="text-primary hover:underline font-bold text-[11px] shrink-0"
           >
             Join your neighbors →
@@ -160,12 +183,14 @@ export function TowerParticipation() {
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mt-6">
         {towerData.map((tower) => {
           const isLeading = leadingTower && tower.id === leadingTower.id;
+          const towerFullLabel = tower.fullName || `${tower.tower} (${tower.name})`;
 
           return (
             <Link
               key={tower.id}
-              href={`/contribute?tower=${encodeURIComponent(tower.fullName)}`}
-              className={`p-3.5 rounded-2xl border transition-all relative group flex flex-col justify-between ${
+              href={`/contribute?tower=${encodeURIComponent(towerFullLabel)}`}
+              onClick={(e) => handleTowerSelect(e, towerFullLabel)}
+              className={`p-3.5 rounded-2xl border transition-all relative group flex flex-col justify-between cursor-pointer ${
                 isLeading
                   ? "bg-gradient-to-b from-white to-amber-50 border-amber-400 shadow-sm ring-1 ring-amber-400/50"
                   : "bg-white border-amber-900/10 hover:border-amber-400 hover:shadow-sm"

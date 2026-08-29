@@ -380,20 +380,20 @@ export default function VolunteerPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-amber-950 uppercase mb-1">
-                    Flat / Unit Number (Digits Only) *
+                    Flat / Unit Number (e.g. 402, 1204, or G01) *
                   </label>
                   <input
                     type="text"
                     required
-                    inputMode="numeric"
-                    maxLength={6}
+                    autoCapitalize="characters"
+                    maxLength={8}
                     value={flatUnit}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      const val = e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 8);
                       setFlatUnit(val);
                     }}
-                    placeholder="e.g. 402 or 1204"
-                    className="w-full p-3 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-medium font-mono"
+                    placeholder="e.g. 402, 1204, or G01"
+                    className="w-full p-3 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-bold font-mono"
                   />
                 </div>
               </div>
