@@ -153,7 +153,7 @@ export default async function Home() {
       <FestiveHero />
 
       {/* 2. LIVE PUJO FUND COUNTER BAR */}
-      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 -mt-4 relative z-20 space-y-6">
+      <section className="w-full max-w-6xl mx-auto px-3 sm:px-6 -mt-4 relative z-20 space-y-6 box-border min-w-0">
         <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-amber-900/10 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           
           <div className="md:col-span-2 space-y-2">
