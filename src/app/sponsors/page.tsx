@@ -366,7 +366,7 @@ export default function SponsorsPage() {
                     required
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, "").slice(0, 10) })}
-                    placeholder="9876543210"
+                    placeholder="10-digit mobile number"
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                   />
                 </div>

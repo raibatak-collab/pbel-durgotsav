@@ -214,18 +214,11 @@ export function FestiveHero({ sponsors }: { sponsors?: TopSponsorItem[] | null }
               <span>Stage Acts</span>
             </Link>
             <Link
-              href="/anandamela"
+              href="/volunteer"
               className="inline-flex items-center gap-1.5 bg-black/40 hover:bg-black/60 border border-white/25 text-amber-100 hover:text-white px-3 py-1.5 rounded-full text-xs font-semibold transition backdrop-blur-md shrink-0 whitespace-nowrap"
             >
-              <Utensils size={12} className="text-amber-300 shrink-0" />
-              <span>Anandamela</span>
-            </Link>
-            <Link
-              href="/guide"
-              className="inline-flex items-center gap-1.5 bg-black/40 hover:bg-black/60 border border-white/25 text-amber-100 hover:text-white px-3 py-1.5 rounded-full text-xs font-semibold transition backdrop-blur-md shrink-0 whitespace-nowrap"
-            >
-              <Compass size={12} className="text-amber-300 shrink-0" />
-              <span>Pandal Guide</span>
+              <Users size={12} className="text-amber-300 shrink-0" />
+              <span>Volunteer Seva</span>
             </Link>
             <Link
               href="/committee"

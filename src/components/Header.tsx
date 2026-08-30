@@ -87,15 +87,14 @@ export function Header() {
   const primaryLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Schedule & Pratibimb", href: "/programs", icon: Calendar },
-    { name: "Anandamela Food", href: "/anandamela", icon: Utensils },
+    { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake },
+    { name: "Corporate Sponsors", href: "/sponsors", icon: Award },
   ];
 
   // Secondary Links for Accessible "More ▾" Dropdown
   const moreLinks = [
-    { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake, desc: "Join kitchen, crowd or stage seva shifts" },
-    { name: "Pandal & Facilities Guide", href: "/guide", icon: Compass, desc: "Pandal map, emergency contacts & zones" },
     { name: "Organizing Committee", href: "/committee", icon: Users, desc: "Executive wings, leads & volunteer teams" },
-    { name: "Corporate Sponsors", href: "/sponsors", icon: Award, desc: "Brand partnerships & sponsorship brochure" },
+    { name: "Devotee Wall of Honor", href: "/#devotee-wall", icon: Sparkles, desc: "Community contributor recognition" },
   ];
 
   return (

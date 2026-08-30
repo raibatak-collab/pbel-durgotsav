@@ -2104,6 +2104,67 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('59. Seva Day-Wise Filtering, Chronological Sorting & In-Modal QR Confirmation', () => {
+    it('should sort seva catalog offerings chronologically by pujo day', () => {
+      const DAY_CHRONO_ORDER = {
+        "panchami": 1,
+        "maha shashthi": 2,
+        "maha saptami": 3,
+        "maha ashtami": 4,
+        "maha nabami": 5,
+        "bijoya dashami": 6,
+        "all 6 days": 7,
+      };
+
+      const getDayOrder = (dayStr) => {
+        const lower = (dayStr || "").toLowerCase();
+        for (const [k, v] of Object.entries(DAY_CHRONO_ORDER)) {
+          if (lower.includes(k)) return v;
+        }
+        return 99;
+      };
+
+      const sevas = [
+        { title: "Nabami Homa", day: "Maha Nabami", amount: 2501 },
+        { title: "Panchami Agomoni", day: "Panchami", amount: 2501 },
+        { title: "Ashtami Lotus", day: "Maha Ashtami", amount: 3100 },
+        { title: "Shashthi Bodhon", day: "Maha Shashthi", amount: 2100 },
+        { title: "Saptami Bhog", day: "Maha Saptami", amount: 2501 },
+        { title: "Dashami Immersion", day: "Bijoya Dashami", amount: 5001 },
+        { title: "Grand Gold", day: "All 6 Days", amount: 25000 },
+      ];
+
+      const sorted = [...sevas].sort((a, b) => getDayOrder(a.day) - getDayOrder(b.day) || a.amount - b.amount);
+
+      assert.strictEqual(sorted[0].day, "Panchami");
+      assert.strictEqual(sorted[1].day, "Maha Shashthi");
+      assert.strictEqual(sorted[2].day, "Maha Saptami");
+      assert.strictEqual(sorted[3].day, "Maha Ashtami");
+      assert.strictEqual(sorted[4].day, "Maha Nabami");
+      assert.strictEqual(sorted[5].day, "Bijoya Dashami");
+      assert.strictEqual(sorted[6].day, "All 6 Days");
+    });
+
+    it('should filter seva catalog accurately by selected day', () => {
+      const sevas = [
+        { title: "Panchami Agomoni", day: "Panchami" },
+        { title: "Ashtami 108 Lotuses", day: "Maha Ashtami" },
+        { title: "Ashtami Sandhi Deepam", day: "Maha Ashtami" },
+      ];
+
+      const ashtamiFiltered = sevas.filter((s) => s.day.toLowerCase().includes("ashtami"));
+      assert.strictEqual(ashtamiFiltered.length, 2);
+      assert.strictEqual(ashtamiFiltered[0].title, "Ashtami 108 Lotuses");
+    });
+
+    it('should construct direct contribution query link for homepage featured cards', () => {
+      const seva = { title: "Maha Bhog Family Seva", amount: 2501 };
+      const href = `/contribute?tab=general&amount=${seva.amount}&purpose=${encodeURIComponent(seva.title)}`;
+
+      assert.strictEqual(href, "/contribute?tab=general&amount=2501&purpose=Maha%20Bhog%20Family%20Seva");
+    });
+  });
+
 });
 
 

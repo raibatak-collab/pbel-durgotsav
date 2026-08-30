@@ -412,7 +412,7 @@ export default function VolunteerPage() {
                     const val = e.target.value.replace(/\D/g, "").slice(0, 10);
                     setFormData({ ...formData, phone: val });
                   }}
-                  placeholder="e.g. 9845000000"
+                  placeholder="10-digit mobile number"
                   className="w-full p-3.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary focus:border-primary outline-none text-sm font-mono"
                 />
               </div>

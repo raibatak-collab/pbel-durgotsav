@@ -292,6 +292,7 @@ export default function ContributePage() {
 
   const [sevaList, setSevaList] = useState<SevaItem[]>(defaultSevaCatalog);
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [dayFilter, setDayFilter] = useState<string>("all");
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Towers Roster State for 1-Tap Dropdown
@@ -476,7 +477,12 @@ function decodeCategoryDescription(desc?: string) {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tabParam = (params.get("tab") || params.get("mode") || "").toLowerCase();
-      if (tabParam === "catalog" || tabParam === "sponsor" || tabParam === "sevas" || params.get("category") || params.get("amount")) {
+      const dayParam = params.get("day");
+      if (dayParam) {
+        setDayFilter(dayParam.toLowerCase());
+        setActiveMode("catalog");
+      }
+      if (tabParam === "catalog" || tabParam === "sponsor" || tabParam === "sevas" || params.get("category") || (params.get("amount") && tabParam !== "general")) {
         setActiveMode("catalog");
       } else if (tabParam === "general" || tabParam === "any" || tabParam === "open") {
         setActiveMode("general");
@@ -489,15 +495,48 @@ function decodeCategoryDescription(desc?: string) {
     };
   }, []);
 
-  const filteredSevas = sevaList.filter((item) => {
-    if (categoryFilter === "all") return true;
-    if (categoryFilter === "flowers") return item.category === "flowers";
-    if (categoryFilter === "bhog") return item.category === "bhog";
-    if (categoryFilter === "sweets") return item.category === "sweets";
-    if (categoryFilter === "rituals") return item.category === "rituals";
-    if (categoryFilter === "grand") return item.category === "grand";
-    return true;
-  });
+  const DAY_CHRONO_ORDER: Record<string, number> = {
+    "panchami": 1,
+    "maha shashthi": 2,
+    "shashthi": 2,
+    "sashti": 2,
+    "maha saptami": 3,
+    "saptami": 3,
+    "maha ashtami": 4,
+    "ashtami": 4,
+    "maha nabami": 5,
+    "nabami": 5,
+    "navami": 5,
+    "bijoya dashami": 6,
+    "dashami": 6,
+    "all 6 days": 7,
+    "grand": 7,
+  };
+
+  const getDayOrder = (dayStr: string) => {
+    const lower = (dayStr || "").toLowerCase();
+    for (const [k, v] of Object.entries(DAY_CHRONO_ORDER)) {
+      if (lower.includes(k)) return v;
+    }
+    return 99;
+  };
+
+  const filteredSevas = sevaList
+    .filter((item) => {
+      if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
+      if (dayFilter !== "all") {
+        const dayLower = (item.day || "").toLowerCase();
+        if (dayFilter === "panchami" && !dayLower.includes("panchami")) return false;
+        if (dayFilter === "shashthi" && !dayLower.includes("shashthi") && !dayLower.includes("sashti")) return false;
+        if (dayFilter === "saptami" && !dayLower.includes("saptami")) return false;
+        if (dayFilter === "ashtami" && !dayLower.includes("ashtami")) return false;
+        if (dayFilter === "nabami" && !dayLower.includes("nabami") && !dayLower.includes("navami")) return false;
+        if (dayFilter === "dashami" && !dayLower.includes("dashami")) return false;
+        if (dayFilter === "grand" && !dayLower.includes("all 6") && !dayLower.includes("grand")) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => getDayOrder(a.day) - getDayOrder(b.day) || a.amount - b.amount);
 
   const handleCopyUpi = () => {
     navigator.clipboard.writeText(SOCIETY_UPI_ID);
@@ -1043,7 +1082,7 @@ function decodeCategoryDescription(desc?: string) {
                         const val = e.target.value.replace(/\D/g, "").slice(0, 10);
                         setCustomFormData({ ...customFormData, phone: val });
                       }}
-                      placeholder="e.g. 9845000000"
+                      placeholder="10-digit mobile number"
                       className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-mono"
                     />
                   </div>
@@ -1147,12 +1186,57 @@ function decodeCategoryDescription(desc?: string) {
 
       {/* 4. MODE 2: DAY-WISE SPECIFIC SEVA CATALOG (WITH LIVE CAPACITY LIMITS & SOLD OUT CHECKS) */}
       {activeMode === "catalog" && (
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 mb-16">
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6 mb-16 space-y-6">
           
+          {/* Quick Day Selector Tabs */}
+          <div className="bg-amber-50/70 border border-amber-200/80 rounded-3xl p-4 sm:p-5 shadow-xs">
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 uppercase tracking-wider">
+                <Calendar size={15} className="text-primary" />
+                <span>Filter Offerings by Pujo Day (Sorted Chronologically)</span>
+              </div>
+              {dayFilter !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setDayFilter("all")}
+                  className="text-[11px] text-primary font-bold hover:underline"
+                >
+                  Clear Day Filter
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2">
+              {[
+                { id: "all", label: "🌟 All Days" },
+                { id: "panchami", label: "15 Oct • Panchami" },
+                { id: "shashthi", label: "16 Oct • Maha Sashti" },
+                { id: "saptami", label: "17 Oct • Maha Saptami" },
+                { id: "ashtami", label: "18 Oct • Maha Ashtami" },
+                { id: "nabami", label: "19 Oct • Maha Nabami" },
+                { id: "dashami", label: "20 Oct • Bijoya Dashami" },
+                { id: "grand", label: "👑 All 6 Days (Grand Patrons)" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setDayFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                    dayFilter === tab.id
+                      ? "bg-primary text-white shadow-md golden-glow"
+                      : "bg-white text-gray-700 border border-gray-200 hover:border-amber-400 hover:bg-amber-100/50"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Category Filter Pills */}
-          <div className="flex flex-wrap items-center justify-center gap-2 mb-8">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             {[
-              { id: "all", label: "🌟 All 6-Day Offerings" },
+              { id: "all", label: "All Seva Categories" },
               { id: "flowers", label: "🌺 Flowers & Mala" },
               { id: "bhog", label: "🍚 Maha Bhog" },
               { id: "sweets", label: "🍬 Sweets & Prasad" },
@@ -1162,9 +1246,9 @@ function decodeCategoryDescription(desc?: string) {
               <button
                 key={tab.id}
                 onClick={() => setCategoryFilter(tab.id)}
-                className={`px-4 py-2 rounded-full text-xs sm:text-sm font-semibold transition-all ${
+                className={`px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold transition-all ${
                   categoryFilter === tab.id
-                    ? "bg-primary text-white shadow-md golden-glow"
+                    ? "bg-amber-900 text-white shadow-xs"
                     : "bg-white text-gray-700 border border-gray-200 hover:border-amber-400 hover:bg-amber-50/50"
                 }`}
               >
@@ -1420,7 +1504,7 @@ function decodeCategoryDescription(desc?: string) {
                     const val = e.target.value.replace(/\D/g, "").slice(0, 10);
                     setModalFormData({ ...modalFormData, phone: val });
                   }}
-                  placeholder="e.g. 9845000000"
+                  placeholder="10-digit mobile number"
                   className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                 />
               </div>

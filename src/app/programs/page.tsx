@@ -17,14 +17,17 @@ import {
   HeartHandshake,
   Star,
   Mic,
-  Tv,
-  Download,
-  Building,
   Drama,
-  X
+  X,
+  Copy,
+  Check,
+  QrCode,
+  ExternalLink,
+  Download,
+  Building
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
-import { generateGoogleCalendarUrl, generateIcsContent } from "@/utils/security";
+import { generateGoogleCalendarUrl, generateIcsContent, buildUpiPayUri } from "@/utils/security";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredSchedule, fetchStoredSchedule, DaySchedule } from "@/config/schedule";
 
@@ -49,7 +52,9 @@ export default function ProgramsPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showDonationPromptModal, setShowDonationPromptModal] = useState(false);
+  const [donationModalStep, setDonationModalStep] = useState<"prompt" | "qr_code">("prompt");
   const [selectedOfferingAmount, setSelectedOfferingAmount] = useState<number>(1001);
+  const [copiedUpi, setCopiedUpi] = useState(false);
 
   const handleDownloadIcs = (event: {
     title: string;
@@ -146,11 +151,12 @@ export default function ProgramsPage() {
       return;
     }
 
+    setDonationModalStep("prompt");
     setShowDonationPromptModal(true);
   };
 
   // Actual registration submission
-  const executeSubmitPerformance = async (shouldRedirectToDonation: boolean = false) => {
+  const executeSubmitPerformance = async (withDevotionalOffering: boolean = false) => {
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -189,18 +195,13 @@ export default function ProgramsPage() {
 
       if (error) throw error;
 
-      setShowDonationPromptModal(false);
+      setIsSuccess(true);
 
-      if (shouldRedirectToDonation) {
-        // Smooth transition to contribute page with pre-filled details & purpose
-        const donateUrl = `/contribute?tab=general&amount=${selectedOfferingAmount}&name=${encodeURIComponent(
-          formData.contactName
-        )}&flat=${encodeURIComponent(formattedFlat)}&purpose=${encodeURIComponent(
-          `Pratibimb Stage Devotee Seva (${formData.performanceType})`
-        )}`;
-        window.location.href = donateUrl;
+      if (withDevotionalOffering) {
+        // Smoothly transition inside the modal to the verified UPI QR payment screen
+        setDonationModalStep("qr_code");
       } else {
-        setIsSuccess(true);
+        setShowDonationPromptModal(false);
       }
     } catch (err) {
       console.error("Error submitting performance:", err);
@@ -735,7 +736,7 @@ export default function ProgramsPage() {
                       const val = e.target.value.replace(/\D/g, "").slice(0, 10);
                       setFormData({ ...formData, phone: val });
                     }}
-                    placeholder="e.g. 9845000000"
+                    placeholder="10-digit mobile number"
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                   />
                 </div>
@@ -798,85 +799,178 @@ export default function ProgramsPage() {
       </div>
 
       {/* 5. GENTLE DEVOTIONAL OFFERING MODAL BEFORE SUBMISSION */}
+      {/* 5. GENTLE DEVOTIONAL DONATION PROMPT & IN-MODAL QR OFFERING MODAL */}
       {showDonationPromptModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
           <div className="bg-gradient-to-b from-[#FFFDF9] to-[#FDF8F0] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-amber-300 relative animate-scaleUp">
             
             {/* Close Button */}
             <button
-              onClick={() => setShowDonationPromptModal(false)}
+              onClick={() => {
+                setShowDonationPromptModal(false);
+                setDonationModalStep("prompt");
+              }}
               className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
               aria-label="Close modal"
             >
               <X size={18} />
             </button>
 
-            {/* Modal Header */}
-            <div className="text-center space-y-2 mb-5">
-              <div className="w-12 h-12 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center mx-auto text-2xl shadow-inner">
-                🌺
-              </div>
-              <h4 className="font-heading text-xl font-bold text-gray-900">
-                Support Pratibimb Cultural Stage
-              </h4>
-              <p className="text-xs text-gray-600 leading-relaxed">
-                Thank you, <strong>{formData.contactName}</strong>! Your <strong>{formData.performanceType}</strong> performance application is ready.
-              </p>
-            </div>
+            {donationModalStep === "prompt" ? (
+              <>
+                {/* Modal Header */}
+                <div className="text-center space-y-2 mb-5">
+                  <div className="w-12 h-12 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                    🌺
+                  </div>
+                  <h4 className="font-heading text-xl font-bold text-gray-900">
+                    Support Pratibimb Cultural Stage
+                  </h4>
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    Thank you, <strong>{formData.contactName}</strong>! Your <strong>{formData.performanceType}</strong> performance application is ready.
+                  </p>
+                </div>
 
-            {/* Devotional Appeal Box */}
-            <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 space-y-2.5 text-xs text-gray-700 mb-5">
-              <p className="leading-relaxed">
-                PBEL City Durgotsav &amp; Pratibimb stage arrangements (professional acoustics, line-array audio, stage lighting, sound engineer &amp; Dhaaki troupe) are <strong>100% community-funded</strong> by resident devotees.
-              </p>
-              <p className="font-semibold text-amber-950">
-                Would you like to make a voluntary devotional offering towards stage &amp; pujo arrangements?
-              </p>
+                {/* Devotional Appeal Box */}
+                <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 space-y-2.5 text-xs text-gray-700 mb-5">
+                  <p className="leading-relaxed">
+                    PBEL City Durgotsav &amp; Pratibimb stage arrangements (professional acoustics, line-array audio, stage lighting, sound engineer &amp; Dhaaki troupe) are <strong>100% community-funded</strong> by resident devotees.
+                  </p>
+                  <p className="font-semibold text-amber-950">
+                    Would you like to make a voluntary devotional offering towards stage &amp; pujo arrangements?
+                  </p>
 
-              {/* Fast Preset Chips */}
-              <div className="grid grid-cols-4 gap-1.5 pt-1">
-                {[501, 1001, 2001, 5001].map((amt) => (
+                  {/* Fast Preset Chips */}
+                  <div className="grid grid-cols-4 gap-1.5 pt-1">
+                    {[501, 1001, 2001, 5001].map((amt) => (
+                      <button
+                        key={amt}
+                        type="button"
+                        onClick={() => setSelectedOfferingAmount(amt)}
+                        className={`py-2 rounded-xl font-bold text-xs transition border ${
+                          selectedOfferingAmount === amt
+                            ? "bg-primary text-white border-primary shadow-xs"
+                            : "bg-white text-gray-700 border-amber-200 hover:border-primary"
+                        }`}
+                      >
+                        ₹{amt.toLocaleString("en-IN")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-2.5">
                   <button
-                    key={amt}
                     type="button"
-                    onClick={() => setSelectedOfferingAmount(amt)}
-                    className={`py-2 rounded-xl font-bold text-xs transition border ${
-                      selectedOfferingAmount === amt
-                        ? "bg-primary text-white border-primary shadow-xs"
-                        : "bg-white text-gray-700 border-amber-200 hover:border-primary"
-                    }`}
+                    disabled={isSubmitting}
+                    onClick={() => executeSubmitPerformance(true)}
+                    className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm transition shadow-lg golden-glow flex items-center justify-center gap-2"
                   >
-                    ₹{amt.toLocaleString("en-IN")}
+                    <HeartHandshake size={16} />
+                    <span>
+                      {isSubmitting
+                        ? "Submitting..."
+                        : `Submit & Offer ₹${selectedOfferingAmount.toLocaleString("en-IN")} Seva →`}
+                    </span>
                   </button>
-                ))}
-              </div>
-            </div>
 
-            {/* Action Buttons */}
-            <div className="space-y-2.5">
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => executeSubmitPerformance(true)}
-                className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm transition shadow-lg golden-glow flex items-center justify-center gap-2"
-              >
-                <HeartHandshake size={16} />
-                <span>
-                  {isSubmitting
-                    ? "Submitting..."
-                    : `Submit & Offer ₹${selectedOfferingAmount.toLocaleString("en-IN")} Seva →`}
-                </span>
-              </button>
+                  <button
+                    type="button"
+                    disabled={isSubmitting}
+                    onClick={() => executeSubmitPerformance(false)}
+                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl font-semibold text-xs transition text-center"
+                  >
+                    Submit Registration Only (No Offering) →
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* IN-MODAL QR CODE PAYMENT VIEW (CLEARLY STATING REGISTRATION IS ACCEPTED) */
+              (() => {
+                const stageUpiUri = buildUpiPayUri({
+                  am: selectedOfferingAmount,
+                  tn: `Pratibimb Stage Seva (${formData.contactName || "Devotee"})`,
+                  appScheme: "generic",
+                });
 
-              <button
-                type="button"
-                disabled={isSubmitting}
-                onClick={() => executeSubmitPerformance(false)}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl font-semibold text-xs transition text-center"
-              >
-                Submit Registration Only (No Offering) →
-              </button>
-            </div>
+                return (
+                  <div className="text-center space-y-4">
+                    {/* Confirmed Registration Banner */}
+                    <div className="space-y-1.5">
+                      <div className="w-12 h-12 rounded-full bg-green-100 border border-green-300 flex items-center justify-center mx-auto text-green-700 shadow-inner">
+                        <Check size={24} className="stroke-[3]" />
+                      </div>
+                      <span className="inline-block bg-green-100 text-green-900 border border-green-300 text-[10px] font-bold px-3 py-0.5 rounded-full uppercase tracking-wider">
+                        ✓ Registration Accepted &amp; Confirmed!
+                      </span>
+                      <h4 className="font-heading text-lg sm:text-xl font-bold text-gray-900">
+                        Thank You, {formData.contactName}!
+                      </h4>
+                      <p className="text-xs text-gray-600">
+                        Your <strong>{formData.performanceType}</strong> performance application is locked with the cultural desk.
+                      </p>
+                    </div>
+
+                    {/* QR Code Container */}
+                    <div className="bg-white border-2 border-amber-300/80 rounded-2xl p-4 shadow-sm space-y-3">
+                      <div className="text-xs font-bold text-amber-900 flex items-center justify-center gap-1.5 uppercase tracking-wider">
+                        <HeartHandshake size={15} className="text-primary" />
+                        <span>Voluntary Stage Seva Offering: ₹{selectedOfferingAmount.toLocaleString("en-IN")}</span>
+                      </div>
+
+                      <div className="bg-amber-50/50 p-2.5 rounded-xl border border-amber-100 inline-block">
+                        <img
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(stageUpiUri)}`}
+                          alt="PBEL Sanskritik Samiti Donation QR"
+                          className="w-40 h-40 object-contain mx-auto rounded-lg shadow-2xs"
+                        />
+                      </div>
+
+                      <p className="text-[11px] text-gray-500">
+                        Scan using Google Pay, PhonePe, or Paytm to complete your seva offering.
+                      </p>
+
+                      {/* 1-Tap Copy UPI ID */}
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText("pbelsanskritiksamiti@icici");
+                            setCopiedUpi(true);
+                            setTimeout(() => setCopiedUpi(false), 2000);
+                          }}
+                          className="bg-amber-100 hover:bg-amber-200 text-amber-950 text-xs font-bold px-3 py-1.5 rounded-xl border border-amber-300 transition flex items-center gap-1.5"
+                        >
+                          {copiedUpi ? <Check size={12} className="text-green-700" /> : <Copy size={12} />}
+                          <span>{copiedUpi ? "✓ UPI ID Copied!" : "📋 Copy UPI ID"}</span>
+                        </button>
+
+                        <a
+                          href={stageUpiUri}
+                          className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-3.5 py-1.5 rounded-xl transition flex items-center gap-1 shadow-xs"
+                        >
+                          <span>Open UPI App</span>
+                          <ExternalLink size={12} />
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Done / Close Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowDonationPromptModal(false);
+                        setDonationModalStep("prompt");
+                      }}
+                      className="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-2xl font-bold text-xs transition shadow-md"
+                    >
+                      Done / Close
+                    </button>
+                  </div>
+                );
+              })()
+            )}
 
           </div>
         </div>

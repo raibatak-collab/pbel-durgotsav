@@ -136,8 +136,9 @@ export default async function Home() {
     },
   ];
 
-  const popularSevaOfferings = [
+  const defaultFeaturedOfferings = [
     {
+      id: "sashti-flowers",
       title: "Sashti & Daily Flowers / Mala",
       amount: 501,
       description: "Sponsor fresh lotus, marigold garlands, and bilva patra for daily puja.",
@@ -145,6 +146,7 @@ export default async function Home() {
       icon: "🌺",
     },
     {
+      id: "panchami-sweets",
       title: "Panchami & Sashti Sweets / Mishti",
       amount: 1501,
       description: "Traditional Bengali sweets, Sandesh & Rosogolla distribution for prasad.",
@@ -152,6 +154,7 @@ export default async function Home() {
       icon: "🍬",
     },
     {
+      id: "saptami-bhog",
       title: "Maha Bhog Family Seva",
       amount: 2501,
       description: "Full family sponsorship for afternoon Maha Bhog cooked in pure ghee.",
@@ -159,6 +162,7 @@ export default async function Home() {
       icon: "🍚",
     },
     {
+      id: "ashtami-sandhi-deepam",
       title: "Sandhi Pujo 108 Lotuses & Lamps",
       amount: 3100,
       description: "Auspicious offering of 108 red lotuses and 108 earthen lamps on Ashtami.",
@@ -166,6 +170,8 @@ export default async function Home() {
       icon: "🪔",
     },
   ];
+
+  const popularSevaOfferings = await fetchCloudConfig<any[]>("featured_sevas", defaultFeaturedOfferings);
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen">
@@ -314,12 +320,12 @@ export default async function Home() {
 
                 <div>
                   <div className="text-2xl font-bold text-primary mb-3">₹{seva.amount}</div>
-                  <Link
-                    href={`/contribute?category=${encodeURIComponent(seva.title)}&amount=${seva.amount}`}
-                    className="w-full block text-center bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-semibold text-xs transition shadow-xs"
-                  >
-                    Sponsor This Seva
-                  </Link>
+                    <Link
+                      href={`/contribute?tab=general&amount=${seva.amount}&purpose=${encodeURIComponent(seva.title)}`}
+                      className="w-full block text-center bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-1.5"
+                    >
+                      <span>Sponsor Seva (₹{seva.amount}) →</span>
+                    </Link>
                 </div>
               </div>
             ))}
@@ -536,10 +542,12 @@ export default async function Home() {
           <div>
             <h4 className="text-sm font-bold text-white uppercase tracking-wider mb-4">Quick Links</h4>
             <ul className="space-y-2 text-xs">
-              <li><Link href="/programs" className="hover:text-amber-300 transition">Pujo Nirghanto (Rituals Schedule)</Link></li>
-              <li><Link href="/programs" className="hover:text-amber-300 transition">Pratibimb Stage Registrations</Link></li>
-              <li><Link href="/volunteer" className="hover:text-amber-300 transition">Volunteer Slots & Seva</Link></li>
-              <li><Link href="/contribute" className="hover:text-amber-300 transition">E-Seva & Bhog Sponsorship</Link></li>
+              <li><Link href="/programs" className="hover:text-amber-300 transition">Pujo Nirghanto &amp; Rituals Schedule</Link></li>
+              <li><Link href="/programs#register-performance" className="hover:text-amber-300 transition">Pratibimb Stage Registrations</Link></li>
+              <li><Link href="/volunteer" className="hover:text-amber-300 transition">Volunteer Slots &amp; Kitchen Seva</Link></li>
+              <li><Link href="/contribute" className="hover:text-amber-300 transition">E-Seva &amp; Bhog Sponsorship</Link></li>
+              <li><Link href="/sponsors" className="hover:text-amber-300 transition">Corporate Brand Sponsorships</Link></li>
+              <li><Link href="/committee" className="hover:text-amber-300 transition">Organizing Committee</Link></li>
             </ul>
           </div>
 
