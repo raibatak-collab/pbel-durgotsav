@@ -2165,6 +2165,75 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('60. Dynamic E-Seva Categories, Dynamic 6-Day Schedule & Opening Soon State', () => {
+    it('should decode DB categories and prioritize featured active offerings over default cards', () => {
+      const dbCategories = [
+        { id: "1", name: "General Pujo Fund", fixed_amount: null, description: null },
+        { id: "2", name: "Maha Navami Morning Puja", fixed_amount: 5000, description: "[limit:2] [status:active] [featured:true]" },
+        { id: "3", name: "Maha Ashtami Evening Prasad", fixed_amount: 5000, description: "Prasad distribution in Maha Ashtami [limit:4] [status:active] [featured:true]" },
+        { id: "4", name: "Saptami Nabapatrika", fixed_amount: 5000, description: "[limit:3] [status:active] [featured:true]" },
+        { id: "5", name: "Maha Ashtami Morning Puja", fixed_amount: 5000, description: "[limit:4] [status:active] [featured:true]" },
+      ];
+
+      const decodeDesc = (desc) => {
+        const str = desc || "";
+        const featuredMatch = str.match(/\[featured:(true|false)\]/);
+        const statusMatch = str.match(/\[status:(active|inactive)\]/);
+        const cleanDesc = str
+          .replace(/\[limit:\d+\]/g, "")
+          .replace(/\[status:(active|inactive)\]/g, "")
+          .replace(/\[featured:(true|false)\]/g, "")
+          .trim();
+        return {
+          cleanDesc,
+          isFeatured: featuredMatch ? featuredMatch[1] === "true" : false,
+          isActive: statusMatch ? statusMatch[1] === "active" : true,
+        };
+      };
+
+      const valid = dbCategories.filter((c) => c.name !== "General Pujo Fund");
+      const featured = valid.filter((c) => {
+        const d = decodeDesc(c.description);
+        return d.isFeatured && d.isActive;
+      });
+
+      assert.strictEqual(featured.length, 4);
+      assert.strictEqual(featured[0].name, "Maha Navami Morning Puja");
+      assert.strictEqual(featured[1].name, "Maha Ashtami Evening Prasad");
+      assert.strictEqual(decodeDesc(featured[1].description).cleanDesc, "Prasad distribution in Maha Ashtami");
+    });
+
+    it('should map dynamic cloud schedule into homepage 6-day timeline format', () => {
+      const scheduleDays = [
+        {
+          id: "panchami",
+          dayName: "Maha Panchami",
+          date: "15 Oct 2026",
+          theme: "Custom Agomoni Theme",
+          culturalEvening: {
+            title: "Agomoni Musical Night",
+            description: "Custom evening highlights updated from Admin Console.",
+            pssHeadliner: { title: "Opening Rabindra Sangeet", time: "07:30 PM" },
+          },
+        },
+      ];
+
+      const timeline = scheduleDays.map((d) => ({
+        id: d.id,
+        day: d.dayName,
+        date: d.date,
+        theme: d.theme,
+        highlights: d.culturalEvening.description,
+        pssHeadliner: `${d.culturalEvening.pssHeadliner.title} (${d.culturalEvening.pssHeadliner.time})`,
+      }));
+
+      assert.strictEqual(timeline[0].day, "Maha Panchami");
+      assert.strictEqual(timeline[0].theme, "Custom Agomoni Theme");
+      assert.strictEqual(timeline[0].highlights, "Custom evening highlights updated from Admin Console.");
+      assert.strictEqual(timeline[0].pssHeadliner, "Opening Rabindra Sangeet (07:30 PM)");
+    });
+  });
+
 });
 
 

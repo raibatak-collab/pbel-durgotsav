@@ -564,10 +564,10 @@ export default function ProgramsPage() {
               <div className="pt-2 border-t border-amber-900/10">
                 <a
                   href="#register-performance"
-                  className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 rounded-2xl font-bold text-xs transition shadow-md golden-glow flex items-center justify-center gap-2"
+                  className="w-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 py-3 rounded-2xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-2"
                 >
-                  <Music size={15} />
-                  <span>Apply for Resident Performance Slot</span>
+                  <Clock size={15} className="text-primary" />
+                  <span>Stage Registrations Opening Soon</span>
                 </a>
               </div>
 
@@ -578,9 +578,23 @@ export default function ProgramsPage() {
 
         </div>
 
-        {/* 4. PRATIBIMB PERFORMANCE REGISTRATION FORM */}
+        {/* 4. PRATIBIMB PERFORMANCE REGISTRATION FORM (CURRENTLY DISABLED - OPENING SOON) */}
         <div id="register-performance" className="mt-16 bg-white rounded-3xl p-6 sm:p-10 border border-amber-900/15 shadow-xl">
           
+          {/* Opening Soon Notification Banner */}
+          <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/25 to-amber-500/15 border-2 border-amber-400/80 rounded-3xl p-6 text-center space-y-2.5 shadow-sm backdrop-blur-xs mb-8">
+            <div className="inline-flex items-center gap-2 bg-amber-400/30 text-amber-900 text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider border border-amber-300">
+              <Clock size={14} className="text-primary animate-pulse" />
+              <span>Status: Registrations Opening Soon</span>
+            </div>
+            <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900">
+              Pratibimb 2026 Stage Registrations Opening Soon!
+            </h3>
+            <p className="text-xs sm:text-sm text-gray-600 max-w-xl mx-auto leading-relaxed">
+              Performance slot booking for Solo &amp; Group Dance, Classical/Bollywood Vocals, Drama, and Instrumental acts will open shortly. Please check back soon or review the 6-day cultural evening themes above!
+            </p>
+          </div>
+
           <div className="text-center max-w-2xl mx-auto mb-8">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100/60 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
               <Users size={14} /> Pratibimb Resident Artist Portal
@@ -631,7 +645,7 @@ export default function ProgramsPage() {
               </div>
             </div>
           ) : (
-            <form onSubmit={handlePreRegister} className="max-w-3xl mx-auto space-y-6 text-xs sm:text-sm">
+            <form onSubmit={handlePreRegister} className="max-w-3xl mx-auto space-y-6 text-xs sm:text-sm opacity-75">
               {errorMessage && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2">
                   <span>⚠️</span>
@@ -643,9 +657,10 @@ export default function ProgramsPage() {
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Preferred Cultural Evening *</label>
                   <select
+                    disabled
                     value={formData.eveningDate}
                     onChange={(e) => setFormData({ ...formData, eveningDate: e.target.value })}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
                   >
                     <option value="2026-10-15">15 Oct (Panchami Evening - Agomoni)</option>
                     <option value="2026-10-16">16 Oct (Sashti Evening - Retro Rock Night)</option>
@@ -658,9 +673,10 @@ export default function ProgramsPage() {
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Performance Genre *</label>
                   <select
+                    disabled
                     value={formData.performanceType}
                     onChange={(e) => setFormData({ ...formData, performanceType: e.target.value })}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
                   >
                     <option value="Song">Song / Vocals (Classical / Folk / Bollywood)</option>
                     <option value="Dance">Dance (Classical / Contemporary / Fusion)</option>
@@ -675,9 +691,10 @@ export default function ProgramsPage() {
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Format & Slot Duration *</label>
                   <select
+                    disabled
                     value={formData.format}
                     onChange={(e) => setFormData({ ...formData, format: e.target.value })}
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
                   >
                     <option value="Solo (3-5 mins)">Solo Performance (3-5 mins)</option>
                     <option value="Duet (4-6 mins)">Duet Performance (4-6 mins)</option>
@@ -689,11 +706,12 @@ export default function ProgramsPage() {
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Song / Track / Act Name</label>
                   <input
+                    disabled
                     type="text"
                     value={formData.songName}
                     onChange={(e) => setFormData({ ...formData, songName: e.target.value })}
                     placeholder="e.g. Dhitang Dhitang Bole / Kathak Fusion"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -701,12 +719,12 @@ export default function ProgramsPage() {
               <div>
                 <label className="block font-semibold text-gray-700 mb-1">Participant Names & Age Groups *</label>
                 <textarea
+                  disabled
                   rows={2}
-                  required
                   value={formData.participantNames}
                   onChange={(e) => setFormData({ ...formData, participantNames: e.target.value })}
                   placeholder="e.g. Suman (Adult), Rahul (10 yrs), Ananya (8 yrs)"
-                  className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
                 />
               </div>
 
@@ -714,30 +732,29 @@ export default function ProgramsPage() {
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Contact Lead Person *</label>
                   <input
+                    disabled
                     type="text"
-                    required
                     value={formData.contactName}
                     onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
                     placeholder="Your Full Name"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
                   />
                 </div>
 
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone (10 Digits) *</label>
                   <input
+                    disabled
                     type="tel"
-                    required
                     inputMode="numeric"
                     maxLength={10}
-                    pattern="[0-9]{10}"
                     value={formData.phone}
                     onChange={(e) => {
                       const val = e.target.value.replace(/\D/g, "").slice(0, 10);
                       setFormData({ ...formData, phone: val });
                     }}
                     placeholder="10-digit mobile number"
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
+                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none font-mono cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -749,9 +766,10 @@ export default function ProgramsPage() {
                     <Building size={13} className="text-primary" /> Select PBEL Tower *
                   </label>
                   <select
+                    disabled
                     value={selectedTower}
                     onChange={(e) => setSelectedTower(e.target.value)}
-                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold text-gray-900"
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold text-gray-900 cursor-not-allowed"
                   >
                     {towersList.map((t) => (
                       <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
@@ -767,9 +785,8 @@ export default function ProgramsPage() {
                     Flat / Unit Number (e.g. 402, 1204, or G01) *
                   </label>
                   <input
+                    disabled
                     type="text"
-                    required
-                    autoCapitalize="characters"
                     maxLength={8}
                     value={flatUnit}
                     onChange={(e) => {
@@ -777,18 +794,17 @@ export default function ProgramsPage() {
                       setFlatUnit(val);
                     }}
                     placeholder="e.g. 402, 1204, or G01"
-                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-bold font-mono"
+                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-bold font-mono cursor-not-allowed"
                   />
                 </div>
               </div>
 
               <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] text-white font-bold text-base py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2"
+                type="button"
+                disabled
+                className="w-full bg-gray-200 text-gray-500 font-bold text-sm sm:text-base py-4 rounded-2xl cursor-not-allowed shadow-none flex items-center justify-center gap-2 border border-gray-300"
               >
-                <Music size={20} />
-                <span>{isSubmitting ? "Submitting Registration..." : "Review & Submit Performance Slot →"}</span>
+                <span>🔒 Pratibimb Stage Registrations Opening Soon</span>
               </button>
 
             </form>

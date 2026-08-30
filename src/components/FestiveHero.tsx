@@ -184,11 +184,11 @@ export function FestiveHero({ sponsors }: { sponsors?: TopSponsorItem[] | null }
             <span>Sponsor Seva Package</span>
           </Link>
           <Link
-            href="/programs#register-performance"
+            href="/programs"
             className="flex items-center justify-center gap-2 bg-gradient-to-r from-[#8B1024] to-[#680A1A] hover:from-[#A5132B] hover:to-[#8B1024] border border-amber-400/40 text-amber-100 hover:text-white px-4 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5 text-center"
           >
             <Drama size={16} className="text-amber-300 shrink-0" />
-            <span>Cultural Acts (Pratibimb)</span>
+            <span>Pratibimb Stage Acts</span>
           </Link>
           <Link
             href="/programs"
@@ -207,11 +207,11 @@ export function FestiveHero({ sponsors }: { sponsors?: TopSponsorItem[] | null }
         <div className="w-full max-w-full overflow-x-auto no-scrollbar pt-2 px-1">
           <div className="flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 w-max sm:w-auto mx-auto pb-1">
             <Link
-              href="/programs#register-performance"
+              href="/programs"
               className="inline-flex items-center gap-1.5 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-200 hover:text-white px-3 py-1.5 rounded-full text-xs font-semibold transition backdrop-blur-md shrink-0 whitespace-nowrap"
             >
               <Drama size={12} className="text-amber-300 shrink-0" />
-              <span>Stage Acts</span>
+              <span>Pratibimb Stage</span>
             </Link>
             <Link
               href="/volunteer"

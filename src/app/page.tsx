@@ -24,6 +24,7 @@ import { SponsorLogoCarousel } from "@/components/SponsorLogoCarousel";
 import { WallOfContributors } from "@/components/WallOfContributors";
 import { SiteHighlightModal } from "@/components/SiteHighlightModal";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
+import { DEFAULT_PUJO_SCHEDULE, DaySchedule } from "@/config/schedule";
 
 export const revalidate = 0; // Fresh data on every load
 
@@ -73,105 +74,97 @@ export default async function Home() {
     .select("*")
     .eq("is_active", true);
 
-  const daysTimeline = [
-    {
-      id: "panchami",
-      day: "Panchami",
-      date: "15 Oct 2026",
-      theme: "Agomoni & Stage Inauguration",
-      highlights: "Anandamela Food Stalls, Lighting Ceremony, Opening Musical Night & Rabindra Sangeet.",
-      icon: "🌟",
-      tag: "Opening Day",
-      pssHeadliner: null,
-    },
-    {
-      id: "sashti",
-      day: "Maha Sashti",
-      date: "16 Oct 2026",
-      theme: "Devi Bodhon & Retro Rock Gala",
-      highlights: "Amantran & Adhibas Rituals, Evening Sandhya Aarti, Resident Dance Showcase.",
-      icon: "🌺",
-      tag: "Retro Rock Night",
-      pssHeadliner: "🎸 Retro Rock by Fushmontor (08:15 PM • 1.5 Hrs)",
-    },
-    {
-      id: "saptami",
-      day: "Maha Saptami",
-      date: "17 Oct 2026",
-      theme: "Nabapatrika & Dance Drama",
-      highlights: "Kola Bou Snan, Pushpanjali, Afternoon Maha Bhog, Resident Acoustic Band.",
-      icon: "🌿",
-      tag: "Dance Drama",
-      pssHeadliner: "💃 Dance Drama Production by PSS (07:45 PM • 1.0 Hr)",
-    },
-    {
-      id: "ashtami",
-      day: "Maha Ashtami",
-      date: "18 Oct 2026",
-      theme: "Sandhi Pujo & Grand Drama",
-      highlights: "Kumari Puja, 108 Lotuses Sandhi Aarti, Dhaak Jugalbandi Battle.",
-      icon: "🪔",
-      tag: "Grand Natok",
-      pssHeadliner: "🎭 Grand Bangla Drama (Natok) by PSS (07:45 PM • 1.0 Hr)",
-    },
-    {
-      id: "nabami",
-      day: "Maha Nabami",
-      date: "19 Oct 2026",
-      theme: "Navami Havan & Grand Finale",
-      highlights: "Maha Yajna, Grand Community Bhog Feast, Pratibimb Participant Awards & DJ Dandiya.",
-      icon: "🔥",
-      tag: "Grand Finale",
-      pssHeadliner: null,
-    },
-    {
-      id: "dashami",
-      day: "Vijaya Dashami",
-      date: "20 Oct 2026",
-      theme: "Sindoor Khela & Immersion",
-      highlights: "Devi Baran, Sindoor Khela, Dhunuchi Master Showcase, Shanti Jal & Visarjan Yatra.",
-      icon: "🔴",
-      tag: "Farewell & Shanti",
-      pssHeadliner: null,
-    },
-  ];
+  // 1. DYNAMIC 6-DAY PUJO SCHEDULE FROM CLOUD CONFIG (EDITABLE VIA ADMIN)
+  const cloudSchedule = await fetchCloudConfig<DaySchedule[]>("schedule_days", DEFAULT_PUJO_SCHEDULE);
 
-  const defaultFeaturedOfferings = [
-    {
-      id: "sashti-flowers",
-      title: "Sashti & Daily Flowers / Mala",
-      amount: 501,
-      description: "Sponsor fresh lotus, marigold garlands, and bilva patra for daily puja.",
-      category: "Pushpanjali & Flowers",
-      icon: "🌺",
-    },
-    {
-      id: "panchami-sweets",
-      title: "Panchami & Sashti Sweets / Mishti",
-      amount: 1501,
-      description: "Traditional Bengali sweets, Sandesh & Rosogolla distribution for prasad.",
-      category: "Sweets & Prasad",
-      icon: "🍬",
-    },
-    {
-      id: "saptami-bhog",
-      title: "Maha Bhog Family Seva",
-      amount: 2501,
-      description: "Full family sponsorship for afternoon Maha Bhog cooked in pure ghee.",
-      category: "Maha Bhog",
-      icon: "🍚",
-    },
-    {
-      id: "ashtami-sandhi-deepam",
-      title: "Sandhi Pujo 108 Lotuses & Lamps",
-      amount: 3100,
-      description: "Auspicious offering of 108 red lotuses and 108 earthen lamps on Ashtami.",
-      category: "Sandhi Pujo",
-      icon: "🪔",
-    },
-  ];
+  const daysTimeline = (cloudSchedule && cloudSchedule.length > 0 ? cloudSchedule : DEFAULT_PUJO_SCHEDULE).map((d) => {
+    const icon = d.id === "panchami" ? "🌟" : d.id === "sashti" ? "🌺" : d.id === "saptami" ? "🌿" : d.id === "ashtami" ? "🪔" : d.id === "nabami" ? "🔥" : "🔴";
+    const ritualHighlights = d.rituals && d.rituals.length > 0 ? d.rituals.slice(0, 3).map((r) => r.event).join(", ") : "";
 
-  const popularSevaOfferings = await fetchCloudConfig<any[]>("featured_sevas", defaultFeaturedOfferings);
+    return {
+      id: d.id,
+      day: d.dayName || (d.id === "sashti" ? "Maha Sashti" : d.id === "saptami" ? "Maha Saptami" : d.id === "ashtami" ? "Maha Ashtami" : d.id === "nabami" ? "Maha Nabami" : d.id === "dashami" ? "Vijaya Dashami" : "Maha Panchami"),
+      date: d.date || "15 - 20 Oct 2026",
+      theme: d.theme || d.culturalEvening?.title || "Devotion, Rituals & Aarti",
+      highlights: d.culturalEvening?.description || ritualHighlights || "Vedic rituals, Pushpanjali, Aarti, and evening cultural performances.",
+      icon: icon,
+      tag: d.culturalEvening?.pssHeadliner?.title ? "Headliner Night" : d.bengaliName || d.dayName || "Pujo Day",
+      pssHeadliner: d.culturalEvening?.pssHeadliner?.title
+        ? `${d.culturalEvening.pssHeadliner.title} (${d.culturalEvening.pssHeadliner.time || ""})`
+        : null,
+    };
+  });
+
+  // 2. DYNAMIC E-SEVA CATEGORIES FROM SUPABASE DATABASE (EDITABLE VIA ADMIN)
+  const { data: dbCategories } = await supabase
+    .from("contribution_categories")
+    .select("*")
+    .order("created_at", { ascending: true });
+
+  let popularSevaOfferings: any[] = [];
+
+  if (dbCategories && dbCategories.length > 0) {
+    const decodeDesc = (desc?: string) => {
+      const str = desc || "";
+      const featuredMatch = str.match(/\[featured:(true|false)\]/);
+      const statusMatch = str.match(/\[status:(active|inactive)\]/);
+      const cleanDesc = str
+        .replace(/\[limit:\d+\]/g, "")
+        .replace(/\[status:(active|inactive)\]/g, "")
+        .replace(/\[featured:(true|false)\]/g, "")
+        .trim();
+      return {
+        cleanDesc,
+        isFeatured: featuredMatch ? featuredMatch[1] === "true" : false,
+        isActive: statusMatch ? statusMatch[1] === "active" : true,
+      };
+    };
+
+    const valid = dbCategories.filter((c) => c.name !== "General Pujo Fund");
+    const featured = valid.filter((c) => {
+      const d = decodeDesc(c.description);
+      return d.isFeatured && d.isActive;
+    });
+
+    const pool = featured.length > 0 ? featured : valid;
+
+    popularSevaOfferings = pool.slice(0, 4).map((c) => {
+      const d = decodeDesc(c.description);
+      const titleLower = c.name.toLowerCase();
+      let icon = "🌺";
+      let category = "Pujo Seva";
+      if (titleLower.includes("bhog") || titleLower.includes("prasad") || titleLower.includes("khichuri")) {
+        icon = "🍚";
+        category = "Maha Bhog & Prasad";
+      } else if (titleLower.includes("sweet") || titleLower.includes("mishti")) {
+        icon = "🍬";
+        category = "Sweets & Mishti";
+      } else if (titleLower.includes("sandhi") || titleLower.includes("lamp") || titleLower.includes("deepam")) {
+        icon = "🪔";
+        category = "Sandhi Pujo";
+      } else if (titleLower.includes("lotus") || titleLower.includes("pushpanjali") || titleLower.includes("flower") || titleLower.includes("mala")) {
+        icon = "🪷";
+        category = "Flowers & Pushpanjali";
+      } else if (titleLower.includes("homa") || titleLower.includes("havan") || titleLower.includes("yajna")) {
+        icon = "🔥";
+        category = "Maha Yajna";
+      }
+
+      return {
+        id: c.id,
+        title: c.name,
+        amount: c.fixed_amount ? Number(c.fixed_amount) : 1001,
+        description: d.cleanDesc || "Special devotional offering for PBEL City Durgotsav.",
+        category: category,
+        icon: icon,
+      };
+    });
+  }
+
+  // Fallback to cloud config if database table is empty
+  if (popularSevaOfferings.length === 0) {
+    popularSevaOfferings = await fetchCloudConfig<any[]>("featured_sevas", []);
+  }
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen">
@@ -372,14 +365,11 @@ export default async function Home() {
                 className="bg-amber-400 hover:bg-amber-300 text-gray-950 font-bold px-7 py-3 rounded-full text-sm transition shadow-lg flex items-center gap-2"
               >
                 <Music size={17} />
-                <span>Register Performance Slot</span>
+                <span>Explore Stage Schedule &amp; Line-Up →</span>
               </Link>
-              <Link
-                href="/programs"
-                className="bg-white/10 hover:bg-white/20 text-white font-semibold px-6 py-3 rounded-full text-sm transition border border-white/20"
-              >
-                View Stage Line-Up
-              </Link>
+              <span className="inline-flex items-center gap-1.5 bg-amber-400/20 text-amber-200 border border-amber-400/30 text-xs font-semibold px-4 py-2.5 rounded-full backdrop-blur-xs">
+                <span>⏳ Slot Registrations Opening Soon</span>
+              </span>
             </div>
           </div>
         </div>
