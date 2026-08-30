@@ -20,8 +20,9 @@ import {
   SamitiBrandingConfig,
   DEFAULT_BRANDING
 } from "@/config/branding";
+import { TopSponsorRibbon, TopSponsorItem } from "@/components/TopSponsorRibbon";
 
-export function FestiveHero() {
+export function FestiveHero({ sponsors }: { sponsors?: TopSponsorItem[] | null }) {
   const [branding, setBranding] = useState<SamitiBrandingConfig>(DEFAULT_BRANDING);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0, isPassed: false });
 
@@ -198,6 +199,9 @@ export function FestiveHero() {
             <ArrowRight size={14} className="text-amber-300 shrink-0" />
           </Link>
         </div>
+
+        {/* Top Corporate Sponsor Logos Ribbon with Graceful Mobile Fallback */}
+        <TopSponsorRibbon initialSponsors={sponsors} />
 
         {/* Streamlined Secondary Nav Pills: Touch-friendly horizontal scroll on mobile, Lucide icons only */}
         <div className="w-full max-w-full overflow-x-auto no-scrollbar pt-2 px-1">

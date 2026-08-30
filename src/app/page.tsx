@@ -172,8 +172,8 @@ export default async function Home() {
       {/* Dynamic Pop-up Highlight (Path Alpona / Breaking Announcements) */}
       <SiteHighlightModal />
       
-      {/* 1. DYNAMIC FESTIVE HERO SECTION (Self-Service Branding & Wallpapers) */}
-      <FestiveHero />
+      {/* 1. DYNAMIC FESTIVE HERO SECTION (Self-Service Branding, Wallpapers & Top Sponsor Ribbon) */}
+      <FestiveHero sponsors={sponsors} />
 
       {/* 2. LIVE PUJO FUND COUNTER BAR */}
       <section className="w-full max-w-6xl mx-auto px-3 sm:px-6 -mt-4 relative z-20 space-y-6 box-border min-w-0">

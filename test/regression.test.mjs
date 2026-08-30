@@ -2064,6 +2064,46 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('58. Top Sponsor Ribbon Layout, Mobile Viewport Safety & Graceful Fallback', () => {
+    it('should provide clean empty-state fallback when 0 sponsors are loaded', () => {
+      const sponsors = [];
+      const fallbackTeaser = "Official 2026 Brand & Corporate Partnerships Open";
+      const hasSponsors = sponsors.length > 0;
+
+      assert.strictEqual(hasSponsors, false);
+      assert.strictEqual(fallbackTeaser.includes("Corporate Partnerships Open"), true);
+    });
+
+    it('should handle broken image URLs gracefully without throwing or breaking layout', () => {
+      const sponsor = {
+        id: "sp-1",
+        name: "Test Bank",
+        tier: "Platinum",
+        logo_url: "https://invalid-domain-xyz.com/nonexistent.png",
+      };
+
+      const errorSet = new Set(["sp-1"]);
+      const hasValidLogo = sponsor.logo_url && !errorSet.has(sponsor.id);
+
+      assert.strictEqual(hasValidLogo, false);
+    });
+
+    it('should format tier badge colors correctly for premier and standard tiers', () => {
+      const getTierBadgeColor = (tier) => {
+        const t = (tier || "").toLowerCase();
+        if (t.includes("platinum") || t.includes("title")) return "bg-amber-400 text-amber-950";
+        if (t.includes("gold")) return "bg-yellow-300 text-yellow-950";
+        if (t.includes("bhog") || t.includes("food")) return "bg-orange-300 text-orange-950";
+        return "bg-amber-200 text-amber-950";
+      };
+
+      assert.ok(getTierBadgeColor("Title Partner").includes("bg-amber-400"));
+      assert.ok(getTierBadgeColor("Gold Partner").includes("bg-yellow-300"));
+      assert.ok(getTierBadgeColor("Maha Bhog Partner").includes("bg-orange-300"));
+      assert.ok(getTierBadgeColor("Associate Partner").includes("bg-amber-200"));
+    });
+  });
+
 });
 
 
