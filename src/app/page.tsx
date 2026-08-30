@@ -23,6 +23,7 @@ import { FestiveHero } from "@/components/FestiveHero";
 import { SponsorLogoCarousel } from "@/components/SponsorLogoCarousel";
 import { WallOfContributors } from "@/components/WallOfContributors";
 import { SiteHighlightModal } from "@/components/SiteHighlightModal";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
 
 export const revalidate = 0; // Fresh data on every load
 
@@ -45,15 +46,10 @@ export default async function Home() {
   let memberFamiliesCount = 0;
 
   try {
-    const { data: memberConfig } = await supabase
-      .from("cloud_configs")
-      .select("payload")
-      .eq("key", "pss_members")
-      .single();
-
-    if (memberConfig?.payload && Array.isArray(memberConfig.payload)) {
-      memberFamiliesCount = memberConfig.payload.length;
-      memberSubscriptionTotal = memberConfig.payload.reduce(
+    const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
+    if (pssMembers && Array.isArray(pssMembers)) {
+      memberFamiliesCount = pssMembers.length;
+      memberSubscriptionTotal = pssMembers.reduce(
         (sum: number, m: any) => sum + (Number(m.membershipFee) || 7500),
         0
       );

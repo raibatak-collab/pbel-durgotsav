@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Building2, Heart, Sparkles, ArrowRight, TrendingUp } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
 
 interface TowerInfo {
   id: string;
@@ -76,37 +77,38 @@ export function TowerParticipation() {
 
         // 2. Aggregate PSS registered member subscriptions (₹7,500 per family pass)
         try {
-          const { data: memberConfig } = await supabase
-            .from("cloud_configs")
-            .select("payload")
-            .eq("key", "pss_members")
-            .single();
+          const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
 
-          if (memberConfig?.payload && Array.isArray(memberConfig.payload)) {
-            memberConfig.payload.forEach((m: any) => {
-              const flatStr = (m.flatNumber || m.flat_number || m.tower || "").trim();
+          if (pssMembers && Array.isArray(pssMembers) && pssMembers.length > 0) {
+            pssMembers.forEach((m: any) => {
+              const towerStr = (m.tower || "").trim();
+              const flatStr = (m.flatNumber || m.flat_number || "").trim();
+              const fullStr = `${towerStr} ${flatStr}`.trim();
               const amt = Number(m.membershipFee) || 7500;
-
-              if (!flatStr) return;
 
               let matched = false;
               for (const t of currentTowers) {
                 if (
-                  (t.regex && t.regex.test(flatStr)) ||
-                  flatStr.toLowerCase().includes(t.name.toLowerCase()) ||
-                  flatStr.toLowerCase().includes(t.tower.toLowerCase()) ||
-                  flatStr.toLowerCase().includes(t.fullName.toLowerCase())
+                  (t.regex && (t.regex.test(fullStr) || t.regex.test(towerStr) || t.regex.test(flatStr))) ||
+                  towerStr.toLowerCase().includes(t.name.toLowerCase()) ||
+                  towerStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+                  (t.fullName && towerStr.toLowerCase().includes(t.fullName.toLowerCase())) ||
+                  fullStr.toLowerCase().includes(t.name.toLowerCase()) ||
+                  fullStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+                  (t.fullName && fullStr.toLowerCase().includes(t.fullName.toLowerCase()))
                 ) {
                   if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
-                  counts[t.id].families.add(flatStr);
+                  const uniqueKey = m.id || `${t.id}-${flatStr}-${m.name || "fam"}`;
+                  counts[t.id].families.add(uniqueKey);
                   counts[t.id].amount += amt;
                   matched = true;
                   break;
                 }
               }
 
-              if (!matched && flatStr) {
-                guestFamilies.add(flatStr);
+              if (!matched && fullStr) {
+                const uniqueGuestKey = m.id || fullStr;
+                guestFamilies.add(uniqueGuestKey);
                 guestAmount += amt;
               }
             });
