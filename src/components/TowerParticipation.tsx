@@ -42,6 +42,7 @@ export function TowerParticipation() {
         let guestFamilies = new Set<string>();
         let guestAmount = 0;
 
+        // 1. Process online seva contributions
         if (contribs && contribs.length > 0) {
           contribs.forEach((c) => {
             const flatStr = (c.flat_number || "").trim();
@@ -71,6 +72,47 @@ export function TowerParticipation() {
               guestAmount += amt;
             }
           });
+        }
+
+        // 2. Aggregate PSS registered member subscriptions (₹7,500 per family pass)
+        try {
+          const { data: memberConfig } = await supabase
+            .from("cloud_configs")
+            .select("payload")
+            .eq("key", "pss_members")
+            .single();
+
+          if (memberConfig?.payload && Array.isArray(memberConfig.payload)) {
+            memberConfig.payload.forEach((m: any) => {
+              const flatStr = (m.flatNumber || m.flat_number || m.tower || "").trim();
+              const amt = Number(m.membershipFee) || 7500;
+
+              if (!flatStr) return;
+
+              let matched = false;
+              for (const t of currentTowers) {
+                if (
+                  (t.regex && t.regex.test(flatStr)) ||
+                  flatStr.toLowerCase().includes(t.name.toLowerCase()) ||
+                  flatStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+                  flatStr.toLowerCase().includes(t.fullName.toLowerCase())
+                ) {
+                  if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
+                  counts[t.id].families.add(flatStr);
+                  counts[t.id].amount += amt;
+                  matched = true;
+                  break;
+                }
+              }
+
+              if (!matched && flatStr) {
+                guestFamilies.add(flatStr);
+                guestAmount += amt;
+              }
+            });
+          }
+        } catch (mErr) {
+          console.error("Error aggregating member passes in tower participation:", mErr);
         }
 
         const updated = currentTowers.map((t) => ({

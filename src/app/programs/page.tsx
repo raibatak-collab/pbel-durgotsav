@@ -20,7 +20,8 @@ import {
   Tv,
   Download,
   Building,
-  Drama
+  Drama,
+  X
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent } from "@/utils/security";
@@ -47,6 +48,8 @@ export default function ProgramsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showDonationPromptModal, setShowDonationPromptModal] = useState(false);
+  const [selectedOfferingAmount, setSelectedOfferingAmount] = useState<number>(1001);
 
   const handleDownloadIcs = (event: {
     title: string;
@@ -128,13 +131,10 @@ export default function ProgramsPage() {
 
   const currentSchedule = schedule.find((s) => s.id === selectedDay) || schedule[1] || schedule[0];
 
-  const handleRegisterPerformance = async (e: React.FormEvent) => {
+  // Pre-submission check: validate and open gentle donation prompt
+  const handlePreRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-
-    const formattedFlat = selectedTower === "Other"
-      ? flatUnit.trim() || "Guest Devotee"
-      : `${selectedTower} - ${flatUnit.trim()}`;
 
     if (!formData.contactName.trim() || !flatUnit.trim() || !formData.phone.trim()) {
       setErrorMessage("Please enter Contact Name, Flat Number, and 10-digit WhatsApp Phone Number.");
@@ -146,7 +146,18 @@ export default function ProgramsPage() {
       return;
     }
 
+    setShowDonationPromptModal(true);
+  };
+
+  // Actual registration submission
+  const executeSubmitPerformance = async (shouldRedirectToDonation: boolean = false) => {
     setIsSubmitting(true);
+    setErrorMessage(null);
+
+    const formattedFlat = selectedTower === "Other"
+      ? flatUnit.trim() || "Guest Devotee"
+      : `${selectedTower} - ${flatUnit.trim()}`;
+
     try {
       // 1. Get or create cultural evening
       let { data: eveningData } = await supabase
@@ -177,10 +188,24 @@ export default function ProgramsPage() {
       });
 
       if (error) throw error;
-      setIsSuccess(true);
+
+      setShowDonationPromptModal(false);
+
+      if (shouldRedirectToDonation) {
+        // Smooth transition to contribute page with pre-filled details & purpose
+        const donateUrl = `/contribute?tab=general&amount=${selectedOfferingAmount}&name=${encodeURIComponent(
+          formData.contactName
+        )}&flat=${encodeURIComponent(formattedFlat)}&purpose=${encodeURIComponent(
+          `Pratibimb Stage Devotee Seva (${formData.performanceType})`
+        )}`;
+        window.location.href = donateUrl;
+      } else {
+        setIsSuccess(true);
+      }
     } catch (err) {
       console.error("Error submitting performance:", err);
       setErrorMessage("Submission failed. Please check your connection and try again.");
+      setShowDonationPromptModal(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -605,7 +630,7 @@ export default function ProgramsPage() {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleRegisterPerformance} className="max-w-3xl mx-auto space-y-6 text-xs sm:text-sm">
+            <form onSubmit={handlePreRegister} className="max-w-3xl mx-auto space-y-6 text-xs sm:text-sm">
               {errorMessage && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2">
                   <span>⚠️</span>
@@ -762,7 +787,7 @@ export default function ProgramsPage() {
                 className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] text-white font-bold text-base py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2"
               >
                 <Music size={20} />
-                <span>{isSubmitting ? "Submitting Registration..." : "Submit Performance Slot Application"}</span>
+                <span>{isSubmitting ? "Submitting Registration..." : "Review & Submit Performance Slot →"}</span>
               </button>
 
             </form>
@@ -771,6 +796,91 @@ export default function ProgramsPage() {
         </div>
 
       </div>
+
+      {/* 5. GENTLE DEVOTIONAL OFFERING MODAL BEFORE SUBMISSION */}
+      {showDonationPromptModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-gradient-to-b from-[#FFFDF9] to-[#FDF8F0] rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl border border-amber-300 relative animate-scaleUp">
+            
+            {/* Close Button */}
+            <button
+              onClick={() => setShowDonationPromptModal(false)}
+              className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
+              aria-label="Close modal"
+            >
+              <X size={18} />
+            </button>
+
+            {/* Modal Header */}
+            <div className="text-center space-y-2 mb-5">
+              <div className="w-12 h-12 rounded-full bg-amber-100 border border-amber-300 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                🌺
+              </div>
+              <h4 className="font-heading text-xl font-bold text-gray-900">
+                Support Pratibimb Cultural Stage
+              </h4>
+              <p className="text-xs text-gray-600 leading-relaxed">
+                Thank you, <strong>{formData.contactName}</strong>! Your <strong>{formData.performanceType}</strong> performance application is ready.
+              </p>
+            </div>
+
+            {/* Devotional Appeal Box */}
+            <div className="bg-amber-50/80 border border-amber-200/90 rounded-2xl p-4 space-y-2.5 text-xs text-gray-700 mb-5">
+              <p className="leading-relaxed">
+                PBEL City Durgotsav &amp; Pratibimb stage arrangements (professional acoustics, line-array audio, stage lighting, sound engineer &amp; Dhaaki troupe) are <strong>100% community-funded</strong> by resident devotees.
+              </p>
+              <p className="font-semibold text-amber-950">
+                Would you like to make a voluntary devotional offering towards stage &amp; pujo arrangements?
+              </p>
+
+              {/* Fast Preset Chips */}
+              <div className="grid grid-cols-4 gap-1.5 pt-1">
+                {[501, 1001, 2001, 5001].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setSelectedOfferingAmount(amt)}
+                    className={`py-2 rounded-xl font-bold text-xs transition border ${
+                      selectedOfferingAmount === amt
+                        ? "bg-primary text-white border-primary shadow-xs"
+                        : "bg-white text-gray-700 border-amber-200 hover:border-primary"
+                    }`}
+                  >
+                    ₹{amt.toLocaleString("en-IN")}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => executeSubmitPerformance(true)}
+                className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3.5 px-4 rounded-2xl font-bold text-xs sm:text-sm transition shadow-lg golden-glow flex items-center justify-center gap-2"
+              >
+                <HeartHandshake size={16} />
+                <span>
+                  {isSubmitting
+                    ? "Submitting..."
+                    : `Submit & Offer ₹${selectedOfferingAmount.toLocaleString("en-IN")} Seva →`}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => executeSubmitPerformance(false)}
+                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-2xl font-semibold text-xs transition text-center"
+              >
+                Submit Registration Only (No Offering) →
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

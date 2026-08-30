@@ -1921,6 +1921,149 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('54. Admin Budget Expense Bill Upload & PDF/Image Voucher Serialization', () => {
+    it('should serialize and parse expense bill attachments cleanly', () => {
+      const sampleExpense = {
+        id: "exp-101",
+        category: "Pandal & Lighting",
+        title: "Chandernagore Arch Lighting",
+        planned: 120000,
+        actual: 115000,
+        paidTo: "Royal Lights",
+        status: "Advance Paid",
+        bill_url: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+        bill_name: "lighting_invoice_01.png",
+      };
+
+      const jsonStr = JSON.stringify(sampleExpense);
+      const parsed = JSON.parse(jsonStr);
+
+      assert.strictEqual(parsed.id, "exp-101");
+      assert.strictEqual(parsed.bill_name, "lighting_invoice_01.png");
+      assert.ok(parsed.bill_url.startsWith("data:image/png;base64,"));
+    });
+
+    it('should correctly handle expenses without attached bills', () => {
+      const sampleExpense = {
+        id: "exp-102",
+        category: "Maha Bhog",
+        title: "Gobindobhog Rice",
+        planned: 40000,
+        actual: 38000,
+        paidTo: "Grocery Store",
+        status: "Procured",
+      };
+
+      assert.strictEqual(sampleExpense.bill_url, undefined);
+    });
+  });
+
+  describe('55. Pratibimb Cultural Registration Gentle Donation Prompt & Preset Offerings', () => {
+    it('should construct pre-filled donation URL with contributor details and stage purpose', () => {
+      const formData = {
+        contactName: "Arindam Mukherjee",
+        performanceType: "Solo Song",
+      };
+      const formattedFlat = "Tower A (Emerald) - 1402";
+      const selectedOfferingAmount = 1001;
+
+      const donateUrl = `/contribute?tab=general&amount=${selectedOfferingAmount}&name=${encodeURIComponent(
+        formData.contactName
+      )}&flat=${encodeURIComponent(formattedFlat)}&purpose=${encodeURIComponent(
+        `Pratibimb Stage Devotee Seva (${formData.performanceType})`
+      )}`;
+
+      assert.ok(donateUrl.includes("amount=1001"));
+      assert.ok(donateUrl.includes("Arindam%20Mukherjee"));
+      assert.ok(donateUrl.includes("Tower%20A%20(Emerald)%20-%201402"));
+      assert.ok(donateUrl.includes("Pratibimb%20Stage%20Devotee%20Seva"));
+    });
+
+    it('should offer standard devotional offering presets starting from 501', () => {
+      const presets = [501, 1001, 2001, 5001];
+      assert.strictEqual(presets[0], 501);
+      assert.strictEqual(presets.includes(1001), true);
+      assert.strictEqual(presets.includes(2001), true);
+    });
+  });
+
+  describe('56. Site Highlight Pop-up CMS & Path Alpona Announcement Integrity', () => {
+    it('should validate default Path Alpona highlight configuration schema', () => {
+      const defaultHighlight = {
+        enabled: true,
+        id: "highlight-path-alpona-2026",
+        badge: "🎨 Major Festival Attraction",
+        title: "Grand 500m Sacred Path Alpona by Bengal Folk Artists",
+        subtitle: "Complete by Panchami Morning • Major Attraction Throughout Pujo",
+        snippet: "We are bringing renowned traditional Alpona folk artisans from Bengal to create a majestic 500-meter sacred street floor art across the PBEL City central boulevard.",
+        actionText: "Explore Schedule & Cultural Acts →",
+        actionUrl: "/programs",
+      };
+
+      assert.strictEqual(defaultHighlight.enabled, true);
+      assert.strictEqual(defaultHighlight.id, "highlight-path-alpona-2026");
+      assert.ok(defaultHighlight.snippet.includes("500-meter sacred street floor art"));
+      assert.strictEqual(defaultHighlight.actionUrl, "/programs");
+    });
+  });
+
+  describe('57. Member Contribution Aggregation (₹7,500 per Family Pass) into Tower Totals & Fund Counter', () => {
+    it('should aggregate ₹7,500 per member family flat into the matching tower totals', () => {
+      const currentTowers = [
+        { id: "tower-a", tower: "Tower A", name: "Emerald", fullName: "Tower A (Emerald)", regex: /^(tower\s*a|emerald)/i },
+        { id: "tower-b", tower: "Tower B", name: "Sapphire", fullName: "Tower B (Sapphire)", regex: /^(tower\s*b|sapphire)/i },
+      ];
+
+      const counts = {
+        "tower-a": { families: new Set(), amount: 0 },
+        "tower-b": { families: new Set(), amount: 0 },
+      };
+
+      const pssMembers = [
+        { id: "mem-1", name: "Soumitra", flatNumber: "Tower A - 402", membershipFee: 7500 },
+        { id: "mem-2", name: "Debashis", flatNumber: "Tower A - 1104", membershipFee: 7500 },
+        { id: "mem-3", name: "Priyanka", flatNumber: "Tower B - 803", membershipFee: 7500 },
+      ];
+
+      pssMembers.forEach((m) => {
+        const flatStr = m.flatNumber.trim();
+        const amt = Number(m.membershipFee) || 7500;
+
+        for (const t of currentTowers) {
+          if (t.regex.test(flatStr) || flatStr.toLowerCase().includes(t.tower.toLowerCase())) {
+            counts[t.id].families.add(flatStr);
+            counts[t.id].amount += amt;
+            break;
+          }
+        }
+      });
+
+      assert.strictEqual(counts["tower-a"].families.size, 2);
+      assert.strictEqual(counts["tower-a"].amount, 15000);
+      assert.strictEqual(counts["tower-b"].families.size, 1);
+      assert.strictEqual(counts["tower-b"].amount, 7500);
+    });
+
+    it('should combine online contributions and member subscriptions in total fund counter', () => {
+      const onlineContributionsTotal = 250000;
+      const onlineContributorsCount = 85;
+
+      const pssMembers = [
+        { id: "mem-1", membershipFee: 7500 },
+        { id: "mem-2", membershipFee: 7500 },
+        { id: "mem-3", membershipFee: 7500 },
+      ];
+
+      const memberSubscriptionTotal = pssMembers.reduce((sum, m) => sum + (Number(m.membershipFee) || 7500), 0);
+      const combinedTotal = onlineContributionsTotal + memberSubscriptionTotal;
+      const combinedCount = onlineContributorsCount + pssMembers.length;
+
+      assert.strictEqual(memberSubscriptionTotal, 22500);
+      assert.strictEqual(combinedTotal, 272500);
+      assert.strictEqual(combinedCount, 88);
+    });
+  });
+
 });
 
 

@@ -60,6 +60,7 @@ import {
 } from "@/config/branding";
 import { saveCloudConfig, fetchCloudConfig } from "@/utils/cloudConfig";
 import { sanitizeText, validateDonationAmount, validatePhoneNumber } from "@/utils/security";
+import { SitePopupHighlight, DEFAULT_POPUP_HIGHLIGHT } from "@/components/SiteHighlightModal";
 
 export interface AdminUser {
   id: string;
@@ -241,15 +242,31 @@ export default function AdminDashboard() {
     { id: "exp-5", category: "Sound & Cultural Stage", title: "LED Wall, Line-Array Acoustics & Green Rooms", planned: 120000, actual: 110000, paidTo: "Sonic Stage Productions", status: "Advance Paid" },
     { id: "exp-6", category: "Sanitation & Green Pujo", title: "Waste Management, Sal Plate Disposal & Cleaners", planned: 30000, actual: 25000, paidTo: "CleanCity Environmental Ops", status: "Allocated" },
   ]);
-  const [newExpense, setNewExpense] = useState({
+  const [newExpense, setNewExpense] = useState<{
+    category: string;
+    title: string;
+    planned: number;
+    actual: number;
+    paidTo: string;
+    status: string;
+    bill_url?: string;
+    bill_name?: string;
+  }>({
     category: "Pratima & Purohit",
     title: "",
     planned: 50000,
     actual: 50000,
     paidTo: "",
     status: "Allocated",
+    bill_url: "",
+    bill_name: "",
   });
   const [editingExpense, setEditingExpense] = useState<any | null>(null);
+  const [viewingBillExpense, setViewingBillExpense] = useState<any | null>(null);
+
+  // Pop-up Highlight CMS State
+  const [popupHighlight, setPopupHighlight] = useState<SitePopupHighlight>(DEFAULT_POPUP_HIGHLIGHT);
+  const [isPreviewingPopup, setIsPreviewingPopup] = useState(false);
 
   // Organizing Committee CMS State
   const [committeeWings, setCommitteeWings] = useState<CommitteeWing[]>(DEFAULT_COMMITTEE_WINGS);
@@ -428,6 +445,12 @@ export default function AdminDashboard() {
           localStorage.setItem("pbel_admin_users", JSON.stringify(cloudUsers));
         }
       });
+      fetchCloudConfig<SitePopupHighlight>("site_popup_highlight", DEFAULT_POPUP_HIGHLIGHT).then((cloudPopup) => {
+        if (cloudPopup && typeof cloudPopup.enabled === "boolean") {
+          setPopupHighlight(cloudPopup);
+          localStorage.setItem("pbel_site_popup_highlight", JSON.stringify(cloudPopup));
+        }
+      });
     } catch (e) {
       console.error("Failed loading session:", e);
     }
@@ -460,6 +483,7 @@ export default function AdminDashboard() {
         saveCloudConfig("pss_members", pssMembers),
         saveCloudConfig("budget_expenses", budgetExpenses),
         saveCloudConfig("gallery", galleryList),
+        saveCloudConfig("site_popup_highlight", popupHighlight),
       ]);
 
       alert("🎉 Successfully synced ALL portal settings, Towers, Committee Wings, Member Passes, Budget, Schedule, and Announcements to Supabase Cloud!\n\nAll data is now live immediately across every mobile device and browser.");
@@ -609,6 +633,8 @@ export default function AdminDashboard() {
       actual: Number(newExpense.actual) || 0,
       paidTo: sanitizeText(newExpense.paidTo) || "Vendor",
       status: newExpense.status,
+      bill_url: newExpense.bill_url || "",
+      bill_name: newExpense.bill_name || "",
     };
     const updated = [item, ...budgetExpenses];
     setBudgetExpenses(updated);
@@ -621,6 +647,8 @@ export default function AdminDashboard() {
       actual: 50000,
       paidTo: "",
       status: "Allocated",
+      bill_url: "",
+      bill_name: "",
     });
     alert("Expense recorded in Committee Budget Ledger and synced to Cloud!");
   };
@@ -638,6 +666,8 @@ export default function AdminDashboard() {
             actual: Number(editingExpense.actual) || 0,
             paidTo: sanitizeText(editingExpense.paidTo) || "Vendor",
             status: editingExpense.status,
+            bill_url: editingExpense.bill_url || "",
+            bill_name: editingExpense.bill_name || "",
           }
         : exp
     );
@@ -646,6 +676,15 @@ export default function AdminDashboard() {
     saveCloudConfig("budget_expenses", updated);
     setEditingExpense(null);
     alert("Expense updated and synced to Cloud successfully!");
+  };
+
+  // Pop-up Announcement CMS Save Handler
+  const handleSavePopupHighlight = (updatedHighlight: SitePopupHighlight) => {
+    setPopupHighlight(updatedHighlight);
+    localStorage.setItem("pbel_site_popup_highlight", JSON.stringify(updatedHighlight));
+    saveCloudConfig("site_popup_highlight", updatedHighlight);
+    window.dispatchEvent(new Event("pbel_popup_highlight_updated"));
+    alert("📢 Site Pop-up Highlight updated and synced to Cloud successfully!");
   };
 
   const handleDeleteExpense = (id: string) => {
@@ -1925,6 +1964,186 @@ function decodeCategoryDescription(desc?: string) {
                     </button>
                   ))}
                 </div>
+              </div>
+            </form>
+          </div>
+
+          {/* 🎨 BREAKING NEWS / MAJOR HIGHLIGHT POP-UP CMS */}
+          <div className="lg:col-span-2 bg-white rounded-2xl border border-amber-300/80 p-6 shadow-xs relative overflow-hidden">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-gray-100">
+              <div>
+                <div className="flex items-center gap-2 text-primary font-bold text-base">
+                  <Palette size={18} className="text-amber-500" />
+                  <span>🎨 Breaking News / Major Highlight Pop-up CMS (e.g. Grand Path Alpona)</span>
+                </div>
+                <span className="text-[11px] text-gray-500">
+                  Flashes as a high-impact announcement on site load (session-dismissible).
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewingPopup(true)}
+                  className="bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+                >
+                  <Eye size={13} />
+                  <span>Preview Pop-up</span>
+                </button>
+                <label className="flex items-center gap-2 cursor-pointer bg-gray-100 px-3 py-1.5 rounded-xl text-xs font-bold text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={popupHighlight.enabled}
+                    onChange={(e) => {
+                      const next = { ...popupHighlight, enabled: e.target.checked };
+                      handleSavePopupHighlight(next);
+                    }}
+                    className="accent-primary"
+                  />
+                  <span>{popupHighlight.enabled ? "Active (Enabled)" : "Disabled"}</span>
+                </label>
+              </div>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSavePopupHighlight(popupHighlight);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Highlight Title *</label>
+                  <input
+                    type="text"
+                    required
+                    value={popupHighlight.title}
+                    onChange={(e) => setPopupHighlight({ ...popupHighlight, title: e.target.value })}
+                    placeholder="e.g. Grand 500m Sacred Path Alpona by Bengal Folk Artists"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Badge Tag / Highlight Label</label>
+                  <input
+                    type="text"
+                    value={popupHighlight.badge || ""}
+                    onChange={(e) => setPopupHighlight({ ...popupHighlight, badge: e.target.value })}
+                    placeholder="e.g. 🎨 Major Festival Attraction"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Timing / Subtitle</label>
+                  <input
+                    type="text"
+                    value={popupHighlight.subtitle || ""}
+                    onChange={(e) => setPopupHighlight({ ...popupHighlight, subtitle: e.target.value })}
+                    placeholder="e.g. Complete by Panchami Morning • Major Attraction Throughout Pujo"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Action Button Text &amp; URL</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={popupHighlight.actionText || ""}
+                      onChange={(e) => setPopupHighlight({ ...popupHighlight, actionText: e.target.value })}
+                      placeholder="Explore Schedule →"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                    <input
+                      type="text"
+                      value={popupHighlight.actionUrl || ""}
+                      onChange={(e) => setPopupHighlight({ ...popupHighlight, actionUrl: e.target.value })}
+                      placeholder="/programs"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Highlight Description Snippet *</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={popupHighlight.snippet}
+                  onChange={(e) => setPopupHighlight({ ...popupHighlight, snippet: e.target.value })}
+                  placeholder="Explain what the highlight means, artist details, timings, and invitation..."
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                />
+              </div>
+
+              {/* Artwork / Image Upload for Pop-up */}
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">
+                  Highlight Artwork / Photo (Image upload &lt; 2MB or URL)
+                </label>
+                <div className="flex items-center gap-3">
+                  <label className="cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-4 py-2 rounded-xl font-semibold text-xs transition flex items-center gap-1.5 shrink-0">
+                    <Upload size={14} />
+                    <span>Upload Image</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (file.size > 2 * 1024 * 1024) {
+                            alert("Image must be under 2MB. Please compress before uploading.");
+                            return;
+                          }
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setPopupHighlight((prev) => ({
+                              ...prev,
+                              imageUrl: reader.result as string,
+                            }));
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </label>
+                  <input
+                    type="text"
+                    value={popupHighlight.imageUrl || ""}
+                    onChange={(e) => setPopupHighlight({ ...popupHighlight, imageUrl: e.target.value })}
+                    placeholder="Or paste image path / URL (e.g. /images/wallpapers/durga_festive_mandala.svg)"
+                    className="flex-1 p-2 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs"
+                  />
+                  {popupHighlight.imageUrl && (
+                    <div className="w-10 h-10 rounded-lg overflow-hidden border border-amber-300 shrink-0">
+                      <img src={popupHighlight.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewingPopup(true)}
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-1"
+                >
+                  <Eye size={14} />
+                  <span>Preview Pop-up</span>
+                </button>
+                <button
+                  type="submit"
+                  className="bg-primary hover:bg-primary-hover text-white px-6 py-2.5 rounded-xl font-bold transition shadow-sm flex items-center gap-1.5 golden-glow"
+                >
+                  <Save size={14} />
+                  <span>Save &amp; Publish Pop-up Highlight</span>
+                </button>
               </div>
             </form>
           </div>
@@ -3488,6 +3707,56 @@ function decodeCategoryDescription(desc?: string) {
                   </div>
                 </div>
 
+                {/* Upload Bill / Receipt */}
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">
+                    Attach Expense Bill / Voucher (PDF or Image &lt; 2MB)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl font-semibold text-xs transition flex items-center gap-1.5 shrink-0">
+                      <Upload size={13} />
+                      <span>{newExpense.bill_url ? "Replace Bill" : "Upload Bill File"}</span>
+                      <input
+                        type="file"
+                        accept="image/*,application/pdf"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 2 * 1024 * 1024) {
+                              alert("File size must be under 2MB. Please compress before uploading.");
+                              return;
+                            }
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              setNewExpense((prev) => ({
+                                ...prev,
+                                bill_url: reader.result as string,
+                                bill_name: file.name,
+                              }));
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    {newExpense.bill_url && (
+                      <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-lg border border-green-200 truncate">
+                        <CheckCircle2 size={13} className="shrink-0" />
+                        <span className="truncate max-w-[140px]">{newExpense.bill_name || "Bill Attached"}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNewExpense((prev) => ({ ...prev, bill_url: "", bill_name: "" }))}
+                          className="text-red-500 hover:text-red-700 ml-1"
+                          title="Remove attached bill"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm mt-2"
@@ -3524,6 +3793,7 @@ function decodeCategoryDescription(desc?: string) {
                       <th className="p-3">Expense Item & Payee</th>
                       <th className="p-3">Planned</th>
                       <th className="p-3">Actual Paid</th>
+                      <th className="p-3">Bill / Voucher</th>
                       <th className="p-3">Status</th>
                       <th className="p-3 text-right">Action</th>
                     </tr>
@@ -3543,6 +3813,20 @@ function decodeCategoryDescription(desc?: string) {
                         </td>
                         <td className="p-3 font-mono font-bold text-amber-950">
                           ₹{Number(exp.actual).toLocaleString("en-IN")}
+                        </td>
+                        <td className="p-3">
+                          {exp.bill_url ? (
+                            <button
+                              onClick={() => setViewingBillExpense(exp)}
+                              className="bg-amber-100/80 hover:bg-amber-200 text-amber-900 px-2.5 py-1 rounded-lg font-bold text-[11px] flex items-center gap-1 shadow-2xs transition"
+                              title="Inspect Bill Document"
+                            >
+                              <FileText size={12} className="text-primary" />
+                              <span>View Bill</span>
+                            </button>
+                          ) : (
+                            <span className="text-gray-400 text-[11px] italic">No bill</span>
+                          )}
                         </td>
                         <td className="p-3">
                           <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
@@ -3671,6 +3955,56 @@ function decodeCategoryDescription(desc?: string) {
                     </div>
                   </div>
 
+                  {/* Bill Attachment in Edit Modal */}
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      Expense Bill / Invoice (Image or PDF)
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl font-semibold text-xs transition flex items-center gap-1.5 shrink-0">
+                        <Upload size={13} />
+                        <span>{editingExpense.bill_url ? "Replace File" : "Upload Bill"}</span>
+                        <input
+                          type="file"
+                          accept="image/*,application/pdf"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 2 * 1024 * 1024) {
+                                alert("File size must be under 2MB. Please compress before uploading.");
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onloadend = () => {
+                                setEditingExpense((prev: any) => ({
+                                  ...prev,
+                                  bill_url: reader.result as string,
+                                  bill_name: file.name,
+                                }));
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      {editingExpense.bill_url && (
+                        <div className="flex items-center gap-1 text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-lg border border-green-200 truncate">
+                          <CheckCircle2 size={13} className="shrink-0" />
+                          <span className="truncate max-w-[140px]">{editingExpense.bill_name || "Bill Attached"}</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditingExpense((prev: any) => ({ ...prev, bill_url: "", bill_name: "" }))}
+                            className="text-red-500 hover:text-red-700 ml-1"
+                            title="Remove attached bill"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="flex gap-2 pt-2">
                     <button
                       type="button"
@@ -3688,6 +4022,83 @@ function decodeCategoryDescription(desc?: string) {
                     </button>
                   </div>
                 </form>
+              </div>
+            </div>
+          )}
+
+          {/* BILL / VOUCHER LIGHTBOX PREVIEW MODAL */}
+          {viewingBillExpense && (
+            <div className="fixed inset-0 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+              <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-2xl w-full shadow-2xl border border-amber-300 relative max-h-[90vh] flex flex-col">
+                <button
+                  onClick={() => setViewingBillExpense(null)}
+                  className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-700 rounded-full hover:bg-gray-100 transition"
+                  aria-label="Close Bill Preview"
+                >
+                  <X size={18} />
+                </button>
+
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
+                  <FileText size={20} className="text-primary" />
+                  <div>
+                    <h3 className="font-heading text-lg font-bold text-gray-900">
+                      {viewingBillExpense.title}
+                    </h3>
+                    <span className="text-xs text-gray-500">
+                      {viewingBillExpense.category} • Payee: {viewingBillExpense.paidTo} • Paid: ₹{Number(viewingBillExpense.actual).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Document Preview */}
+                <div className="flex-1 overflow-auto bg-gray-50 rounded-2xl border border-gray-200 p-2 flex items-center justify-center min-h-[300px]">
+                  {viewingBillExpense.bill_url?.startsWith("data:application/pdf") ? (
+                    <div className="text-center p-6 space-y-3">
+                      <FileText size={48} className="text-primary mx-auto" />
+                      <p className="text-sm font-semibold text-gray-800">
+                        {viewingBillExpense.bill_name || "Expense Voucher (PDF Document)"}
+                      </p>
+                      <a
+                        href={viewingBillExpense.bill_url}
+                        download={viewingBillExpense.bill_name || `bill_${viewingBillExpense.id}.pdf`}
+                        className="inline-flex items-center gap-1.5 bg-primary text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                      >
+                        <Download size={13} />
+                        <span>Download & Open PDF</span>
+                      </a>
+                    </div>
+                  ) : (
+                    <img
+                      src={viewingBillExpense.bill_url}
+                      alt={viewingBillExpense.title}
+                      className="max-h-[55vh] max-w-full object-contain rounded-xl shadow-xs"
+                    />
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center pt-3 mt-2 border-t border-gray-100">
+                  <span className="text-xs text-gray-500">
+                    Payment Status: <strong className="text-green-700">{viewingBillExpense.status}</strong>
+                  </span>
+                  <div className="flex gap-2">
+                    {viewingBillExpense.bill_url && (
+                      <a
+                        href={viewingBillExpense.bill_url}
+                        download={viewingBillExpense.bill_name || `bill_${viewingBillExpense.id}`}
+                        className="bg-amber-100 hover:bg-amber-200 text-amber-900 px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                      >
+                        <Download size={13} />
+                        <span>Download Voucher</span>
+                      </a>
+                    )}
+                    <button
+                      onClick={() => setViewingBillExpense(null)}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl text-xs font-bold transition"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -5881,6 +6292,80 @@ function decodeCategoryDescription(desc?: string) {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ADMIN POP-UP HIGHLIGHT LIVE PREVIEW MODAL */}
+      {isPreviewingPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-gradient-to-b from-[#FFFDF9] to-[#FDF8F0] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-amber-400 relative animate-scaleUp max-h-[90vh] flex flex-col">
+            <button
+              onClick={() => setIsPreviewingPopup(false)}
+              className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition backdrop-blur-md shadow-md"
+              aria-label="Close Preview"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Feature Image */}
+            {popupHighlight.imageUrl && (
+              <div className="relative h-44 sm:h-52 w-full bg-gradient-to-r from-[#850E1F] to-[#5C0A15] overflow-hidden shrink-0">
+                <img
+                  src={popupHighlight.imageUrl}
+                  alt={popupHighlight.title}
+                  className="w-full h-full object-cover opacity-90"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#200206] via-transparent to-black/30" />
+                {popupHighlight.badge && (
+                  <div className="absolute bottom-3 left-4 bg-amber-400/95 text-amber-950 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md">
+                    <Sparkles size={12} className="text-amber-900" />
+                    <span>{popupHighlight.badge}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="p-5 sm:p-6 space-y-3.5 overflow-y-auto">
+              {!popupHighlight.imageUrl && popupHighlight.badge && (
+                <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider">
+                  <Sparkles size={12} className="text-primary" />
+                  <span>{popupHighlight.badge}</span>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
+                  {popupHighlight.title}
+                </h3>
+                {popupHighlight.subtitle && (
+                  <p className="text-xs sm:text-sm font-semibold text-primary mt-1">
+                    {popupHighlight.subtitle}
+                  </p>
+                )}
+              </div>
+
+              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                {popupHighlight.snippet}
+              </p>
+
+              <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewingPopup(false)}
+                  className="flex-1 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition text-center shadow-md golden-glow"
+                >
+                  {popupHighlight.actionText || "Learn More →"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewingPopup(false)}
+                  className="bg-amber-100/70 hover:bg-amber-200/80 text-amber-900 py-3 px-5 rounded-xl font-semibold text-xs transition text-center"
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

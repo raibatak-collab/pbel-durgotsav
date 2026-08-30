@@ -22,6 +22,7 @@ import { TowerParticipation } from "@/components/TowerParticipation";
 import { FestiveHero } from "@/components/FestiveHero";
 import { SponsorLogoCarousel } from "@/components/SponsorLogoCarousel";
 import { WallOfContributors } from "@/components/WallOfContributors";
+import { SiteHighlightModal } from "@/components/SiteHighlightModal";
 
 export const revalidate = 0; // Fresh data on every load
 
@@ -39,11 +40,36 @@ export default async function Home() {
 
   const totalContributorsCount = contributionsData ? contributionsData.length : 0;
 
+  // Fetch PSS members to aggregate member family contributions (₹7,500 per family)
+  let memberSubscriptionTotal = 0;
+  let memberFamiliesCount = 0;
+
+  try {
+    const { data: memberConfig } = await supabase
+      .from("cloud_configs")
+      .select("payload")
+      .eq("key", "pss_members")
+      .single();
+
+    if (memberConfig?.payload && Array.isArray(memberConfig.payload)) {
+      memberFamiliesCount = memberConfig.payload.length;
+      memberSubscriptionTotal = memberConfig.payload.reduce(
+        (sum: number, m: any) => sum + (Number(m.membershipFee) || 7500),
+        0
+      );
+    }
+  } catch (err) {
+    console.error("Error fetching member config:", err);
+  }
+
+  const combinedTotal = totalAmount + memberSubscriptionTotal;
+  const combinedContributorsCount = totalContributorsCount + memberFamiliesCount;
+
   const formattedTotal = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
-  }).format(totalAmount);
+  }).format(combinedTotal);
 
   // Fetch active sponsors
   const { data: sponsors } = await supabase
@@ -147,6 +173,8 @@ export default async function Home() {
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen">
+      {/* Dynamic Pop-up Highlight (Path Alpona / Breaking Announcements) */}
+      <SiteHighlightModal />
       
       {/* 1. DYNAMIC FESTIVE HERO SECTION (Self-Service Branding & Wallpapers) */}
       <FestiveHero />
@@ -164,7 +192,7 @@ export default async function Home() {
               <span className="font-heading text-4xl sm:text-5xl font-bold text-green-700">
                 {formattedTotal}
               </span>
-              <span className="text-xs text-gray-500 font-medium">Raised so far from {totalContributorsCount} devotee offerings</span>
+              <span className="text-xs text-gray-500 font-medium">Raised so far from {combinedContributorsCount} resident offerings</span>
             </div>
             <p className="text-xs text-gray-600">
               100% of resident contributions fund the Pujo rituals, daily Maha Bhog distribution, Dhaaki artists, and Pratibimb cultural stage.
