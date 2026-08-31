@@ -2234,6 +2234,81 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('61. Pujo Nirghanto Chronological Time Sorting & Admin Day-by-Day Persistence', () => {
+    const timeToMinutes = (timeStr) => {
+      if (!timeStr) return 9999;
+      const clean = timeStr.trim().toUpperCase();
+      const match = clean.match(/(\d+):(\d+)\s*(AM|PM)?/);
+      if (!match) return 9999;
+      let hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const meridiem = match[3] || (clean.includes("PM") ? "PM" : "AM");
+
+      if (meridiem === "PM" && hours !== 12) hours += 12;
+      if (meridiem === "AM" && hours === 12) hours = 0;
+
+      return hours * 60 + minutes;
+    };
+
+    const sortRitualsByTime = (rituals) => {
+      return [...rituals].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+    };
+
+    it('should sort rituals chronologically regardless of addition order', () => {
+      const unsortedRituals = [
+        { time: "08:30 PM", event: "Prasad Distribution", type: "bhog" },
+        { time: "08:30 AM", event: "Pratima Sthapana", type: "ritual" },
+        { time: "11:00 AM", event: "Maha Sashti Pushpanjali", type: "ritual" },
+        { time: "07:45 PM", event: "Grand Sandhya Aarti", type: "aarti" },
+        { time: "06:30 PM", event: "Devi Bodhon & Adhibas", type: "ritual" },
+      ];
+
+      const sorted = sortRitualsByTime(unsortedRituals);
+
+      assert.strictEqual(sorted[0].time, "08:30 AM");
+      assert.strictEqual(sorted[0].event, "Pratima Sthapana");
+      assert.strictEqual(sorted[1].time, "11:00 AM");
+      assert.strictEqual(sorted[1].event, "Maha Sashti Pushpanjali");
+      assert.strictEqual(sorted[2].time, "06:30 PM");
+      assert.strictEqual(sorted[2].event, "Devi Bodhon & Adhibas");
+      assert.strictEqual(sorted[3].time, "07:45 PM");
+      assert.strictEqual(sorted[3].event, "Grand Sandhya Aarti");
+      assert.strictEqual(sorted[4].time, "08:30 PM");
+      assert.strictEqual(sorted[4].event, "Prasad Distribution");
+    });
+
+    it('should update or append ritual without mutating unrelated days', () => {
+      const schedule = [
+        {
+          id: "sashti",
+          dayName: "Maha Sashti",
+          rituals: [{ time: "08:30 AM", event: "Bodhon", type: "ritual" }],
+        },
+        {
+          id: "saptami",
+          dayName: "Maha Saptami",
+          rituals: [{ time: "07:30 AM", event: "Kola Bou Snan", type: "ritual" }],
+        },
+      ];
+
+      const newRitual = { time: "11:00 AM", event: "Sashti Pushpanjali", type: "ritual" };
+      const updated = schedule.map((d) => {
+        if (d.id === "sashti") {
+          return {
+            ...d,
+            rituals: sortRitualsByTime([...d.rituals, newRitual]),
+          };
+        }
+        return d;
+      });
+
+      assert.strictEqual(updated[0].rituals.length, 2);
+      assert.strictEqual(updated[0].rituals[1].event, "Sashti Pushpanjali");
+      assert.strictEqual(updated[1].rituals.length, 1);
+      assert.strictEqual(updated[1].rituals[0].event, "Kola Bou Snan");
+    });
+  });
+
 });
 
 

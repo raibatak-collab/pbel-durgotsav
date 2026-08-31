@@ -406,6 +406,9 @@ export default function ProgramsPage() {
                           </span>
                         </div>
                         <h4 className="font-bold text-sm sm:text-base text-gray-900">{ritual.event}</h4>
+                        {ritual.description && (
+                          <p className="text-xs text-gray-600 mt-1 leading-relaxed">{ritual.description}</p>
+                        )}
                       </div>
                     </div>
 

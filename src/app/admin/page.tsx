@@ -48,7 +48,7 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
-import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE } from "@/config/schedule";
+import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE, sortRitualsByTime, RitualEvent } from "@/config/schedule";
 import { 
   AESTHETIC_WALLPAPERS, 
   DEFAULT_BRANDING, 
@@ -172,7 +172,8 @@ export default function AdminDashboard() {
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
   const [volunteers, setVolunteers] = useState<any[]>([]);
   const [performances, setPerformances] = useState<any[]>([]);
-  const [eventsList, setEventsList] = useState<any[]>(initialDefaultEvents);
+  const [scheduleDays, setScheduleDays] = useState<DaySchedule[]>(getStoredSchedule());
+  const [selectedNirghantoDayId, setSelectedNirghantoDayId] = useState<string>("sashti");
   const [eveningsConfig, setEveningsConfig] = useState<any[]>(initialEveningsConfig);
   const [sponsorsList, setSponsorsList] = useState<any[]>([]);
   const [galleryList, setGalleryList] = useState<any[]>([
@@ -198,8 +199,8 @@ export default function AdminDashboard() {
   const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
-  // Form State: Add / Edit Schedule Event
-  const [newEvent, setNewEvent] = useState({ id: "", title: "", event_type: "Nirghanto", date: "2026-10-15", time: "10:00 AM", description: "" });
+  // Form State: Add / Edit Schedule Ritual Event
+  const [newEvent, setNewEvent] = useState({ id: "", title: "", event_type: "Nirghanto", date: "2026-10-16", time: "08:30 AM", description: "" });
   const [isEditingEvent, setIsEditingEvent] = useState(false);
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
 
@@ -329,13 +330,11 @@ export default function AdminDashboard() {
         .order("created_at", { ascending: false });
       if (perfs) setPerformances(perfs);
 
-      // 5. Fetch Events (merge DB events with initial list)
-      const { data: evts } = await supabase
-        .from("events")
-        .select("*")
-        .order("start_time", { ascending: true });
-      if (evts && evts.length > 0) {
-        setEventsList(evts);
+      // 5. Fetch Full 6-Day Schedule from Cloud
+      const cloudSched = await fetchStoredSchedule();
+      if (cloudSched && cloudSched.length > 0) {
+        setScheduleDays(cloudSched);
+        setEveningsConfig(mapScheduleToEveningsConfig(cloudSched));
       }
 
       // 6. Fetch Sponsors
@@ -383,10 +382,13 @@ export default function AdminDashboard() {
       setBranding(getStoredBranding());
       setCommitteeWings(getStoredCommittee());
       setTowerList(getStoredTowers());
-      setEveningsConfig(mapScheduleToEveningsConfig(getStoredSchedule()));
+      const localSched = getStoredSchedule();
+      setScheduleDays(localSched);
+      setEveningsConfig(mapScheduleToEveningsConfig(localSched));
 
       fetchStoredSchedule().then((cloudSched) => {
         if (cloudSched && cloudSched.length > 0) {
+          setScheduleDays(cloudSched);
           setEveningsConfig(mapScheduleToEveningsConfig(cloudSched));
         }
       });
@@ -1286,141 +1288,122 @@ function decodeCategoryDescription(desc?: string) {
   // SCHEDULE (Pujo Nirghanto) CMS
   const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newEvent.title.trim() || !newEvent.time.trim()) {
+      alert("Please provide Ritual Title and Time.");
+      return;
+    }
     setIsSubmittingEvent(true);
     try {
-      if (isEditingEvent && newEvent.id) {
-        // Update in state & DB
-        setEventsList(eventsList.map((evt) => (evt.id === newEvent.id ? { ...evt, ...newEvent } : evt)));
-        try {
-          await supabase.from("events").update({
-            title: newEvent.title,
-            description: newEvent.description,
-            event_type: newEvent.event_type,
-          }).eq("id", newEvent.id);
-        } catch (_) {}
+      const targetDayId = selectedNirghantoDayId;
+      const ritualType = (newEvent.event_type?.toLowerCase().includes("bhog")
+        ? "bhog"
+        : newEvent.event_type?.toLowerCase().includes("aarti")
+        ? "aarti"
+        : newEvent.event_type?.toLowerCase().includes("pratibimb") || newEvent.event_type?.toLowerCase().includes("cultural")
+        ? "cultural"
+        : "ritual") as "ritual" | "bhog" | "aarti" | "cultural";
 
-        // Update in dynamic 6-day DaySchedule in schedule.ts
-        const currentSched = getStoredSchedule();
-        const dateToDayId: Record<string, string> = {
-          "2026-10-15": "panchami",
-          "2026-10-16": "sashti",
-          "2026-10-17": "saptami",
-          "2026-10-18": "ashtami",
-          "2026-10-19": "nabami",
-          "2026-10-20": "dashami",
-        };
-        const targetDayId = dateToDayId[newEvent.date] || "sashti";
-        const updatedSched = currentSched.map((d) => {
-          if (d.id === targetDayId) {
-            const updatedRituals = d.rituals.map((r) =>
-              r.event === newEvent.title || r.time === newEvent.time
-                ? { ...r, event: newEvent.title, time: newEvent.time }
-                : r
+      const ritualItem: RitualEvent = {
+        time: newEvent.time.trim(),
+        event: sanitizeText(newEvent.title.trim()),
+        type: ritualType,
+        description: newEvent.description ? sanitizeText(newEvent.description.trim()) : undefined,
+      };
+
+      const updatedSchedule = scheduleDays.map((d) => {
+        if (d.id === targetDayId) {
+          let updatedRituals = [...d.rituals];
+          if (isEditingEvent && newEvent.id) {
+            // Find existing ritual by matching id or event name
+            const editIdx = updatedRituals.findIndex(
+              (r) => r.event === newEvent.id || r.event === newEvent.title
             );
-            return { ...d, rituals: updatedRituals };
+            if (editIdx !== -1) {
+              updatedRituals[editIdx] = ritualItem;
+            } else {
+              updatedRituals.push(ritualItem);
+            }
+          } else {
+            // Add or replace identical ritual time
+            const existingIdx = updatedRituals.findIndex(
+              (r) => r.event.toLowerCase() === ritualItem.event.toLowerCase() && r.time === ritualItem.time
+            );
+            if (existingIdx !== -1) {
+              updatedRituals[existingIdx] = ritualItem;
+            } else {
+              updatedRituals.push(ritualItem);
+            }
           }
-          return d;
-        });
-        saveStoredSchedule(updatedSched);
+          return {
+            ...d,
+            rituals: sortRitualsByTime(updatedRituals),
+          };
+        }
+        return d;
+      });
 
-        alert("Event updated successfully and synced to Cloud!");
-      } else {
-        // Add new
-        const newEntry = {
-          id: Date.now().toString(),
-          title: newEvent.title,
-          description: newEvent.description,
-          date: newEvent.date,
-          time: newEvent.time,
-          event_type: newEvent.event_type,
-        };
-        setEventsList([...eventsList, newEntry]);
-        try {
-          const startTime = new Date(`${newEvent.date}T${newEvent.time.includes("PM") ? "18:00:00" : "09:00:00"}`).toISOString();
-          await supabase.from("events").insert({
-            title: newEvent.title,
-            description: newEvent.description,
-            start_time: startTime,
-            end_time: startTime,
-            event_type: newEvent.event_type,
-          });
-        } catch (_) {}
+      setScheduleDays(updatedSchedule);
+      await saveStoredSchedule(updatedSchedule);
 
-        // Update in dynamic 6-day DaySchedule in schedule.ts
-        const currentSched = getStoredSchedule();
-        const dateToDayId: Record<string, string> = {
-          "2026-10-15": "panchami",
-          "2026-10-16": "sashti",
-          "2026-10-17": "saptami",
-          "2026-10-18": "ashtami",
-          "2026-10-19": "nabami",
-          "2026-10-20": "dashami",
-        };
-        const targetDayId = dateToDayId[newEvent.date] || "sashti";
-        const updatedSched = currentSched.map((d) => {
-          if (d.id === targetDayId) {
-            return {
-              ...d,
-              rituals: [
-                ...d.rituals,
-                {
-                  time: newEvent.time,
-                  event: newEvent.title,
-                  type: (newEvent.event_type?.toLowerCase().includes("bhog")
-                    ? "bhog"
-                    : newEvent.event_type?.toLowerCase().includes("aarti")
-                    ? "aarti"
-                    : "ritual") as any,
-                },
-              ],
-            };
-          }
-          return d;
-        });
-        saveStoredSchedule(updatedSched);
+      const activeDay = updatedSchedule.find((d) => d.id === targetDayId);
+      alert(`✓ "${newEvent.title}" (${newEvent.time}) saved to ${activeDay?.dayName} (${activeDay?.date}) and synced live to Cloud!`);
 
-        alert("New event published to live schedule and synced to Cloud!");
-      }
-
-      setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: "2026-10-15", time: "10:00 AM", description: "" });
+      setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: activeDay?.isoDate || "2026-10-16", time: "08:30 AM", description: "" });
       setIsEditingEvent(false);
+    } catch (err) {
+      console.error("Error saving schedule ritual:", err);
+      alert("Failed to save ritual. Please check your connection and try again.");
     } finally {
       setIsSubmittingEvent(false);
     }
   };
 
-  const handleEditEvent = (evt: any) => {
+  const handleEditEvent = (ritual: RitualEvent, dayIsoDate: string) => {
     setNewEvent({
-      id: evt.id,
-      title: evt.title,
-      event_type: evt.event_type || "Nirghanto",
-      date: evt.date || "2026-10-15",
-      time: evt.time || "10:00 AM",
-      description: evt.description || "",
+      id: ritual.event,
+      title: ritual.event,
+      event_type: ritual.type === "bhog" ? "Bhog" : ritual.type === "aarti" ? "Aarti" : ritual.type === "cultural" ? "Pratibimb" : "Nirghanto",
+      date: dayIsoDate,
+      time: ritual.time,
+      description: ritual.description || "",
     });
     setIsEditingEvent(true);
   };
 
-  const handleDeleteEvent = (id: string) => {
-    if (!confirm("Are you sure you want to delete this event from the schedule?")) return;
-    const targetEvt = eventsList.find((evt) => evt.id === id);
-    setEventsList(eventsList.filter((evt) => evt.id !== id));
+  const handleDeleteEvent = async (ritualEventName: string) => {
+    const activeDay = scheduleDays.find((d) => d.id === selectedNirghantoDayId);
+    if (!confirm(`Are you sure you want to delete "${ritualEventName}" from ${activeDay?.dayName}?`)) return;
+
+    const updatedSchedule = scheduleDays.map((d) => {
+      if (d.id === selectedNirghantoDayId) {
+        return {
+          ...d,
+          rituals: d.rituals.filter((r) => r.event !== ritualEventName),
+        };
+      }
+      return d;
+    });
+
+    setScheduleDays(updatedSchedule);
+    await saveStoredSchedule(updatedSchedule);
+
     try {
-      supabase.from("events").delete().eq("id", id);
+      await supabase.from("events").delete().eq("title", ritualEventName);
     } catch (_) {}
 
-    if (targetEvt) {
-      const currentSched = getStoredSchedule();
-      const updatedSched = currentSched.map((d) => ({
-        ...d,
-        rituals: d.rituals.filter((r) => r.event !== targetEvt.title),
-      }));
-      saveStoredSchedule(updatedSched);
-    }
+    alert(`✓ Deleted "${ritualEventName}" from ${activeDay?.dayName}`);
+  };
+
+  const handleRestoreDefaultSchedule = async () => {
+    if (!confirm("Are you sure you want to restore the entire 6-Day Pujo Nirghanto & Schedule to baseline defaults? This will reset all 6 days to the standard schedule.")) return;
+    setScheduleDays(DEFAULT_PUJO_SCHEDULE);
+    await saveStoredSchedule(DEFAULT_PUJO_SCHEDULE);
+    setEveningsConfig(mapScheduleToEveningsConfig(DEFAULT_PUJO_SCHEDULE));
+    alert("Full 6-Day Pujo Nirghanto restored to baseline defaults and synced to Cloud!");
   };
 
   // PRATIBIMB EVENINGS & CAPACITY CONFIGURATION CMS
-  const handleSaveEveningConfig = (e: React.FormEvent) => {
+  const handleSaveEveningConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEvening) return;
 
@@ -1442,7 +1425,7 @@ function decodeCategoryDescription(desc?: string) {
     setEveningsConfig(updatedEvenings);
 
     // Update dynamic 6-day DaySchedule in schedule.ts
-    const currentSched = getStoredSchedule();
+    const currentSched = scheduleDays && scheduleDays.length > 0 ? scheduleDays : getStoredSchedule();
     const dayMap: Record<string, string> = {
       "ev-panchami": "panchami",
       "ev-sashti": "sashti",
@@ -1475,7 +1458,8 @@ function decodeCategoryDescription(desc?: string) {
       }
       return d;
     });
-    saveStoredSchedule(updatedSched);
+    setScheduleDays(updatedSched);
+    await saveStoredSchedule(updatedSched);
 
     alert(`Stage line-up & Featured Acts updated for ${editingEvening.day} and synced to Cloud!`);
     setEditingEvening(null);
@@ -2548,170 +2532,298 @@ function decodeCategoryDescription(desc?: string) {
             </button>
           </div>
 
-          {scheduleSubView === "schedule" && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              
-              {/* Add / Edit Event Form */}
-              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <PlusCircle size={18} className="text-primary" />
-                    <h3 className="font-heading text-lg font-bold text-gray-900">
-                      {isEditingEvent ? "Edit Schedule Item" : "Add Schedule Ritual"}
-                    </h3>
-                  </div>
-                  {isEditingEvent && (
-                    <button onClick={() => { setIsEditingEvent(false); setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: "2026-10-15", time: "10:00 AM", description: "" }); }} className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1">
-                      <X size={14} /> Cancel
-                    </button>
-                  )}
-                </div>
+          {scheduleSubView === "schedule" && (() => {
+            const activeDay = scheduleDays.find((d) => d.id === selectedNirghantoDayId) || scheduleDays[1] || scheduleDays[0];
+            const activeRituals = activeDay?.rituals || [];
 
-                <form onSubmit={handleSaveEvent} className="space-y-4 text-xs">
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Ritual / Event Title *</label>
-                    <input
-                      type="text"
-                      required
-                      value={newEvent.title}
-                      onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                      placeholder="e.g. Kola Bou Snan / Sandhi Pujo"
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
+            return (
+              <div className="space-y-6">
+                {/* 1. Day Selector Tab Bar */}
+                <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
                     <div>
-                      <label className="block font-semibold text-gray-700 mb-1">Date</label>
-                      <select
-                        value={newEvent.date}
-                        onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                      >
-                        <option value="2026-10-15">15 Oct (Panchami)</option>
-                        <option value="2026-10-16">16 Oct (Shashthi)</option>
-                        <option value="2026-10-17">17 Oct (Saptami)</option>
-                        <option value="2026-10-18">18 Oct (Ashtami)</option>
-                        <option value="2026-10-19">19 Oct (Nabami)</option>
-                        <option value="2026-10-20">20 Oct (Dashami)</option>
-                      </select>
+                      <h4 className="font-heading text-base font-bold text-gray-900 flex items-center gap-2">
+                        <Calendar size={18} className="text-primary" />
+                        <span>Select Pujo Day to Manage Nirghanto</span>
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Choose a day to view, add, edit, or delete rituals. All changes save live to Cloud Config and sync with the Schedule page.
+                      </p>
                     </div>
-
-                    <div>
-                      <label className="block font-semibold text-gray-700 mb-1">Time</label>
-                      <input
-                        type="text"
-                        required
-                        value={newEvent.time}
-                        onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                        placeholder="e.g. 08:30 AM"
-                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Category / Type</label>
-                    <select
-                      value={newEvent.event_type}
-                      onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    <button
+                      onClick={handleRestoreDefaultSchedule}
+                      className="text-xs font-semibold text-gray-500 hover:text-red-700 hover:bg-red-50 border border-gray-200 px-3 py-1.5 rounded-xl transition w-fit"
+                      title="Reset all 6 days to default schedule"
                     >
-                      <option value="Nirghanto">Pujo Ritual / Puja Nirghanto</option>
-                      <option value="Bhog">Maha Bhog / Food Offering</option>
-                      <option value="Aarti">Dhunuchi &amp; Sandhya Aarti</option>
-                      <option value="Pratibimb">Pratibimb Cultural Night</option>
-                    </select>
+                      🔄 Restore Baseline Defaults
+                    </button>
                   </div>
 
-                  <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Short Description</label>
-                    <textarea
-                      rows={3}
-                      value={newEvent.description}
-                      onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                      placeholder="Details about rituals, purohit timings..."
-                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                    />
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    {scheduleDays.map((d) => {
+                      const isSelected = selectedNirghantoDayId === d.id;
+                      return (
+                        <button
+                          key={d.id}
+                          onClick={() => {
+                            setSelectedNirghantoDayId(d.id);
+                            setIsEditingEvent(false);
+                            setNewEvent({
+                              id: "",
+                              title: "",
+                              event_type: "Nirghanto",
+                              date: d.isoDate,
+                              time: "08:30 AM",
+                              description: "",
+                            });
+                          }}
+                          className={`p-3 rounded-2xl text-xs font-bold transition flex flex-col items-center justify-center gap-1 border text-center ${
+                            isSelected
+                              ? "bg-primary text-white border-primary shadow-md ring-2 ring-primary/20 scale-[1.02]"
+                              : "bg-gray-50/80 hover:bg-amber-50 text-gray-700 border-gray-200"
+                          }`}
+                        >
+                          <span className="text-[11px] font-normal opacity-90">{d.date}</span>
+                          <span className="font-heading text-xs truncate max-w-full">{d.dayName}</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold mt-0.5 ${
+                            isSelected ? "bg-white/25 text-white" : "bg-amber-100 text-amber-900"
+                          }`}>
+                            {d.rituals.length} rituals
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmittingEvent}
-                    className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-xs flex items-center justify-center gap-1.5"
-                  >
-                    <Save size={15} />
-                    <span>{isEditingEvent ? "Update Schedule Item" : "Publish to Pujo Nirghanto"}</span>
-                  </button>
-                </form>
-              </div>
-
-              {/* Schedule Timeline Table */}
-              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-                <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
-                  <h3 className="font-heading text-lg font-bold text-gray-900">Current Pujo Nirghanto ({eventsList.length})</h3>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
-                        <th className="p-3.5">Date &amp; Time</th>
-                        <th className="p-3.5">Ritual Event</th>
-                        <th className="p-3.5">Type</th>
-                        <th className="p-3.5">Description</th>
-                        <th className="p-3.5 text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {eventsList.map((ev) => (
-                        <tr key={ev.id} className="hover:bg-gray-50/60">
-                          <td className="p-3.5 whitespace-nowrap">
-                            <span className="font-bold text-gray-900 block">{ev.date}</span>
-                            <span className="text-amber-800 font-medium text-[11px]">{ev.time}</span>
-                          </td>
-                          <td className="p-3.5 font-bold text-primary">{ev.title}</td>
-                          <td className="p-3.5">
-                            <span className="bg-amber-100 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                              {ev.event_type}
+                {/* 2. Active Day Editor & Rituals Grid */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  {/* Left Column: Add / Edit Ritual Form */}
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                      <div className="flex items-center gap-2">
+                        <PlusCircle size={18} className="text-primary" />
+                        <div>
+                          <h3 className="font-heading text-base font-bold text-gray-900">
+                            {isEditingEvent ? "Edit Ritual" : `Add Ritual to ${activeDay.dayName}`}
+                          </h3>
+                          <span className="text-[11px] text-amber-800 font-semibold">{activeDay.date} ({activeDay.dayName})</span>
+                        </div>
+                      </div>
+                      {isEditingEvent && (
+                        <button
+                          onClick={() => {
+                            setIsEditingEvent(false);
+                            setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: activeDay.isoDate, time: "08:30 AM", description: "" });
+                          }}
+                          className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg"
+                        >
+                          <X size={13} /> Cancel
+                        </button>
+                      )}
+                    </div>
+
+                    <form onSubmit={handleSaveEvent} className="space-y-4 text-xs">
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Ritual / Event Title *</label>
+                        <input
+                          type="text"
+                          required
+                          value={newEvent.title}
+                          onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                          placeholder="e.g. Maha Sashti Pushpanjali / Sandhi Pujo"
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-semibold text-gray-900"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block font-semibold text-gray-700 mb-1">Pujo Day</label>
+                          <input
+                            type="text"
+                            disabled
+                            value={`${activeDay.date} (${activeDay.dayName})`}
+                            className="w-full p-2.5 border border-gray-200 rounded-xl bg-gray-100 font-semibold text-gray-700 outline-none text-[11px] cursor-not-allowed"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-gray-700 mb-1">Time (e.g. 08:30 AM) *</label>
+                          <input
+                            type="text"
+                            required
+                            value={newEvent.time}
+                            onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+                            placeholder="08:30 AM"
+                            className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono text-gray-900 font-bold"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Fast Preset Time Chips */}
+                      <div>
+                        <span className="text-[10px] text-gray-400 font-semibold block mb-1">Quick Time Presets:</span>
+                        <div className="flex flex-wrap gap-1">
+                          {["07:30 AM", "08:30 AM", "09:30 AM", "11:30 AM", "01:00 PM", "04:30 PM", "06:30 PM", "07:45 PM", "08:30 PM"].map((t) => (
+                            <button
+                              key={t}
+                              type="button"
+                              onClick={() => setNewEvent({ ...newEvent, time: t })}
+                              className={`px-2 py-1 rounded-lg text-[10px] font-mono transition border ${
+                                newEvent.time === t
+                                  ? "bg-primary text-white border-primary"
+                                  : "bg-gray-50 text-gray-600 border-gray-200 hover:border-primary"
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Category / Type</label>
+                        <select
+                          value={newEvent.event_type}
+                          onChange={(e) => setNewEvent({ ...newEvent, event_type: e.target.value })}
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-semibold text-gray-800"
+                        >
+                          <option value="Nirghanto">Pujo Ritual / Puja Nirghanto</option>
+                          <option value="Bhog">Maha Bhog / Food Offering</option>
+                          <option value="Aarti">Dhunuchi &amp; Sandhya Aarti</option>
+                          <option value="Pratibimb">Pratibimb Cultural Night</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Short Description (Optional)</label>
+                        <textarea
+                          rows={2}
+                          value={newEvent.description}
+                          onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                          placeholder="Devotional synopsis or resident instructions..."
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs"
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={isSubmittingEvent}
+                        className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-xs flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      >
+                        <Save size={15} />
+                        <span>{isEditingEvent ? `Update on ${activeDay.dayName}` : `Save to ${activeDay.dayName} Nirghanto`}</span>
+                      </button>
+                    </form>
+                  </div>
+
+                  {/* Right Column: Schedule Timeline Table for Active Day */}
+                  <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden flex flex-col justify-between">
+                    <div>
+                      <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex items-center justify-between">
+                        <div>
+                          <h3 className="font-heading text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <span>{activeDay.dayName} Nirghanto</span>
+                            <span className="text-xs bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full font-normal">
+                              {activeDay.date}
                             </span>
-                          </td>
-                          <td className="p-3.5 max-w-xs truncate text-gray-500">{ev.description}</td>
-                          <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
-                            <button
-                              onClick={() => {
-                                setNewEvent({
-                                  id: ev.id,
-                                  title: ev.title,
-                                  event_type: ev.event_type || "Nirghanto",
-                                  date: ev.date,
-                                  time: ev.time,
-                                  description: ev.description || "",
-                                });
-                                setIsEditingEvent(true);
-                              }}
-                              className="p-1.5 text-amber-700 hover:bg-amber-100 rounded-lg transition"
-                              title="Edit Event"
-                            >
-                              <Edit2 size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteEvent(ev.id)}
-                              className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                              title="Delete Event"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </h3>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Theme: <strong className="text-amber-900">{activeDay.theme}</strong> ({activeRituals.length} ritual events sorted chronologically)
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                              <th className="p-3.5">Time</th>
+                              <th className="p-3.5">Ritual Event &amp; Details</th>
+                              <th className="p-3.5">Type</th>
+                              <th className="p-3.5 text-right">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-100">
+                            {activeRituals.map((ritual, idx) => (
+                              <tr key={`${ritual.event}-${idx}`} className="hover:bg-gray-50/60">
+                                <td className="p-3.5 whitespace-nowrap">
+                                  <span className="font-mono font-bold text-primary bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg">
+                                    {ritual.time}
+                                  </span>
+                                </td>
+                                <td className="p-3.5">
+                                  <span className="font-bold text-gray-900 block">{ritual.event}</span>
+                                  {ritual.description && (
+                                    <span className="text-[11px] text-gray-500 line-clamp-2 mt-0.5">
+                                      {ritual.description}
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-3.5">
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                    ritual.type === "ritual"
+                                      ? "bg-red-100 text-red-800"
+                                      : ritual.type === "bhog"
+                                      ? "bg-amber-100 text-amber-900"
+                                      : ritual.type === "aarti"
+                                      ? "bg-orange-100 text-orange-800"
+                                      : "bg-purple-100 text-purple-800"
+                                  }`}>
+                                    {ritual.type}
+                                  </span>
+                                </td>
+                                <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                                  <button
+                                    onClick={() => handleEditEvent(ritual, activeDay.isoDate)}
+                                    className="p-1.5 text-amber-700 hover:bg-amber-100 rounded-lg transition"
+                                    title="Edit Ritual"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteEvent(ritual.event)}
+                                    className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
+                                    title="Delete Ritual"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                            {activeRituals.length === 0 && (
+                              <tr>
+                                <td colSpan={4} className="p-8 text-center text-gray-400">
+                                  No rituals added for {activeDay.dayName} yet. Use the form on the left to add rituals!
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-amber-50/60 border-t border-amber-200 text-xs text-amber-950 flex flex-col sm:flex-row items-center justify-between gap-2">
+                      <span>
+                        💡 <strong>Tip:</strong> Rituals are sorted automatically in chronological order from morning to evening.
+                      </span>
+                      <button
+                        onClick={() => {
+                          const ev = eveningsConfig.find((e) => e.dayId === activeDay.id || e.id.includes(activeDay.id)) || eveningsConfig[0];
+                          if (ev) setEditingEvening(ev);
+                        }}
+                        className="text-xs font-bold text-primary hover:text-primary-hover underline cursor-pointer"
+                      >
+                        Edit {activeDay.dayName} Evening Theme &amp; Line-Up →
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
               </div>
-
-            </div>
-          )}
+            );
+          })()}
 
           {scheduleSubView === "pratibimb" && (
             <div className="space-y-6">

@@ -7,9 +7,11 @@
  */
 
 export interface RitualEvent {
+  id?: string;
   time: string;
   event: string;
   type: "ritual" | "bhog" | "aarti" | "cultural";
+  description?: string;
 }
 
 export interface FlagshipHeadliner {
@@ -189,17 +191,52 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
 export const SCHEDULE_STORAGE_KEY = "pbel_pujo_schedule";
 
 /**
+ * Converts formatted time strings like "08:30 AM", "01:00 PM" into total minutes from midnight for accurate chronological sorting.
+ */
+export function timeToMinutes(timeStr: string): number {
+  if (!timeStr) return 9999;
+  const clean = timeStr.trim().toUpperCase();
+  const match = clean.match(/(\d+):(\d+)\s*(AM|PM)?/);
+  if (!match) return 9999;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const meridiem = match[3] || (clean.includes("PM") ? "PM" : "AM");
+
+  if (meridiem === "PM" && hours !== 12) hours += 12;
+  if (meridiem === "AM" && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+}
+
+/**
+ * Sorts ritual events strictly in chronological order by time.
+ */
+export function sortRitualsByTime(rituals: RitualEvent[]): RitualEvent[] {
+  return [...rituals].sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+}
+
+/**
+ * Normalizes full 6-day DaySchedule ensuring each day has chronologically sorted rituals.
+ */
+export function normalizeSchedule(schedule: DaySchedule[]): DaySchedule[] {
+  return schedule.map((day) => ({
+    ...day,
+    rituals: sortRitualsByTime(day.rituals || []),
+  }));
+}
+
+/**
  * Retrieves the current schedule configuration from localStorage with default fallback.
  */
 export function getStoredSchedule(): DaySchedule[] {
-  if (typeof window === "undefined") return DEFAULT_PUJO_SCHEDULE;
+  if (typeof window === "undefined") return normalizeSchedule(DEFAULT_PUJO_SCHEDULE);
   try {
     const raw = localStorage.getItem(SCHEDULE_STORAGE_KEY);
-    if (!raw) return DEFAULT_PUJO_SCHEDULE;
+    if (!raw) return normalizeSchedule(DEFAULT_PUJO_SCHEDULE);
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PUJO_SCHEDULE;
+    return Array.isArray(parsed) && parsed.length > 0 ? normalizeSchedule(parsed) : normalizeSchedule(DEFAULT_PUJO_SCHEDULE);
   } catch {
-    return DEFAULT_PUJO_SCHEDULE;
+    return normalizeSchedule(DEFAULT_PUJO_SCHEDULE);
   }
 }
 
@@ -211,11 +248,12 @@ export async function fetchStoredSchedule(): Promise<DaySchedule[]> {
     const { fetchCloudConfig } = await import("@/utils/cloudConfig");
     const cloudSchedule = await fetchCloudConfig<DaySchedule[]>("schedule_days", []);
     if (Array.isArray(cloudSchedule) && cloudSchedule.length > 0) {
+      const normalized = normalizeSchedule(cloudSchedule);
       if (typeof window !== "undefined") {
-        localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(cloudSchedule));
+        localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(normalized));
         window.dispatchEvent(new Event("pbel_schedule_updated"));
       }
-      return cloudSchedule;
+      return normalized;
     }
   } catch (e) {
     console.error("Failed fetching schedule from cloud:", e);
@@ -226,13 +264,18 @@ export async function fetchStoredSchedule(): Promise<DaySchedule[]> {
 /**
  * Saves updated schedule configuration into localStorage and syncs to Supabase Cloud.
  */
-export function saveStoredSchedule(schedule: DaySchedule[]): void {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(schedule));
-  window.dispatchEvent(new Event("pbel_schedule_updated"));
+export async function saveStoredSchedule(schedule: DaySchedule[]): Promise<void> {
+  const normalized = normalizeSchedule(schedule);
+  if (typeof window !== "undefined") {
+    localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(normalized));
+    window.dispatchEvent(new Event("pbel_schedule_updated"));
+  }
 
-  // Background Cloud Sync to Supabase
-  import("@/utils/cloudConfig").then(({ saveCloudConfig }) => {
-    saveCloudConfig("schedule_days", schedule).catch((err) => console.error("Cloud schedule save failed:", err));
-  });
+  // Cloud Sync to Supabase
+  try {
+    const { saveCloudConfig } = await import("@/utils/cloudConfig");
+    await saveCloudConfig("schedule_days", normalized);
+  } catch (err) {
+    console.error("Cloud schedule save failed:", err);
+  }
 }
