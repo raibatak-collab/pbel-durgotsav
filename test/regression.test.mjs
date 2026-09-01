@@ -2343,6 +2343,33 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('63. Admin Toggle for Member Subscriptions in Public Collection Counter', () => {
+    const directDonations = [{ amount: 5000 }, { amount: 10000 }]; // 15,000
+    const pssMembers = Array(38).fill({ membershipFee: 7500 }); // 285,000
+
+    it('should include member subscription in total when toggle is enabled', () => {
+      const includeMemberContributions = true;
+      const directTotal = directDonations.reduce((sum, d) => sum + d.amount, 0);
+      const memberTotal = includeMemberContributions ? pssMembers.length * 7500 : 0;
+      const combinedTotal = directTotal + memberTotal;
+      const totalContributors = directDonations.length + (includeMemberContributions ? pssMembers.length : 0);
+
+      assert.strictEqual(combinedTotal, 300000);
+      assert.strictEqual(totalContributors, 40);
+    });
+
+    it('should exclude member subscription from total when toggle is disabled', () => {
+      const includeMemberContributions = false;
+      const directTotal = directDonations.reduce((sum, d) => sum + d.amount, 0);
+      const memberTotal = includeMemberContributions ? pssMembers.length * 7500 : 0;
+      const combinedTotal = directTotal + memberTotal;
+      const totalContributors = directDonations.length + (includeMemberContributions ? pssMembers.length : 0);
+
+      assert.strictEqual(combinedTotal, 15000);
+      assert.strictEqual(totalContributors, 2);
+    });
+  });
+
 });
 
 

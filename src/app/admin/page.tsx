@@ -176,6 +176,8 @@ export default function AdminDashboard() {
   const [selectedNirghantoDayId, setSelectedNirghantoDayId] = useState<string>("sashti");
   const [heroChips, setHeroChips] = useState<HeroHighlightChip[]>(getStoredHeroChips());
   const [isSavingHeroChips, setIsSavingHeroChips] = useState(false);
+  const [includeMemberContributions, setIncludeMemberContributions] = useState<boolean>(true);
+  const [isUpdatingMemberToggle, setIsUpdatingMemberToggle] = useState<boolean>(false);
   const [eveningsConfig, setEveningsConfig] = useState<any[]>(initialEveningsConfig);
   const [sponsorsList, setSponsorsList] = useState<any[]>([]);
   const [galleryList, setGalleryList] = useState<any[]>([
@@ -345,6 +347,10 @@ export default function AdminDashboard() {
         setHeroChips(cloudChips);
       }
 
+      // 5c. Fetch Member Contribution Public Toggle from Cloud
+      const incMem = await fetchCloudConfig<boolean>("include_member_contributions", true);
+      setIncludeMemberContributions(incMem !== false);
+
       // 6. Fetch Sponsors
       const { data: sps } = await supabase
         .from("sponsors")
@@ -386,6 +392,14 @@ export default function AdminDashboard() {
         const parsed = JSON.parse(savedMembers);
         if (Array.isArray(parsed) && parsed.length > 0) setPssMembers(parsed);
       }
+
+      const savedIncMem = localStorage.getItem("pbel_include_member_contributions");
+      if (savedIncMem !== null) {
+        setIncludeMemberContributions(JSON.parse(savedIncMem) !== false);
+      }
+      fetchCloudConfig<boolean>("include_member_contributions", true).then((inc) => {
+        setIncludeMemberContributions(inc !== false);
+      });
 
       setBranding(getStoredBranding());
       setCommitteeWings(getStoredCommittee());
@@ -830,6 +844,30 @@ export default function AdminDashboard() {
 
     navigator.clipboard.writeText(lines);
     alert(`Copied ${deptName || "Volunteer"} WhatsApp Roster to clipboard! Ready to paste into WhatsApp group.`);
+  };
+
+  // MEMBER CONTRIBUTION PUBLIC VISIBILITY TOGGLE HANDLER
+  const handleToggleMemberContributions = async () => {
+    setIsUpdatingMemberToggle(true);
+    const nextVal = !includeMemberContributions;
+    setIncludeMemberContributions(nextVal);
+    try {
+      await saveCloudConfig("include_member_contributions", nextVal);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pbel_include_member_contributions", JSON.stringify(nextVal));
+        window.dispatchEvent(new Event("pbel_member_toggle_updated"));
+      }
+      alert(
+        nextVal
+          ? `✓ Member Subscriptions (₹${(pssMembers.length * 7500).toLocaleString("en-IN")} from ${pssMembers.length} families) are now INCLUDED in the overall public collection counter & tower totals.`
+          : `✓ Member Subscriptions are now EXCLUDED from the public collection counter. Only direct online e-Seva donations are counted.`
+      );
+    } catch (err) {
+      console.error("Error updating member contribution toggle:", err);
+      alert("Failed to update toggle. Please check your connection.");
+    } finally {
+      setIsUpdatingMemberToggle(false);
+    }
   };
 
   // PSS Members Handlers
@@ -1892,6 +1930,53 @@ function decodeCategoryDescription(desc?: string) {
       {/* TAB CONTENT: 1. OVERVIEW */}
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* Executive Member Contribution Visibility Switcher */}
+          <div className="lg:col-span-2 bg-gradient-to-r from-amber-50 via-white to-amber-50/80 p-5 rounded-2xl border border-amber-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className={`p-3 rounded-xl text-white shrink-0 ${includeMemberContributions ? "bg-green-600 shadow-sm" : "bg-gray-400"}`}>
+                <Users size={22} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="font-heading text-base font-bold text-gray-900">
+                    Include Member Subscriptions in Public Fund Counter &amp; Tower Totals
+                  </h4>
+                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                    includeMemberContributions ? "bg-green-100 text-green-800 border border-green-300" : "bg-gray-100 text-gray-700 border border-gray-300"
+                  }`}>
+                    {includeMemberContributions ? "● Live: Included in Public Counter" : "○ Live: Excluded (Online Only)"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                  Controls whether the <strong>₹7,500 annual subscription per member family</strong> ({pssMembers.length} registered families = <strong>₹{(pssMembers.length * 7500).toLocaleString("en-IN")}</strong>) is added to the homepage total fund collection counter and tower breakdown cards.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 self-end md:self-center shrink-0 bg-white/80 p-2 rounded-xl border border-amber-200">
+              <span className="text-xs font-bold text-gray-700">
+                {includeMemberContributions ? "Include in Public Total" : "Online Only"}
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleMemberContributions}
+                disabled={isUpdatingMemberToggle}
+                className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  includeMemberContributions ? "bg-green-600" : "bg-gray-300"
+                }`}
+                title="Toggle member subscription inclusion in public totals"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    includeMemberContributions ? "translate-x-7" : "translate-x-0"
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
+
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
             <h3 className="font-heading text-lg font-bold text-gray-900 mb-4">Recent E-Seva Contributions</h3>
             <div className="divide-y divide-gray-100">
@@ -5678,6 +5763,52 @@ function decodeCategoryDescription(desc?: string) {
                     {pssMembers.reduce((acc, m) => acc + Math.min(Number(m.headcount) || 4, 6), 0)} Meals / Day
                   </div>
                   <div className="text-[11px] text-gray-500 mt-1">Capped at max 6 members per family</div>
+                </div>
+              </div>
+
+              {/* Public Collection Counter Inclusion Switch */}
+              <div className="bg-gradient-to-r from-amber-50 via-white to-amber-50/80 p-5 rounded-2xl border border-amber-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-start gap-3.5">
+                  <div className={`p-3 rounded-xl text-white shrink-0 ${includeMemberContributions ? "bg-green-600 shadow-sm" : "bg-gray-400"}`}>
+                    <Users size={22} />
+                  </div>
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h4 className="font-heading text-base font-bold text-gray-900">
+                        Include Member Subscriptions in Public Fund Counter &amp; Tower Totals
+                      </h4>
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                        includeMemberContributions ? "bg-green-100 text-green-800 border border-green-300" : "bg-gray-100 text-gray-700 border border-gray-300"
+                      }`}>
+                        {includeMemberContributions ? "● Live: Included in Public Counter" : "○ Live: Excluded (Online Only)"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                      When enabled, the <strong>₹7,500 annual subscription per member family</strong> ({pssMembers.length} registered families = <strong>₹{(pssMembers.length * 7500).toLocaleString("en-IN")}</strong>) is included in the homepage total collection counter and tower breakdown cards.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 self-end md:self-center shrink-0 bg-white/80 p-2 rounded-xl border border-amber-200">
+                  <span className="text-xs font-bold text-gray-700">
+                    {includeMemberContributions ? "Include in Public Total" : "Online Only"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleToggleMemberContributions}
+                    disabled={isUpdatingMemberToggle}
+                    className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                      includeMemberContributions ? "bg-green-600" : "bg-gray-300"
+                    }`}
+                    title="Toggle member subscription inclusion in public totals"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        includeMemberContributions ? "translate-x-7" : "translate-x-0"
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
 

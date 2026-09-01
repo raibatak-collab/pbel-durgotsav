@@ -42,21 +42,24 @@ export default async function Home() {
 
   const totalContributorsCount = contributionsData ? contributionsData.length : 0;
 
-  // Fetch PSS members to aggregate member family contributions (₹7,500 per family)
+  // Fetch PSS members to aggregate member family contributions (₹7,500 per family) if enabled by Admin
+  const includeMemberContributions = await fetchCloudConfig<boolean>("include_member_contributions", true);
   let memberSubscriptionTotal = 0;
   let memberFamiliesCount = 0;
 
-  try {
-    const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
-    if (pssMembers && Array.isArray(pssMembers)) {
-      memberFamiliesCount = pssMembers.length;
-      memberSubscriptionTotal = pssMembers.reduce(
-        (sum: number, m: any) => sum + (Number(m.membershipFee) || 7500),
-        0
-      );
+  if (includeMemberContributions) {
+    try {
+      const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
+      if (pssMembers && Array.isArray(pssMembers)) {
+        memberFamiliesCount = pssMembers.length;
+        memberSubscriptionTotal = pssMembers.reduce(
+          (sum: number, m: any) => sum + (Number(m.membershipFee) || 7500),
+          0
+        );
+      }
+    } catch (err) {
+      console.error("Error fetching member config:", err);
     }
-  } catch (err) {
-    console.error("Error fetching member config:", err);
   }
 
   const combinedTotal = totalAmount + memberSubscriptionTotal;

@@ -75,43 +75,47 @@ export function TowerParticipation() {
           });
         }
 
-        // 2. Aggregate PSS registered member subscriptions (₹7,500 per family pass)
+        // 2. Aggregate PSS registered member subscriptions (₹7,500 per family pass) if enabled
         try {
-          const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
+          const includeMemberContributions = await fetchCloudConfig<boolean>("include_member_contributions", true);
 
-          if (pssMembers && Array.isArray(pssMembers) && pssMembers.length > 0) {
-            pssMembers.forEach((m: any) => {
-              const towerStr = (m.tower || "").trim();
-              const flatStr = (m.flatNumber || m.flat_number || "").trim();
-              const fullStr = `${towerStr} ${flatStr}`.trim();
-              const amt = Number(m.membershipFee) || 7500;
+          if (includeMemberContributions) {
+            const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
 
-              let matched = false;
-              for (const t of currentTowers) {
-                if (
-                  (t.regex && (t.regex.test(fullStr) || t.regex.test(towerStr) || t.regex.test(flatStr))) ||
-                  towerStr.toLowerCase().includes(t.name.toLowerCase()) ||
-                  towerStr.toLowerCase().includes(t.tower.toLowerCase()) ||
-                  (t.fullName && towerStr.toLowerCase().includes(t.fullName.toLowerCase())) ||
-                  fullStr.toLowerCase().includes(t.name.toLowerCase()) ||
-                  fullStr.toLowerCase().includes(t.tower.toLowerCase()) ||
-                  (t.fullName && fullStr.toLowerCase().includes(t.fullName.toLowerCase()))
-                ) {
-                  if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
-                  const uniqueKey = m.id || `${t.id}-${flatStr}-${m.name || "fam"}`;
-                  counts[t.id].families.add(uniqueKey);
-                  counts[t.id].amount += amt;
-                  matched = true;
-                  break;
+            if (pssMembers && Array.isArray(pssMembers) && pssMembers.length > 0) {
+              pssMembers.forEach((m: any) => {
+                const towerStr = (m.tower || "").trim();
+                const flatStr = (m.flatNumber || m.flat_number || "").trim();
+                const fullStr = `${towerStr} ${flatStr}`.trim();
+                const amt = Number(m.membershipFee) || 7500;
+
+                let matched = false;
+                for (const t of currentTowers) {
+                  if (
+                    (t.regex && (t.regex.test(fullStr) || t.regex.test(towerStr) || t.regex.test(flatStr))) ||
+                    towerStr.toLowerCase().includes(t.name.toLowerCase()) ||
+                    towerStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+                    (t.fullName && towerStr.toLowerCase().includes(t.fullName.toLowerCase())) ||
+                    fullStr.toLowerCase().includes(t.name.toLowerCase()) ||
+                    fullStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+                    (t.fullName && fullStr.toLowerCase().includes(t.fullName.toLowerCase()))
+                  ) {
+                    if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
+                    const uniqueKey = m.id || `${t.id}-${flatStr}-${m.name || "fam"}`;
+                    counts[t.id].families.add(uniqueKey);
+                    counts[t.id].amount += amt;
+                    matched = true;
+                    break;
+                  }
                 }
-              }
 
-              if (!matched && fullStr) {
-                const uniqueGuestKey = m.id || fullStr;
-                guestFamilies.add(uniqueGuestKey);
-                guestAmount += amt;
-              }
-            });
+                if (!matched && fullStr) {
+                  const uniqueGuestKey = m.id || fullStr;
+                  guestFamilies.add(uniqueGuestKey);
+                  guestAmount += amt;
+                }
+              });
+            }
           }
         } catch (mErr) {
           console.error("Error aggregating member passes in tower participation:", mErr);
@@ -141,8 +145,10 @@ export function TowerParticipation() {
       loadLiveTowerData();
     };
     window.addEventListener("pbel_towers_updated", handleTowersUpdate);
+    window.addEventListener("pbel_member_toggle_updated", handleTowersUpdate);
     return () => {
       window.removeEventListener("pbel_towers_updated", handleTowersUpdate);
+      window.removeEventListener("pbel_member_toggle_updated", handleTowersUpdate);
     };
   }, []);
 
