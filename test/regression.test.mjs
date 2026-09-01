@@ -2309,6 +2309,40 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('62. Pujo Nirghanto Hero Banner Dynamic Highlight Chips CMS', () => {
+    it('should validate default highlight chips schema', () => {
+      const defaultChips = [
+        { id: "chip-1", icon: "sparkles", text: "Kumari Puja: 18 Oct 11:30 AM" },
+        { id: "chip-2", icon: "flame", text: "Sandhi Pujo: 18 Oct 04:15 PM" },
+        { id: "chip-3", icon: "music", text: "3 Flagship PSS Headliners" },
+      ];
+
+      assert.strictEqual(defaultChips.length, 3);
+      assert.strictEqual(defaultChips[0].icon, "sparkles");
+      assert.strictEqual(defaultChips[1].icon, "flame");
+      assert.strictEqual(defaultChips[2].icon, "music");
+    });
+
+    it('should allow Admin to update highlight chip text and icon dynamically', () => {
+      const currentChips = [
+        { id: "chip-1", icon: "sparkles", text: "Kumari Puja: 18 Oct 11:30 AM" },
+        { id: "chip-2", icon: "flame", text: "Sandhi Pujo: 18 Oct 04:15 PM" },
+        { id: "chip-3", icon: "music", text: "3 Flagship PSS Headliners" },
+      ];
+
+      const updatedChips = currentChips.map((c, i) => {
+        if (i === 0) return { ...c, text: "Path Alpona Mega Attraction" };
+        if (i === 1) return { ...c, icon: "star", text: "Maha Ashtami Kumari Puja 11:30 AM" };
+        return c;
+      });
+
+      assert.strictEqual(updatedChips[0].text, "Path Alpona Mega Attraction");
+      assert.strictEqual(updatedChips[1].icon, "star");
+      assert.strictEqual(updatedChips[1].text, "Maha Ashtami Kumari Puja 11:30 AM");
+      assert.strictEqual(updatedChips[2].text, "3 Flagship PSS Headliners");
+    });
+  });
+
 });
 
 

@@ -47,8 +47,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
-import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
-import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE, sortRitualsByTime, RitualEvent } from "@/config/schedule";
+import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE, sortRitualsByTime, RitualEvent, getStoredHeroChips, saveStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip, DEFAULT_HERO_HIGHLIGHT_CHIPS } from "@/config/schedule";
 import { 
   AESTHETIC_WALLPAPERS, 
   DEFAULT_BRANDING, 
@@ -174,6 +173,8 @@ export default function AdminDashboard() {
   const [performances, setPerformances] = useState<any[]>([]);
   const [scheduleDays, setScheduleDays] = useState<DaySchedule[]>(getStoredSchedule());
   const [selectedNirghantoDayId, setSelectedNirghantoDayId] = useState<string>("sashti");
+  const [heroChips, setHeroChips] = useState<HeroHighlightChip[]>(getStoredHeroChips());
+  const [isSavingHeroChips, setIsSavingHeroChips] = useState(false);
   const [eveningsConfig, setEveningsConfig] = useState<any[]>(initialEveningsConfig);
   const [sponsorsList, setSponsorsList] = useState<any[]>([]);
   const [galleryList, setGalleryList] = useState<any[]>([
@@ -337,6 +338,12 @@ export default function AdminDashboard() {
         setEveningsConfig(mapScheduleToEveningsConfig(cloudSched));
       }
 
+      // 5b. Fetch Hero Highlight Chips from Cloud
+      const cloudChips = await fetchStoredHeroChips();
+      if (cloudChips && cloudChips.length > 0) {
+        setHeroChips(cloudChips);
+      }
+
       // 6. Fetch Sponsors
       const { data: sps } = await supabase
         .from("sponsors")
@@ -390,6 +397,13 @@ export default function AdminDashboard() {
         if (cloudSched && cloudSched.length > 0) {
           setScheduleDays(cloudSched);
           setEveningsConfig(mapScheduleToEveningsConfig(cloudSched));
+        }
+      });
+
+      setHeroChips(getStoredHeroChips());
+      fetchStoredHeroChips().then((cloudChips) => {
+        if (cloudChips && cloudChips.length > 0) {
+          setHeroChips(cloudChips);
         }
       });
 
@@ -1400,6 +1414,33 @@ function decodeCategoryDescription(desc?: string) {
     await saveStoredSchedule(DEFAULT_PUJO_SCHEDULE);
     setEveningsConfig(mapScheduleToEveningsConfig(DEFAULT_PUJO_SCHEDULE));
     alert("Full 6-Day Pujo Nirghanto restored to baseline defaults and synced to Cloud!");
+  };
+
+  // HERO HIGHLIGHT CHIPS CMS
+  const handleSaveHeroChips = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSavingHeroChips(true);
+    try {
+      const sanitized = heroChips.map((c) => ({
+        ...c,
+        text: sanitizeText(c.text.trim()),
+      }));
+      setHeroChips(sanitized);
+      await saveStoredHeroChips(sanitized);
+      alert("✓ Pujo Nirghanto Hero Banner Highlights saved and synced live to Cloud!");
+    } catch (err) {
+      console.error("Error saving hero chips:", err);
+      alert("Failed to save highlight chips. Please try again.");
+    } finally {
+      setIsSavingHeroChips(false);
+    }
+  };
+
+  const handleResetHeroChips = async () => {
+    if (!confirm("Reset Hero Banner Highlights to default chips?")) return;
+    setHeroChips(DEFAULT_HERO_HIGHLIGHT_CHIPS);
+    await saveStoredHeroChips(DEFAULT_HERO_HIGHLIGHT_CHIPS);
+    alert("Hero Highlights reset to defaults.");
   };
 
   // PRATIBIMB EVENINGS & CAPACITY CONFIGURATION CMS
@@ -2538,6 +2579,79 @@ function decodeCategoryDescription(desc?: string) {
 
             return (
               <div className="space-y-6">
+                {/* 0. Hero Banner Highlight Chips CMS */}
+                <div className="bg-gradient-to-r from-amber-900/10 via-amber-50 to-orange-50 rounded-2xl p-5 border border-amber-300 shadow-xs space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <h4 className="font-heading text-base font-bold text-amber-950 flex items-center gap-2">
+                        <Sparkles size={18} className="text-primary" />
+                        <span>Pujo Nirghanto Hero Banner Highlights (3 Dynamic Chips)</span>
+                      </h4>
+                      <p className="text-xs text-amber-900/80 mt-0.5">
+                        Customize the 3 headline highlights shown on top of the Schedule page (/programs) in real-time.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleResetHeroChips}
+                        className="text-xs text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-3 py-1.5 rounded-xl font-semibold transition cursor-pointer"
+                      >
+                        Reset Defaults
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveHeroChips}
+                        disabled={isSavingHeroChips}
+                        className="text-xs bg-primary hover:bg-primary-hover text-white px-4 py-1.5 rounded-xl font-bold transition flex items-center gap-1.5 shadow-xs disabled:opacity-50 cursor-pointer"
+                      >
+                        <Save size={13} />
+                        <span>{isSavingHeroChips ? "Saving..." : "Save Highlights Live"}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {heroChips.map((chip, idx) => (
+                      <div key={chip.id || idx} className="bg-white p-3.5 rounded-xl border border-amber-200 shadow-2xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wide">
+                            Highlight Chip #{idx + 1}
+                          </span>
+                          <select
+                            value={chip.icon}
+                            onChange={(e) => {
+                              const updated = [...heroChips];
+                              updated[idx] = { ...updated[idx], icon: e.target.value as any };
+                              setHeroChips(updated);
+                            }}
+                            className="text-xs p-1 border border-gray-200 rounded-lg bg-gray-50 font-semibold text-gray-700 outline-none"
+                          >
+                            <option value="sparkles">✨ Sparkles</option>
+                            <option value="flame">🔥 Flame / Aarti</option>
+                            <option value="music">🎵 Music / Cultural</option>
+                            <option value="calendar">📅 Calendar</option>
+                            <option value="heart">❤️ Heart</option>
+                            <option value="star">⭐ Star / Flagship</option>
+                          </select>
+                        </div>
+
+                        <input
+                          type="text"
+                          value={chip.text}
+                          onChange={(e) => {
+                            const updated = [...heroChips];
+                            updated[idx] = { ...updated[idx], text: e.target.value };
+                            setHeroChips(updated);
+                          }}
+                          placeholder="e.g. Kumari Puja: 18 Oct 11:30 AM"
+                          className="w-full p-2 border border-gray-200 rounded-lg text-xs font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-primary"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* 1. Day Selector Tab Bar */}
                 <div className="bg-white rounded-2xl p-4 border border-gray-200 shadow-xs space-y-3">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">

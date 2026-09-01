@@ -279,3 +279,63 @@ export async function saveStoredSchedule(schedule: DaySchedule[]): Promise<void>
     console.error("Cloud schedule save failed:", err);
   }
 }
+
+/**
+ * 3 Dynamic Highlight Chips on Pujo Nirghanto & Pratibimb Hero Banner
+ */
+export interface HeroHighlightChip {
+  id: string;
+  icon: "sparkles" | "flame" | "music" | "calendar" | "heart" | "star";
+  text: string;
+}
+
+export const DEFAULT_HERO_HIGHLIGHT_CHIPS: HeroHighlightChip[] = [
+  { id: "chip-1", icon: "sparkles", text: "Kumari Puja: 18 Oct 11:30 AM" },
+  { id: "chip-2", icon: "flame", text: "Sandhi Pujo: 18 Oct 04:15 PM" },
+  { id: "chip-3", icon: "music", text: "3 Flagship PSS Headliners" },
+];
+
+export const SCHEDULE_HERO_CHIPS_STORAGE_KEY = "pbel_schedule_hero_chips";
+
+export function getStoredHeroChips(): HeroHighlightChip[] {
+  if (typeof window === "undefined") return DEFAULT_HERO_HIGHLIGHT_CHIPS;
+  try {
+    const raw = localStorage.getItem(SCHEDULE_HERO_CHIPS_STORAGE_KEY);
+    if (!raw) return DEFAULT_HERO_HIGHLIGHT_CHIPS;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_HERO_HIGHLIGHT_CHIPS;
+  } catch {
+    return DEFAULT_HERO_HIGHLIGHT_CHIPS;
+  }
+}
+
+export async function fetchStoredHeroChips(): Promise<HeroHighlightChip[]> {
+  try {
+    const { fetchCloudConfig } = await import("@/utils/cloudConfig");
+    const cloudChips = await fetchCloudConfig<HeroHighlightChip[]>("schedule_hero_chips", []);
+    if (Array.isArray(cloudChips) && cloudChips.length > 0) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SCHEDULE_HERO_CHIPS_STORAGE_KEY, JSON.stringify(cloudChips));
+        window.dispatchEvent(new Event("pbel_schedule_chips_updated"));
+      }
+      return cloudChips;
+    }
+  } catch (e) {
+    console.error("Failed fetching hero chips from cloud:", e);
+  }
+  return getStoredHeroChips();
+}
+
+export async function saveStoredHeroChips(chips: HeroHighlightChip[]): Promise<void> {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(SCHEDULE_HERO_CHIPS_STORAGE_KEY, JSON.stringify(chips));
+    window.dispatchEvent(new Event("pbel_schedule_chips_updated"));
+  }
+  try {
+    const { saveCloudConfig } = await import("@/utils/cloudConfig");
+    await saveCloudConfig("schedule_hero_chips", chips);
+  } catch (err) {
+    console.error("Cloud hero chips save failed:", err);
+  }
+}
+

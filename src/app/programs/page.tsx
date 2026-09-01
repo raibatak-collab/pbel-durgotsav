@@ -24,17 +24,20 @@ import {
   QrCode,
   ExternalLink,
   Download,
-  Building
+  Building,
+  Heart,
+  Star
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent, buildUpiPayUri } from "@/utils/security";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
-import { getStoredSchedule, fetchStoredSchedule, DaySchedule } from "@/config/schedule";
+import { getStoredSchedule, fetchStoredSchedule, DaySchedule, getStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip } from "@/config/schedule";
 
 export default function ProgramsPage() {
   const [selectedDay, setSelectedDay] = useState<string>("sashti");
   const [filterView, setFilterView] = useState<"all" | "rituals" | "cultural">("all");
   const [schedule, setSchedule] = useState<DaySchedule[]>(getStoredSchedule());
+  const [heroChips, setHeroChips] = useState<HeroHighlightChip[]>(getStoredHeroChips());
   const [towersList, setTowersList] = useState<TowerDefinition[]>([]);
   const [selectedTower, setSelectedTower] = useState<string>("");
   const [flatUnit, setFlatUnit] = useState<string>("");
@@ -95,6 +98,14 @@ export default function ProgramsPage() {
           setSchedule(cloudSched);
         }
       });
+
+      // Hydrate dynamic Hero Banner Highlight Chips
+      setHeroChips(getStoredHeroChips());
+      fetchStoredHeroChips().then((cloudChips) => {
+        if (cloudChips && cloudChips.length > 0) {
+          setHeroChips(cloudChips);
+        }
+      });
     } catch (_) {}
 
     const handleTowerUpdate = () => {
@@ -105,8 +116,13 @@ export default function ProgramsPage() {
       setSchedule(getStoredSchedule());
     };
 
+    const handleChipsUpdate = () => {
+      setHeroChips(getStoredHeroChips());
+    };
+
     window.addEventListener("pbel_towers_updated", handleTowerUpdate);
     window.addEventListener("pbel_schedule_updated", handleScheduleUpdate);
+    window.addEventListener("pbel_schedule_chips_updated", handleChipsUpdate);
 
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -131,6 +147,7 @@ export default function ProgramsPage() {
     return () => {
       window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
       window.removeEventListener("pbel_schedule_updated", handleScheduleUpdate);
+      window.removeEventListener("pbel_schedule_chips_updated", handleChipsUpdate);
     };
   }, []);
 
@@ -236,18 +253,35 @@ export default function ProgramsPage() {
 
           {/* Quick Highlight Chips */}
           <div className="flex flex-wrap justify-center gap-3 text-xs text-amber-200">
-            <div className="bg-black/30 border border-amber-400/20 px-4 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md">
-              <Sparkles size={14} className="text-amber-400" />
-              <span>Kumari Puja: 18 Oct 11:30 AM</span>
-            </div>
-            <div className="bg-black/30 border border-amber-400/20 px-4 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md">
-              <Flame size={14} className="text-amber-400" />
-              <span>Sandhi Pujo: 18 Oct 04:15 PM</span>
-            </div>
-            <div className="bg-black/30 border border-amber-400/20 px-4 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md">
-              <Music size={14} className="text-amber-400" />
-              <span>3 Flagship PSS Headliners</span>
-            </div>
+            {heroChips.map((chip) => {
+              const renderChipIcon = () => {
+                switch (chip.icon) {
+                  case "flame":
+                    return <Flame size={14} className="text-amber-400" />;
+                  case "music":
+                    return <Music size={14} className="text-amber-400" />;
+                  case "calendar":
+                    return <Calendar size={14} className="text-amber-400" />;
+                  case "heart":
+                    return <Heart size={14} className="text-amber-400" />;
+                  case "star":
+                    return <Star size={14} className="text-amber-400" />;
+                  case "sparkles":
+                  default:
+                    return <Sparkles size={14} className="text-amber-400" />;
+                }
+              };
+
+              return (
+                <div
+                  key={chip.id}
+                  className="bg-black/30 border border-amber-400/20 px-4 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-md hover:border-amber-400/40 transition shadow-xs"
+                >
+                  {renderChipIcon()}
+                  <span>{chip.text}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
