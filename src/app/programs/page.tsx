@@ -25,8 +25,7 @@ import {
   ExternalLink,
   Download,
   Building,
-  Heart,
-  Star
+  Heart
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent, buildUpiPayUri } from "@/utils/security";
