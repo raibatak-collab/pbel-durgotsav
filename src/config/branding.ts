@@ -57,6 +57,13 @@ export interface SamitiBrandingConfig {
   customWallpaperUrl?: string;
   sponsorshipDeckPdfUrl: string;
   sponsorshipDeckFileName: string;
+  societyRegNo?: string;
+  societyPan?: string;
+  tax80gUrn?: string;
+  tax80gDate?: string;
+  presidentSignatureUrl?: string;
+  signatoryTitle?: string;
+  registeredAddress?: string;
 }
 
 export const DEFAULT_BRANDING: SamitiBrandingConfig = {
@@ -69,6 +76,13 @@ export const DEFAULT_BRANDING: SamitiBrandingConfig = {
   customWallpaperUrl: "",
   sponsorshipDeckPdfUrl: "/docs/PBEL_Durgotsav_2026_Sponsorship_Deck.pdf",
   sponsorshipDeckFileName: "PBEL_Durgotsav_2026_Sponsorship_Deck.pdf",
+  societyRegNo: "",
+  societyPan: "",
+  tax80gUrn: "",
+  tax80gDate: "",
+  presidentSignatureUrl: "",
+  signatoryTitle: "President / General Secretary",
+  registeredAddress: "PBEL City, Appa Junction, Peeramcheruvu, Hyderabad, Telangana - 500091",
 };
 
 export const BRANDING_STORAGE_KEY = "pbel_branding_config";

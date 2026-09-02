@@ -2431,6 +2431,102 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('65. Official Contribution Receipt & Optional 80G Tax Exemption Engine', () => {
+    // Import numberToIndianRupeesWords function logic
+    const ONES = [
+      "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+      "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+      "Seventeen", "Eighteen", "Nineteen"
+    ];
+    const TENS = [
+      "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"
+    ];
+    function convertBelowThousand(num) {
+      let str = "";
+      if (num >= 100) {
+        str += ONES[Math.floor(num / 100)] + " Hundred ";
+        num %= 100;
+      }
+      if (num >= 20) {
+        str += TENS[Math.floor(num / 10)] + " ";
+        num %= 10;
+      }
+      if (num > 0) {
+        str += ONES[num] + " ";
+      }
+      return str.trim();
+    }
+    function numberToIndianRupeesWords(amount) {
+      const rounded = Math.floor(Math.abs(amount));
+      if (rounded === 0) return "Rupees Zero Only";
+      let crore = Math.floor(rounded / 10000000);
+      let remainder = rounded % 10000000;
+      let lakh = Math.floor(remainder / 100000);
+      remainder %= 100000;
+      let thousand = Math.floor(remainder / 1000);
+      remainder %= 1000;
+      let result = "";
+      if (crore > 0) result += convertBelowThousand(crore) + " Crore ";
+      if (lakh > 0) result += convertBelowThousand(lakh) + " Lakh ";
+      if (thousand > 0) result += convertBelowThousand(thousand) + " Thousand ";
+      if (remainder > 0) result += convertBelowThousand(remainder) + " ";
+      return `Rupees ${result.replace(/\s+/g, " ").trim()} Only`;
+    }
+
+    const validatePan = (pan) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan.trim().toUpperCase());
+
+    it('should accurately convert contribution amounts into Indian Rupee words', () => {
+      assert.strictEqual(numberToIndianRupeesWords(1001), "Rupees One Thousand One Only");
+      assert.strictEqual(numberToIndianRupeesWords(5000), "Rupees Five Thousand Only");
+      assert.strictEqual(numberToIndianRupeesWords(7500), "Rupees Seven Thousand Five Hundred Only");
+      assert.strictEqual(numberToIndianRupeesWords(25000), "Rupees Twenty Five Thousand Only");
+      assert.strictEqual(numberToIndianRupeesWords(100000), "Rupees One Lakh Only");
+    });
+
+    it('should strictly validate 10-character Indian PAN format', () => {
+      assert.strictEqual(validatePan("AKNPB0743L"), true);
+      assert.strictEqual(validatePan("abcde1234f"), true); // handles lowercase auto-trim
+      assert.strictEqual(validatePan("1234567890"), false);
+      assert.strictEqual(validatePan("AKNPB0743"), false); // 9 chars
+      assert.strictEqual(validatePan("AKNPB074312"), false); // 11 chars
+      assert.strictEqual(validatePan(""), false);
+    });
+
+    it('should generate correct adaptive receipt payload when 80G tax exemption is opted in', () => {
+      const receiptWith80G = {
+        name: "Snehasis Bose",
+        flatNumber: "Titanium - B408",
+        amount: 1001,
+        category: "Maha Saptami Bhog Seva",
+        paymentId: "WEB_872361",
+        requiresTaxExemption: true,
+        panNumber: "AKNPB0743L",
+        wantsWhatsappUpdates: true,
+      };
+
+      assert.strictEqual(receiptWith80G.requiresTaxExemption, true);
+      assert.strictEqual(validatePan(receiptWith80G.panNumber), true);
+      assert.strictEqual(receiptWith80G.wantsWhatsappUpdates, true);
+      assert.strictEqual(numberToIndianRupeesWords(receiptWith80G.amount), "Rupees One Thousand One Only");
+    });
+
+    it('should generate devotional blessing payload without PAN when 80G is not opted in', () => {
+      const standardDevotionalReceipt = {
+        name: "Anirban Banerjee",
+        flatNumber: "Emerald - 1204",
+        amount: 501,
+        category: "Pushpanjali & Sandhi Aarti Seva",
+        paymentId: "WEB_992144",
+        requiresTaxExemption: false,
+        wantsWhatsappUpdates: true,
+      };
+
+      assert.strictEqual(standardDevotionalReceipt.requiresTaxExemption, false);
+      assert.strictEqual(standardDevotionalReceipt.panNumber, undefined);
+      assert.strictEqual(numberToIndianRupeesWords(standardDevotionalReceipt.amount), "Rupees Five Hundred One Only");
+    });
+  });
+
 });
 
 

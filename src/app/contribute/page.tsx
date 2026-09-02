@@ -28,6 +28,8 @@ import { TowerParticipation } from "@/components/TowerParticipation";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { buildUpiPayUri } from "@/utils/security";
 import { saveQrCodeToGallery } from "@/utils/qrDownload";
+import OfficialContributionReceipt, { ReceiptData } from "@/components/OfficialContributionReceipt";
+import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
 
 // Official Society Bank Account UPI Configuration
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
@@ -311,6 +313,9 @@ export default function ContributePage() {
     email: "",
     upiRef: "",
     isNameVisible: true,
+    requiresTaxExemption: false,
+    panNumber: "",
+    wantsWhatsappUpdates: true,
   });
   const [modalFormError, setModalFormError] = useState<string | null>(null);
 
@@ -323,13 +328,17 @@ export default function ContributePage() {
     email: "",
     upiRef: "",
     isNameVisible: true,
+    requiresTaxExemption: false,
+    panNumber: "",
+    wantsWhatsappUpdates: true,
   });
   const [customFormError, setCustomFormError] = useState<string | null>(null);
 
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [receiptData, setReceiptData] = useState<any>(null);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [branding, setBranding] = useState<SamitiBrandingConfig>(getStoredBranding());
 
 // Category metadata decoder
 function decodeCategoryDescription(desc?: string) {
@@ -457,9 +466,17 @@ function decodeCategoryDescription(desc?: string) {
       });
     } catch (_) {}
 
+    fetchStoredBranding().then((b) => {
+      if (b) setBranding(b);
+    });
+
     const handleTowerUpdate = () => {
       const stored = getStoredTowers();
       setTowersList(stored);
+    };
+
+    const handleBrandingUpdate = () => {
+      setBranding(getStoredBranding());
     };
 
     const handleSelectTower = (e: Event) => {
@@ -471,6 +488,7 @@ function decodeCategoryDescription(desc?: string) {
     };
 
     window.addEventListener("pbel_towers_updated", handleTowerUpdate);
+    window.addEventListener("pbel_branding_updated", handleBrandingUpdate);
     window.addEventListener("pbel_select_tower", handleSelectTower);
 
     // Deep link query check
@@ -576,6 +594,14 @@ function decodeCategoryDescription(desc?: string) {
       return;
     }
 
+    if (modalFormData.requiresTaxExemption) {
+      const cleanPan = modalFormData.panNumber.trim().toUpperCase();
+      if (!cleanPan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+        setModalFormError("Please provide a valid 10-character Indian PAN number (e.g. ABCDE1234F) to claim 80G Tax Exemption.");
+        return;
+      }
+    }
+
     // Check if slot limit reached right before submission
     const max = modalSeva.maxLimit || 5;
     const booked = modalSeva.bookedCount || 0;
@@ -628,10 +654,12 @@ function decodeCategoryDescription(desc?: string) {
         name: modalFormData.name.trim(),
         flatNumber: formattedFlat,
         phone: modalFormData.phone.trim(),
+        email: modalFormData.email.trim(),
         amount: Number(modalSeva.amount),
         category: `${modalSeva.day} - ${modalSeva.title}`,
         paymentId: generatedPaymentId,
         upiId: SOCIETY_UPI_ID,
+        upiRef: modalFormData.upiRef.trim() || undefined,
         date: new Date().toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
@@ -639,6 +667,9 @@ function decodeCategoryDescription(desc?: string) {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        requiresTaxExemption: modalFormData.requiresTaxExemption,
+        panNumber: modalFormData.panNumber.trim().toUpperCase(),
+        wantsWhatsappUpdates: modalFormData.wantsWhatsappUpdates,
       });
 
       setModalSeva(null);
@@ -673,6 +704,14 @@ function decodeCategoryDescription(desc?: string) {
     if (customFormData.phone.replace(/\D/g, "").length !== 10) {
       setCustomFormError("Please enter a valid 10-digit mobile number.");
       return;
+    }
+
+    if (customFormData.requiresTaxExemption) {
+      const cleanPan = customFormData.panNumber.trim().toUpperCase();
+      if (!cleanPan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+        setCustomFormError("Please provide a valid 10-character Indian PAN number (e.g. ABCDE1234F) to claim 80G Tax Exemption.");
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -717,10 +756,12 @@ function decodeCategoryDescription(desc?: string) {
         name: customFormData.name.trim(),
         flatNumber: formattedFlat,
         phone: customFormData.phone.trim(),
+        email: customFormData.email.trim(),
         amount: Number(customAmount),
         category: categoryName,
         paymentId: generatedPaymentId,
         upiId: SOCIETY_UPI_ID,
+        upiRef: customFormData.upiRef.trim() || undefined,
         date: new Date().toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
@@ -728,6 +769,9 @@ function decodeCategoryDescription(desc?: string) {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        requiresTaxExemption: customFormData.requiresTaxExemption,
+        panNumber: customFormData.panNumber.trim().toUpperCase(),
+        wantsWhatsappUpdates: customFormData.wantsWhatsappUpdates,
       });
 
       setIsSuccess(true);
@@ -743,104 +787,35 @@ function decodeCategoryDescription(desc?: string) {
   // RECEIPT VIEW
   if (isSuccess && receiptData) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
-        <div className="bg-white rounded-3xl p-8 sm:p-10 border border-amber-900/15 shadow-2xl relative overflow-hidden">
-          
-          <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-            <CheckCircle2 size={48} />
-          </div>
+      <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+        <OfficialContributionReceipt
+          receiptData={receiptData}
+          branding={branding}
+          onMakeAnother={() => {
+            setIsSuccess(false);
+            setCustomAmount("");
+            setCustomFormData({
+              name: "",
+              phone: "",
+              email: "",
+              upiRef: "",
+              isNameVisible: true,
+              requiresTaxExemption: false,
+              panNumber: "",
+              wantsWhatsappUpdates: true,
+            });
+            setCustomFlatUnit("");
+          }}
+          onOpenShareModal={() => setIsShareModalOpen(true)}
+        />
 
-          <span className="text-xs uppercase font-bold text-amber-800 tracking-wider bg-amber-100/60 px-3 py-1 rounded-full">
-            Offering Submitted • Receipt
-          </span>
-          <h1 className="font-heading text-3xl sm:text-4xl text-primary font-bold mt-2 mb-2">
-            ধন্যবাদ! (Dhonnobad)
-          </h1>
-          <p className="text-gray-600 text-xs sm:text-sm max-w-md mx-auto mb-6">
-            Your generous contribution to <strong>PBEL Sanskritik Samiti</strong> has been officially received. Maa Durga bless you and your family!
-          </p>
-
-          {/* Official Receipt Card */}
-          <div className="bg-gradient-to-br from-[#FFFDF9] to-[#FDF8F0] rounded-2xl p-6 border border-amber-300/60 text-left text-xs sm:text-sm space-y-3 mb-6 shadow-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-amber-900/10">
-              <div>
-                <span className="font-heading text-lg font-bold text-primary block">PBEL Sanskritik Samiti</span>
-                <span className="text-[11px] text-gray-500 font-mono">UPI: {receiptData.upiId}</span>
-              </div>
-              <span className="text-amber-800 font-semibold font-mono text-xs">{receiptData.paymentId}</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <span className="text-gray-500 text-[11px] block">Devotee Name</span>
-                <span className="font-semibold text-gray-900">{receiptData.name} ({receiptData.flatNumber})</span>
-              </div>
-              <div>
-                <span className="text-gray-500 text-[11px] block">Seva Purpose</span>
-                <span className="font-semibold text-gray-900">{receiptData.category}</span>
-              </div>
-              <div>
-                <span className="text-gray-500 text-[11px] block">Amount Contributed</span>
-                <span className="font-bold text-green-700 text-base">₹{Number(receiptData.amount).toLocaleString("en-IN")}</span>
-              </div>
-              <div>
-                <span className="text-gray-500 text-[11px] block">Verification Status</span>
-                <span className="text-amber-900 font-bold bg-amber-100/90 px-2 py-0.5 rounded-md inline-block text-[11px]">
-                  ⏳ Pending Society Bank Match
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-2 text-[11px] text-gray-500 border-t border-amber-900/10 flex items-center justify-between">
-              <span>Date: {receiptData.date}</span>
-              <span className="text-green-600 font-semibold flex items-center gap-1">
-                <ShieldCheck size={13} /> Direct Society ICICI A/C
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-amber-50 p-3 rounded-2xl border border-amber-200/80 text-xs text-amber-900 mb-6 text-left flex items-start gap-2">
-            <Info size={16} className="text-primary shrink-0 mt-0.5" />
-            <span>
-              Your contribution is being verified against our society bank account. Once approved by the committee, your name will appear on the public <strong>Wall of Contributors</strong>!
-            </span>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button
-              onClick={() => setIsShareModalOpen(true)}
-              className="bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-6 py-2.5 rounded-full text-xs transition flex items-center justify-center gap-1.5 shadow-sm"
-            >
-              <span>🌺 Share Blessing on WhatsApp</span>
-            </button>
-            <button
-              onClick={() => window.print()}
-              className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold px-6 py-2.5 rounded-full text-xs transition flex items-center justify-center gap-1.5"
-            >
-              <Download size={14} /> Print / Save Official Receipt
-            </button>
-            <button
-              onClick={() => {
-                setIsSuccess(false);
-                setCustomAmount(1001);
-                setCustomFormData({ name: "", phone: "", email: "", upiRef: "", isNameVisible: true });
-                setCustomFlatUnit("");
-              }}
-              className="bg-primary hover:bg-primary-hover text-white font-semibold px-6 py-2.5 rounded-full text-xs transition shadow-sm"
-            >
-              Make Another Offering
-            </button>
-          </div>
-
-          <DevotionalShareModal
-            isOpen={isShareModalOpen}
-            onClose={() => setIsShareModalOpen(false)}
-            contributorName={receiptData.name}
-            categoryName={receiptData.category}
-            flatNumber={receiptData.flatNumber}
-          />
-
-        </div>
+        <DevotionalShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          contributorName={receiptData.name}
+          categoryName={receiptData.category}
+          flatNumber={receiptData.flatNumber}
+        />
       </div>
     );
   }
@@ -1139,6 +1114,64 @@ function decodeCategoryDescription(desc?: string) {
                     placeholder="e.g. 12-digit UTR for instant verification"
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-mono"
                   />
+                </div>
+
+                {/* WhatsApp Broadcast Alerts Checkbox */}
+                <div className="flex items-center gap-2.5 p-3 bg-green-50/70 border border-green-200/90 rounded-xl text-xs text-green-950">
+                  <input
+                    type="checkbox"
+                    id="custom-whatsapp-alerts"
+                    checked={customFormData.wantsWhatsappUpdates}
+                    onChange={(e) => setCustomFormData({ ...customFormData, wantsWhatsappUpdates: e.target.checked })}
+                    className="w-4 h-4 text-green-700 rounded border-gray-300 focus:ring-green-600 cursor-pointer"
+                  />
+                  <label htmlFor="custom-whatsapp-alerts" className="font-semibold cursor-pointer select-none">
+                    📲 Receive official Pujo WhatsApp schedule, aarti timings &amp; broadcast updates
+                  </label>
+                </div>
+
+                {/* Optional 80G Tax Exemption Toggle & PAN */}
+                <div className="bg-amber-50/80 border border-amber-300/90 rounded-2xl p-3.5 space-y-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <input
+                      type="checkbox"
+                      id="custom-tax-exemption"
+                      checked={customFormData.requiresTaxExemption}
+                      onChange={(e) => setCustomFormData({ ...customFormData, requiresTaxExemption: e.target.checked })}
+                      className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mt-0.5 cursor-pointer"
+                    />
+                    <label htmlFor="custom-tax-exemption" className="text-xs font-bold text-amber-950 cursor-pointer select-none">
+                      📜 I require an 80G Tax Exemption Certificate (Requires PAN)
+                      <span className="block font-normal text-[11px] text-gray-600 mt-0.5">
+                        Optional: Check this if you wish to claim tax deduction under Section 80G of the Income Tax Act.
+                      </span>
+                    </label>
+                  </div>
+
+                  {customFormData.requiresTaxExemption && (
+                    <div className="pt-2 border-t border-amber-200/80">
+                      <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                        Contributor PAN Number (10 alphanumeric digits) *
+                      </label>
+                      <input
+                        type="text"
+                        required={customFormData.requiresTaxExemption}
+                        maxLength={10}
+                        value={customFormData.panNumber}
+                        onChange={(e) => {
+                          const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+                          setCustomFormData({ ...customFormData, panNumber: val });
+                        }}
+                        placeholder="e.g. ABCDE1234F"
+                        className="w-full p-2.5 border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none font-mono font-bold text-xs uppercase tracking-wider"
+                      />
+                      {customFormData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(customFormData.panNumber) && (
+                        <p className="text-[10.5px] text-red-600 mt-1 font-medium">
+                          Please enter a valid 10-character Indian PAN format (5 letters, 4 digits, 1 letter).
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Privacy Wall Checkbox */}
@@ -1570,6 +1603,64 @@ function decodeCategoryDescription(desc?: string) {
                     className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono"
                   />
                 </div>
+              </div>
+
+              {/* WhatsApp Broadcast Alerts Checkbox */}
+              <div className="flex items-center gap-2.5 p-2.5 bg-green-50/70 border border-green-200/90 rounded-xl text-xs text-green-950">
+                <input
+                  type="checkbox"
+                  id="modal-whatsapp-alerts"
+                  checked={modalFormData.wantsWhatsappUpdates}
+                  onChange={(e) => setModalFormData({ ...modalFormData, wantsWhatsappUpdates: e.target.checked })}
+                  className="w-4 h-4 text-green-700 rounded border-gray-300 focus:ring-green-600 cursor-pointer"
+                />
+                <label htmlFor="modal-whatsapp-alerts" className="font-semibold cursor-pointer select-none">
+                  📲 Receive official Pujo WhatsApp schedule &amp; broadcast updates
+                </label>
+              </div>
+
+              {/* Optional 80G Tax Exemption Toggle & PAN */}
+              <div className="bg-amber-50/80 border border-amber-300/90 rounded-2xl p-3 space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="modal-tax-exemption"
+                    checked={modalFormData.requiresTaxExemption}
+                    onChange={(e) => setModalFormData({ ...modalFormData, requiresTaxExemption: e.target.checked })}
+                    className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mt-0.5 cursor-pointer"
+                  />
+                  <label htmlFor="modal-tax-exemption" className="text-xs font-bold text-amber-950 cursor-pointer select-none">
+                    📜 I require an 80G Tax Exemption Certificate (Requires PAN)
+                    <span className="block font-normal text-[11px] text-gray-600 mt-0.5">
+                      Optional: Check this if you wish to claim tax deduction under Section 80G of the Income Tax Act.
+                    </span>
+                  </label>
+                </div>
+
+                {modalFormData.requiresTaxExemption && (
+                  <div className="pt-2 border-t border-amber-200/80">
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      Contributor PAN Number (10 alphanumeric digits) *
+                    </label>
+                    <input
+                      type="text"
+                      required={modalFormData.requiresTaxExemption}
+                      maxLength={10}
+                      value={modalFormData.panNumber}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+                        setModalFormData({ ...modalFormData, panNumber: val });
+                      }}
+                      placeholder="e.g. ABCDE1234F"
+                      className="w-full p-2.5 border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none font-mono font-bold text-xs uppercase tracking-wider"
+                    />
+                    {modalFormData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(modalFormData.panNumber) && (
+                      <p className="text-[10.5px] text-red-600 mt-1 font-medium">
+                        Please enter a valid 10-character Indian PAN format (5 letters, 4 digits, 1 letter).
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center gap-2 pt-1">

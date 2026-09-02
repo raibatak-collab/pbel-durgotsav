@@ -24,6 +24,8 @@ import { supabase } from "@/utils/supabase/client";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { buildUpiPayUri } from "@/utils/security";
 import { saveQrCodeToGallery } from "@/utils/qrDownload";
+import OfficialContributionReceipt, { ReceiptData } from "@/components/OfficialContributionReceipt";
+import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig } from "@/config/branding";
 
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
 const SOCIETY_NAME = "PBEL Sanskritik Samiti";
@@ -84,16 +86,25 @@ export function HomeQuickContribute() {
     email: "",
     upiRef: "",
     isNameVisible: true,
+    requiresTaxExemption: false,
+    panNumber: "",
+    wantsWhatsappUpdates: true,
   });
 
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [receiptData, setReceiptData] = useState<any>(null);
+  const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [branding, setBranding] = useState<SamitiBrandingConfig>(getStoredBranding());
+  const [showFullReceiptModal, setShowFullReceiptModal] = useState(false);
 
   // Load live data: dynamic contributor count, admin featured categories & towers
   const loadDynamicData = async () => {
     try {
+      fetchStoredBranding().then((b) => {
+        if (b) setBranding(b);
+      });
+
       // 1. Fetch Towers
       const stored = getStoredTowers();
       setTowersList(stored);
@@ -243,6 +254,14 @@ export function HomeQuickContribute() {
       return;
     }
 
+    if (formData.requiresTaxExemption) {
+      const cleanPan = formData.panNumber.trim().toUpperCase();
+      if (!cleanPan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
+        setFormError("Please provide a valid 10-character Indian PAN number (e.g. ABCDE1234F) to claim 80G Tax Exemption.");
+        return;
+      }
+    }
+
     setIsSubmitting(true);
     try {
       // 1. Get or create category
@@ -284,10 +303,12 @@ export function HomeQuickContribute() {
         name: formData.name.trim(),
         flatNumber: formattedFlat,
         phone: formData.phone.trim(),
+        email: formData.email.trim(),
         amount: Number(amount),
         category: purpose || "General Pujo Fund",
         paymentId: generatedPaymentId,
         upiId: SOCIETY_UPI_ID,
+        upiRef: formData.upiRef.trim() || undefined,
         date: new Date().toLocaleDateString("en-IN", {
           day: "numeric",
           month: "short",
@@ -295,6 +316,9 @@ export function HomeQuickContribute() {
           hour: "2-digit",
           minute: "2-digit",
         }),
+        requiresTaxExemption: formData.requiresTaxExemption,
+        panNumber: formData.panNumber.trim().toUpperCase(),
+        wantsWhatsappUpdates: formData.wantsWhatsappUpdates,
       });
 
       setIsSuccess(true);
@@ -364,14 +388,32 @@ export function HomeQuickContribute() {
             >
               <span>📲 Share Blessing Card in Tower WhatsApp Group</span>
             </a>
+
+            <button
+              type="button"
+              onClick={() => setShowFullReceiptModal(true)}
+              className="mt-2.5 inline-flex items-center justify-center gap-2 bg-[#D97706] hover:bg-[#B45309] text-white font-bold text-xs py-2.5 px-6 rounded-full shadow-md transition w-full cursor-pointer"
+            >
+              <Receipt size={14} />
+              <span>📜 View &amp; Print Official Contribution Receipt</span>
+            </button>
           </div>
 
-          <div className="pt-2 flex justify-center gap-3">
+          <div className="pt-2 flex flex-wrap justify-center gap-3">
             <button
               onClick={() => {
                 setIsSuccess(false);
                 setReceiptData(null);
-                setFormData({ name: "", phone: "", email: "", upiRef: "", isNameVisible: true });
+                setFormData({
+                  name: "",
+                  phone: "",
+                  email: "",
+                  upiRef: "",
+                  isNameVisible: true,
+                  requiresTaxExemption: false,
+                  panNumber: "",
+                  wantsWhatsappUpdates: true,
+                });
                 setFlatUnit("");
               }}
               className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-6 py-2.5 rounded-full transition shadow-sm"
@@ -721,6 +763,64 @@ export function HomeQuickContribute() {
                 />
               </div>
 
+              {/* WhatsApp Broadcast Alerts Checkbox */}
+              <div className="flex items-center gap-2.5 p-3 bg-green-50/70 border border-green-200/90 rounded-xl text-xs text-green-950">
+                <input
+                  type="checkbox"
+                  id="home-whatsapp-alerts"
+                  checked={formData.wantsWhatsappUpdates}
+                  onChange={(e) => setFormData({ ...formData, wantsWhatsappUpdates: e.target.checked })}
+                  className="w-4 h-4 text-green-700 rounded border-gray-300 focus:ring-green-600 cursor-pointer"
+                />
+                <label htmlFor="home-whatsapp-alerts" className="font-semibold cursor-pointer select-none">
+                  📲 Receive official Pujo WhatsApp schedule, aarti timings &amp; broadcast updates
+                </label>
+              </div>
+
+              {/* Optional 80G Tax Exemption Toggle & PAN */}
+              <div className="bg-amber-50/80 border border-amber-300/90 rounded-2xl p-3.5 space-y-2.5">
+                <div className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    id="home-tax-exemption"
+                    checked={formData.requiresTaxExemption}
+                    onChange={(e) => setFormData({ ...formData, requiresTaxExemption: e.target.checked })}
+                    className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mt-0.5 cursor-pointer"
+                  />
+                  <label htmlFor="home-tax-exemption" className="text-xs font-bold text-amber-950 cursor-pointer select-none">
+                    📜 I require an 80G Tax Exemption Certificate (Requires PAN)
+                    <span className="block font-normal text-[11px] text-gray-600 mt-0.5">
+                      Optional: Check this if you wish to claim tax deduction under Section 80G of the Income Tax Act.
+                    </span>
+                  </label>
+                </div>
+
+                {formData.requiresTaxExemption && (
+                  <div className="pt-2 border-t border-amber-200/80">
+                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
+                      Contributor PAN Number (10 alphanumeric digits) *
+                    </label>
+                    <input
+                      type="text"
+                      required={formData.requiresTaxExemption}
+                      maxLength={10}
+                      value={formData.panNumber}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
+                        setFormData({ ...formData, panNumber: val });
+                      }}
+                      placeholder="e.g. ABCDE1234F"
+                      className="w-full p-2.5 border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none font-mono font-bold text-xs uppercase tracking-wider"
+                    />
+                    {formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) && (
+                      <p className="text-[10.5px] text-red-600 mt-1 font-medium">
+                        Please enter a valid 10-character Indian PAN format (5 letters, 4 digits, 1 letter).
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/60 flex items-start gap-3">
                 <input
                   type="checkbox"
@@ -761,6 +861,42 @@ export function HomeQuickContribute() {
           </form>
         </div>
       )}
+
+      {/* FULL OFFICIAL RECEIPT MODAL */}
+      {showFullReceiptModal && receiptData && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-4 sm:p-6 max-w-3xl w-full max-h-[94vh] overflow-y-auto relative shadow-2xl">
+            <button
+              onClick={() => setShowFullReceiptModal(false)}
+              className="absolute top-4 right-4 p-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition z-20 print:hidden cursor-pointer"
+              title="Close Receipt Preview"
+            >
+              <X size={18} />
+            </button>
+            <OfficialContributionReceipt
+              receiptData={receiptData}
+              branding={branding}
+              onMakeAnother={() => {
+                setShowFullReceiptModal(false);
+                setIsSuccess(false);
+                setReceiptData(null);
+                setFormData({
+                  name: "",
+                  phone: "",
+                  email: "",
+                  upiRef: "",
+                  isNameVisible: true,
+                  requiresTaxExemption: false,
+                  panNumber: "",
+                  wantsWhatsappUpdates: true,
+                });
+                setFlatUnit("");
+              }}
+            />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

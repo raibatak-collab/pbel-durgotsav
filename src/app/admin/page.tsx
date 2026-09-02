@@ -659,6 +659,28 @@ export default function AdminDashboard() {
     reader.readAsDataURL(file);
   };
 
+  // Local File Upload for President / Signatory Signature
+  const handleUploadPresidentSignatureFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const updated = {
+        ...branding,
+        presidentSignatureUrl: dataUrl,
+      };
+      setBranding(updated);
+      saveStoredBranding(updated);
+      alert("President / Signatory Signature uploaded & updated on all Official Receipts!");
+    };
+    if (file.size > 2 * 1024 * 1024) {
+      alert("File size must be under 2MB. Please compress or resize the image before uploading.");
+      return;
+    }
+    reader.readAsDataURL(file);
+  };
+
   const handleUploadPdfFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -5687,11 +5709,147 @@ function decodeCategoryDescription(desc?: string) {
                     />
                   </div>
 
+                  {/* Official Contribution Receipt & Legal Tax Settings */}
+                  <div className="pt-3 border-t border-gray-200 mt-3 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">📜</span>
+                      <h4 className="font-heading font-bold text-gray-900 text-xs uppercase tracking-wider">
+                        Official Contribution Receipt &amp; 80G Legal Settings
+                      </h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          Society PAN Number
+                        </label>
+                        <input
+                          type="text"
+                          value={branding.societyPan || ""}
+                          onChange={(e) => setBranding({ ...branding, societyPan: e.target.value.toUpperCase() })}
+                          placeholder="e.g. AANAP3884F"
+                          className="w-full p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary font-mono font-bold text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          Society Registration No.
+                        </label>
+                        <input
+                          type="text"
+                          value={branding.societyRegNo || ""}
+                          onChange={(e) => setBranding({ ...branding, societyRegNo: e.target.value })}
+                          placeholder="e.g. 2024/469"
+                          className="w-full p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary font-mono text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          80G Registration URN
+                        </label>
+                        <input
+                          type="text"
+                          value={branding.tax80gUrn || ""}
+                          onChange={(e) => setBranding({ ...branding, tax80gUrn: e.target.value.toUpperCase() })}
+                          placeholder="e.g. AANAP3884FF20251"
+                          className="w-full p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary font-mono font-bold text-xs"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">
+                          80G Order / Approval Date
+                        </label>
+                        <input
+                          type="text"
+                          value={branding.tax80gDate || ""}
+                          onChange={(e) => setBranding({ ...branding, tax80gDate: e.target.value })}
+                          placeholder="e.g. 30-Jun-2025"
+                          className="w-full p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary font-mono text-xs"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">
+                        Registered Society Address (Printed on Receipt)
+                      </label>
+                      <input
+                        type="text"
+                        value={branding.registeredAddress || ""}
+                        onChange={(e) => setBranding({ ...branding, registeredAddress: e.target.value })}
+                        placeholder="PBEL City, Appa Junction, Peeramcheruvu, Hyderabad, Telangana - 500091"
+                        className="w-full p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary text-xs"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">
+                        Signatory Designation / Title
+                      </label>
+                      <input
+                        type="text"
+                        value={branding.signatoryTitle || ""}
+                        onChange={(e) => setBranding({ ...branding, signatoryTitle: e.target.value })}
+                        placeholder="e.g. President / General Secretary or Treasurer"
+                        className="w-full p-2 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-primary text-xs"
+                      />
+                    </div>
+
+                    {/* President / Signatory Signature Upload */}
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">
+                        President / Signatory Signature Image
+                      </label>
+                      <div className="flex items-center gap-3">
+                        {branding.presidentSignatureUrl ? (
+                          <div className="relative p-1 border border-amber-300 rounded-xl bg-white">
+                            <img
+                              src={branding.presidentSignatureUrl}
+                              alt="Signature Preview"
+                              className="h-10 max-w-[120px] object-contain"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = { ...branding, presidentSignatureUrl: "" };
+                                setBranding(updated);
+                                saveStoredBranding(updated);
+                              }}
+                              className="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full p-0.5 cursor-pointer"
+                              title="Remove Signature"
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="h-10 px-3 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center text-[10px] text-gray-500 italic">
+                            Default Digitize Calligraphy Active
+                          </div>
+                        )}
+                        <div className="flex-1">
+                          <label className="inline-block bg-amber-100 hover:bg-amber-200 text-amber-900 px-3 py-1.5 rounded-xl font-bold cursor-pointer transition text-xs">
+                            ✍️ Upload Signature Image
+                            <input
+                              type="file"
+                              accept="image/png, image/jpeg, image/webp"
+                              onChange={handleUploadPresidentSignatureFile}
+                              className="hidden"
+                            />
+                          </label>
+                          <span className="block text-[10px] text-gray-400 mt-0.5">Transparent PNG recommended</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <button
                     onClick={() => handleSaveBranding(branding)}
-                    className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-xs mt-2"
+                    className="w-full bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold transition shadow-xs mt-2 cursor-pointer"
                   >
-                    Save Logo &amp; Identity Settings
+                    Save Logo, Receipt &amp; Identity Settings
                   </button>
                 </div>
               </div>
