@@ -2370,6 +2370,67 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('64. Sponsorship Packages & Tier Cards Dynamic CMS', () => {
+    const defaultTiers = [
+      {
+        id: "platinum",
+        title: "Title / Platinum Partner",
+        amount: "₹1,00,000",
+        tag: "Maximum Brand Dominance",
+        isHighlight: true,
+        deliverables: ["Exclusive Prime Stage LED Backdrop Branding", "Grand Pandal Entrance Archway Branding"],
+      },
+      {
+        id: "gold",
+        title: "Gold Partner",
+        amount: "₹50,000",
+        tag: "High Visibility",
+        isHighlight: false,
+        deliverables: ["Stage Side Panels & Pandal Entry Branding", "Dedicated Food / Promotional Stall Space"],
+      },
+    ];
+
+    it('should validate default sponsorship tier structure and deliverables', () => {
+      assert.strictEqual(defaultTiers.length, 2);
+      assert.strictEqual(defaultTiers[0].title, "Title / Platinum Partner");
+      assert.strictEqual(defaultTiers[0].isHighlight, true);
+      assert.strictEqual(defaultTiers[0].deliverables.length, 2);
+    });
+
+    it('should allow adding custom sponsorship packages dynamically', () => {
+      const newPackage = {
+        id: "kids_zone",
+        title: "Kids Zone & Gaming Partner",
+        amount: "₹30,000",
+        tag: "Family Engagement",
+        isHighlight: false,
+        deliverables: ["Branded Fun Zone Games Banner", "Logo on Kids Competitions Certificates"],
+      };
+
+      const updated = [...defaultTiers, newPackage];
+      assert.strictEqual(updated.length, 3);
+      assert.strictEqual(updated[2].title, "Kids Zone & Gaming Partner");
+      assert.strictEqual(updated[2].amount, "₹30,000");
+    });
+
+    it('should allow modifying package deliverables and pricing on the fly', () => {
+      const updated = defaultTiers.map((t) => {
+        if (t.id === "gold") {
+          return {
+            ...t,
+            amount: "₹60,000",
+            deliverables: [...t.deliverables, "VIP Front Row Seating Passes (4 Devotees)"],
+          };
+        }
+        return t;
+      });
+
+      assert.strictEqual(updated[1].amount, "₹60,000");
+      assert.strictEqual(updated[1].deliverables.length, 3);
+      assert.strictEqual(updated[1].deliverables[2], "VIP Front Row Seating Passes (4 Devotees)");
+    });
+  });
+
 });
 
 

@@ -20,9 +20,11 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
 import { getStoredBranding, DEFAULT_BRANDING, SamitiBrandingConfig } from "@/config/branding";
+import { getStoredSponsorshipTiers, fetchStoredSponsorshipTiers, SponsorshipTier, DEFAULT_SPONSORSHIP_TIERS } from "@/config/sponsors";
 import { useEffect } from "react";
 
 export default function SponsorsPage() {
+  const [sponsorTiers, setSponsorTiers] = useState<SponsorshipTier[]>(getStoredSponsorshipTiers());
   const [formData, setFormData] = useState({
     companyName: "",
     contactPerson: "",
@@ -39,9 +41,23 @@ export default function SponsorsPage() {
   useEffect(() => {
     try {
       setBranding(getStoredBranding());
-      const handleUpdate = () => setBranding(getStoredBranding());
-      window.addEventListener("pbel_branding_updated", handleUpdate);
-      return () => window.removeEventListener("pbel_branding_updated", handleUpdate);
+      setSponsorTiers(getStoredSponsorshipTiers());
+
+      fetchStoredSponsorshipTiers().then((cloudTiers) => {
+        if (cloudTiers && cloudTiers.length > 0) {
+          setSponsorTiers(cloudTiers);
+        }
+      });
+
+      const handleBrandingUpdate = () => setBranding(getStoredBranding());
+      const handleTiersUpdate = () => setSponsorTiers(getStoredSponsorshipTiers());
+
+      window.addEventListener("pbel_branding_updated", handleBrandingUpdate);
+      window.addEventListener("pbel_sponsorship_tiers_updated", handleTiersUpdate);
+      return () => {
+        window.removeEventListener("pbel_branding_updated", handleBrandingUpdate);
+        window.removeEventListener("pbel_sponsorship_tiers_updated", handleTiersUpdate);
+      };
     } catch (_) {}
   }, []);
 
@@ -63,10 +79,16 @@ export default function SponsorsPage() {
 
       const tierMap: Record<string, string> = {
         'Title / Platinum Partner': 'Platinum',
+        'Platinum': 'Platinum',
         'Gold Partner': 'Gold', 
+        'Gold': 'Gold', 
         'Silver Partner': 'Silver',
+        'Silver': 'Silver',
         'Food & Bhog Partner': 'Food & Bhog',
+        'Food & Bhog': 'Food & Bhog',
         'Cultural & Stage Partner': 'Cultural',
+        'Cultural Stage Partner': 'Cultural',
+        'Cultural': 'Cultural',
       };
       const dbTier = Object.entries(tierMap).find(([k]) => formData.tier.includes(k))?.[1] || 'Other';
 
@@ -92,74 +114,6 @@ export default function SponsorsPage() {
       setIsSubmitting(false);
     }
   };
-
-  const sponsorTiers = [
-    {
-      title: "Title / Platinum Partner",
-      amount: "₹1,00,000",
-      tag: "Maximum Brand Dominance",
-      isHighlight: true,
-      deliverables: [
-        "Exclusive Prime Stage LED Backdrop Branding",
-        "Grand Pandal Entrance Archway Branding",
-        "Prime Anandamela Stall Space (Panchami Evening)",
-        "Daily Emcee Live Announcements during Pratibimb",
-        "Prominent Logo on Homepage & Digital Carousel",
-        "Full Page Color Ad in Pujo Souvenir Brochure",
-      ],
-    },
-    {
-      title: "Gold Partner",
-      amount: "₹50,000",
-      tag: "High Visibility",
-      isHighlight: false,
-      deliverables: [
-        "Stage Side Panels & Pandal Entry Branding",
-        "Dedicated Food / Promotional Stall Space",
-        "Daily Emcee Verbal Brand Mention",
-        "Logo on Official Website & Carousel",
-        "Half Page Color Ad in Pujo Souvenir Brochure",
-        "WhatsApp Broadcast Inclusion to 1,500+ Families",
-      ],
-    },
-    {
-      title: "Cultural Stage Partner",
-      amount: "₹40,000",
-      tag: "Pratibimb Stage Sponsor",
-      isHighlight: false,
-      deliverables: [
-        "Stage Backdrop Branding during 5 Evening Shows",
-        "Logo during Fushmontor, Dance Drama & Natok",
-        "Emcee Stage Acknowledgements",
-        "Promotional Standees in Auditoria / Seating Area",
-        "Logo on Cultural Schedule & Website",
-      ],
-    },
-    {
-      title: "Food & Bhog Partner",
-      amount: "₹35,000",
-      tag: "Direct Family Goodwill",
-      isHighlight: false,
-      deliverables: [
-        "Exclusive Branding at Daily Bhog Counters (1,500+ daily meals)",
-        "Anandamela Food Stall Space (Panchami Evening)",
-        "Logo on Bhog Token Cards & Website",
-        "Banner Placement in Dining & Cafeteria Hall",
-      ],
-    },
-    {
-      title: "Silver Partner",
-      amount: "₹25,000",
-      tag: "Township Reach",
-      isHighlight: false,
-      deliverables: [
-        "Pandal Perimeter Standee & Banner Placement",
-        "Logo Listing on Official Website",
-        "Quarter Page Ad in Souvenir Brochure",
-        "Township WhatsApp Group Inclusion",
-      ],
-    },
-  ];
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen bg-[#FCFBF8]">
@@ -391,11 +345,11 @@ export default function SponsorsPage() {
                   onChange={(e) => setFormData({ ...formData, tier: e.target.value })}
                   className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                 >
-                  <option value="Title / Platinum Partner (₹1,00,000)">Title / Platinum Partner (₹1,00,000)</option>
-                  <option value="Gold Partner (₹50,000)">Gold Partner (₹50,000)</option>
-                  <option value="Cultural Stage Partner (₹40,000)">Cultural Stage Partner (₹40,000)</option>
-                  <option value="Food & Bhog Partner (₹35,000)">Food & Bhog Partner (₹35,000)</option>
-                  <option value="Silver Partner (₹25,000)">Silver Partner (₹25,000)</option>
+                  {sponsorTiers.map((tier) => (
+                    <option key={tier.id || tier.title} value={`${tier.title} (${tier.amount})`}>
+                      {tier.title} ({tier.amount})
+                    </option>
+                  ))}
                   <option value="Anandamela Stall Kiosk (Custom)">Anandamela Stall Kiosk (Custom)</option>
                   <option value="General Corporate Support">General Corporate Support</option>
                 </select>

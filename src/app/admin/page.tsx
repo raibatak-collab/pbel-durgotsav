@@ -49,6 +49,7 @@ import { supabase } from "@/utils/supabase/client";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
 import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE, sortRitualsByTime, RitualEvent, getStoredHeroChips, saveStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip, DEFAULT_HERO_HIGHLIGHT_CHIPS } from "@/config/schedule";
+import { getStoredSponsorshipTiers, saveStoredSponsorshipTiers, fetchStoredSponsorshipTiers, SponsorshipTier, DEFAULT_SPONSORSHIP_TIERS } from "@/config/sponsors";
 import { 
   AESTHETIC_WALLPAPERS, 
   DEFAULT_BRANDING, 
@@ -215,6 +216,28 @@ export default function AdminDashboard() {
   const [newSponsor, setNewSponsor] = useState({ name: "", tier: "Gold", logo_url: "" });
   const [isSubmittingSponsor, setIsSubmittingSponsor] = useState(false);
   const [sponsorLeads, setSponsorLeads] = useState<any[]>([]);
+
+  // Sponsorship Tier Packages CMS State
+  const [sponsorshipTiers, setSponsorshipTiers] = useState<SponsorshipTier[]>(getStoredSponsorshipTiers());
+  const [sponsorsSubView, setSponsorsSubView] = useState<"tiers" | "confirmed" | "leads">("tiers");
+  const [tierForm, setTierForm] = useState<{
+    id: string;
+    title: string;
+    amount: string;
+    tag: string;
+    isHighlight: boolean;
+    deliverablesText: string;
+  }>({
+    id: "",
+    title: "",
+    amount: "₹50,000",
+    tag: "High Visibility",
+    isHighlight: false,
+    deliverablesText: "Stage Side Panels & Pandal Entry Branding\nDedicated Food / Promotional Stall Space\nDaily Emcee Verbal Brand Mention\nLogo on Official Website & Carousel\nHalf Page Color Ad in Pujo Souvenir Brochure",
+  });
+  const [isEditingTier, setIsEditingTier] = useState(false);
+  const [isSubmittingTier, setIsSubmittingTier] = useState(false);
+
   const [bhogPasses, setBhogPasses] = useState<any[]>([]);
   const [anandamelaStalls, setAnandamelaStalls] = useState<any[]>([]);
 
@@ -351,6 +374,12 @@ export default function AdminDashboard() {
       const incMem = await fetchCloudConfig<boolean>("include_member_contributions", true);
       setIncludeMemberContributions(incMem !== false);
 
+      // 5d. Fetch Sponsorship Tier Packages from Cloud
+      const cloudTiers = await fetchStoredSponsorshipTiers();
+      if (cloudTiers && cloudTiers.length > 0) {
+        setSponsorshipTiers(cloudTiers);
+      }
+
       // 6. Fetch Sponsors
       const { data: sps } = await supabase
         .from("sponsors")
@@ -419,6 +448,13 @@ export default function AdminDashboard() {
       fetchStoredHeroChips().then((cloudChips) => {
         if (cloudChips && cloudChips.length > 0) {
           setHeroChips(cloudChips);
+        }
+      });
+
+      setSponsorshipTiers(getStoredSponsorshipTiers());
+      fetchStoredSponsorshipTiers().then((cloudTiers) => {
+        if (cloudTiers && cloudTiers.length > 0) {
+          setSponsorshipTiers(cloudTiers);
         }
       });
 
@@ -1597,6 +1633,118 @@ function decodeCategoryDescription(desc?: string) {
     saveCloudConfig("sponsors", updatedSponsors);
     window.dispatchEvent(new Event("pbel_sponsors_updated"));
     fetchData();
+  };
+
+  // SPONSORSHIP TIER / PACKAGE CMS HANDLERS
+  const handleSaveTier = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tierForm.title.trim()) {
+      alert("Please enter a Package Title (e.g. Gold Partner).");
+      return;
+    }
+    setIsSubmittingTier(true);
+
+    try {
+      const parsedDeliverables = tierForm.deliverablesText
+        .split(/\r?\n/)
+        .map((d) => d.trim())
+        .filter((d) => d.length > 0);
+
+      if (parsedDeliverables.length === 0) {
+        alert("Please add at least one deliverable benefit bullet point.");
+        setIsSubmittingTier(false);
+        return;
+      }
+
+      let updatedTiers: SponsorshipTier[];
+
+      if (isEditingTier && tierForm.id) {
+        updatedTiers = sponsorshipTiers.map((t) => {
+          if (t.id === tierForm.id) {
+            return {
+              ...t,
+              title: tierForm.title.trim(),
+              amount: tierForm.amount.trim(),
+              tag: tierForm.tag.trim() || "Partner Package",
+              isHighlight: tierForm.isHighlight,
+              deliverables: parsedDeliverables,
+            };
+          }
+          return t;
+        });
+        alert(`✓ Updated "${tierForm.title}" package deliverables & pricing!`);
+      } else {
+        const newTierItem: SponsorshipTier = {
+          id: "tier-" + Date.now(),
+          title: tierForm.title.trim(),
+          amount: tierForm.amount.trim(),
+          tag: tierForm.tag.trim() || "Brand Package",
+          isHighlight: tierForm.isHighlight,
+          deliverables: parsedDeliverables,
+        };
+        updatedTiers = [...sponsorshipTiers, newTierItem];
+        alert(`✓ Published new "${tierForm.title}" sponsorship package to /sponsors page!`);
+      }
+
+      setSponsorshipTiers(updatedTiers);
+      await saveStoredSponsorshipTiers(updatedTiers);
+
+      // Reset form
+      setIsEditingTier(false);
+      setTierForm({
+        id: "",
+        title: "",
+        amount: "₹50,000",
+        tag: "High Visibility",
+        isHighlight: false,
+        deliverablesText: "Stage Side Panels & Pandal Entry Branding\nDedicated Food / Promotional Stall Space\nDaily Emcee Verbal Brand Mention\nLogo on Official Website & Carousel",
+      });
+    } catch (err) {
+      console.error("Error saving sponsorship tier:", err);
+      alert("Failed to save sponsorship package. Please try again.");
+    } finally {
+      setIsSubmittingTier(false);
+    }
+  };
+
+  const handleEditTier = (tier: SponsorshipTier) => {
+    setIsEditingTier(true);
+    setTierForm({
+      id: tier.id,
+      title: tier.title,
+      amount: tier.amount,
+      tag: tier.tag,
+      isHighlight: tier.isHighlight,
+      deliverablesText: (tier.deliverables || []).join("\n"),
+    });
+    setSponsorsSubView("tiers");
+  };
+
+  const handleDeleteTier = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to remove the "${title}" sponsorship package from the public website?`)) return;
+    const updated = sponsorshipTiers.filter((t) => t.id !== id);
+    setSponsorshipTiers(updated);
+    await saveStoredSponsorshipTiers(updated);
+    if (isEditingTier && tierForm.id === id) {
+      setIsEditingTier(false);
+      setTierForm({
+        id: "",
+        title: "",
+        amount: "₹50,000",
+        tag: "High Visibility",
+        isHighlight: false,
+        deliverablesText: "",
+      });
+    }
+    alert(`✓ Deleted "${title}" sponsorship tier.`);
+  };
+
+  const handleRestoreDefaultTiers = async () => {
+    if (!confirm("Restore all sponsorship packages & tier cards to standard baseline defaults?")) return;
+    setSponsorshipTiers(DEFAULT_SPONSORSHIP_TIERS);
+    await saveStoredSponsorshipTiers(DEFAULT_SPONSORSHIP_TIERS);
+    setIsEditingTier(false);
+    alert("✓ Restored sponsorship tier packages to baseline defaults and synced to Cloud!");
   };
 
   // Date formatting helper for Pratibimb Stage Performances
@@ -3609,181 +3757,433 @@ function decodeCategoryDescription(desc?: string) {
 
       {/* TAB CONTENT: 8. SPONSORS & CAMPAIGNS MANAGER */}
       {activeTab === "sponsors" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
           
-          <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-              <Award size={18} className="text-primary" />
-              <h3 className="font-heading text-lg font-bold text-gray-900">Add Corporate Sponsor</h3>
-            </div>
-
-            <form onSubmit={handleAddSponsor} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Company / Brand Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={newSponsor.name}
-                  onChange={(e) => setNewSponsor({ ...newSponsor, name: e.target.value })}
-                  placeholder="e.g. ICICI Bank / Ratnadeep"
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Sponsorship Tier *</label>
-                <select
-                  value={newSponsor.tier}
-                  onChange={(e) => setNewSponsor({ ...newSponsor, tier: e.target.value })}
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                >
-                  <option value="Platinum Banking Partner">Title / Platinum Partner</option>
-                  <option value="Gold Partner">Gold Partner</option>
-                  <option value="Silver Partner">Silver Partner</option>
-                  <option value="Food &amp; Bhog Partner">Food &amp; Bhog Partner</option>
-                  <option value="Sweet &amp; Prasad Partner">Sweet &amp; Prasad Partner</option>
-                  <option value="Cultural Stage Partner">Cultural Stage Partner</option>
-                  <option value="Healthcare &amp; Safety Partner">Healthcare &amp; Safety Partner</option>
-                </select>
-              </div>
-
-              {/* Sponsor Brand Logo Upload & URL */}
-              <div className="space-y-2">
-                <label className="block font-semibold text-gray-700">Brand Logo Image</label>
-                
-                {/* File Upload Button */}
-                <div className="flex items-center gap-2">
-                  <label className="cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
-                    <Upload size={13} />
-                    <span>Upload Logo File</span>
-                    <input
-                      type="file"
-                      accept="image/png, image/jpeg, image/svg+xml, image/webp"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          if (file.size > 2 * 1024 * 1024) {
-                            alert("Please select a logo image smaller than 2MB.");
-                            return;
-                          }
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            if (typeof reader.result === "string") {
-                              setNewSponsor({ ...newSponsor, logo_url: reader.result });
-                            }
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                  </label>
-                  <span className="text-[10px] text-gray-400">PNG, SVG, or JPG</span>
-                </div>
-
-                <div className="text-[10px] text-gray-400 text-center uppercase font-bold tracking-wider">— OR PASTE URL —</div>
-
-                <input
-                  type="url"
-                  value={newSponsor.logo_url}
-                  onChange={(e) => setNewSponsor({ ...newSponsor, logo_url: e.target.value })}
-                  placeholder="https://example.com/brand-logo.png"
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                />
-
-                {/* Logo Preview if available */}
-                {newSponsor.logo_url && (
-                  <div className="p-3 bg-gray-50 border border-amber-200 rounded-xl flex items-center gap-3">
-                    <img
-                      src={newSponsor.logo_url}
-                      alt="Logo preview"
-                      className="h-10 max-w-[100px] object-contain"
-                    />
-                    <div className="text-[11px] text-green-700 font-semibold flex items-center gap-1">
-                      <span>✓ Logo ready for preview</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Company Website URL (Optional)</label>
-                <input
-                  type="url"
-                  value={(newSponsor as any).website || ""}
-                  onChange={(e) => setNewSponsor({ ...newSponsor, website: e.target.value } as any)}
-                  placeholder="https://www.company.com"
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmittingSponsor}
-                className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm golden-glow"
-              >
-                {isSubmittingSponsor ? "Publishing..." : "Publish Sponsor with Logo"}
-              </button>
-            </form>
+          {/* Sub-View Switcher Bar */}
+          <div className="flex flex-wrap items-center gap-2 bg-gray-100 p-1.5 rounded-2xl w-fit border border-gray-200">
+            <button
+              onClick={() => setSponsorsSubView("tiers")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                sponsorsSubView === "tiers"
+                  ? "bg-white text-primary shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Award size={14} />
+              <span>1. Sponsorship Packages &amp; Tier Cards CMS ({sponsorshipTiers.length})</span>
+            </button>
+            <button
+              onClick={() => setSponsorsSubView("confirmed")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                sponsorsSubView === "confirmed"
+                  ? "bg-white text-primary shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Building size={14} />
+              <span>2. Brand Logos &amp; Homepage Marquee ({sponsorsList.length})</span>
+            </button>
+            <button
+              onClick={() => setSponsorsSubView("leads")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                sponsorsSubView === "leads"
+                  ? "bg-white text-primary shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Mail size={14} />
+              <span>3. Inbound Inquiries &amp; Callbacks ({sponsorLeads.length})</span>
+            </button>
           </div>
 
-          <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-heading text-lg font-bold text-gray-900">
-                  Published Corporate Sponsors &amp; Brand Logos ({sponsorsList.length})
-                </h3>
-                <span className="text-xs text-gray-500">
-                  Displayed live in the brand marquee on the homepage &amp; sponsorship deck.
-                </span>
+          {/* SUB-VIEW 1: SPONSORSHIP PACKAGES & TIER CARDS CMS */}
+          {sponsorsSubView === "tiers" && (
+            <div className="space-y-6">
+              
+              {/* Top Action Header */}
+              <div className="bg-gradient-to-r from-amber-50 via-white to-amber-50/80 p-5 rounded-2xl border border-amber-300 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <h4 className="font-heading text-base font-bold text-gray-900 flex items-center gap-2">
+                    <Sparkles size={18} className="text-primary" />
+                    <span>Sponsorship Packages &amp; Public Cards CMS</span>
+                  </h4>
+                  <p className="text-xs text-gray-600 mt-1 max-w-2xl">
+                    Configure the partnership packages shown on the public <a href="/sponsors" target="_blank" className="text-primary underline font-semibold">/sponsors</a> page. Add new tier packages, edit pricing and deliverable bullet points, or mark a card as "Most Popular".
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleRestoreDefaultTiers}
+                  className="text-xs font-semibold text-gray-600 hover:text-red-700 hover:bg-red-50 border border-gray-300 px-3.5 py-2 rounded-xl transition self-start sm:self-auto bg-white cursor-pointer"
+                  title="Reset all tier packages to standard baseline"
+                >
+                  🔄 Restore Baseline Defaults
+                </button>
               </div>
-            </div>
-            
-            {sponsorsList.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {sponsorsList.map((s) => (
-                  <div key={s.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 hover:border-amber-400 transition flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      {/* Logo Preview */}
-                      <div className="w-14 h-14 bg-white rounded-xl border border-gray-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                        {s.logo_url ? (
-                          <img src={s.logo_url} alt={s.name} className="max-h-12 max-w-full object-contain" />
-                        ) : (
-                          <span className="text-xl">🏢</span>
-                        )}
-                      </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Form Card: Add / Edit Package */}
+                <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
+                  <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <Award size={18} className="text-primary" />
+                      <h3 className="font-heading text-base font-bold text-gray-900">
+                        {isEditingTier ? "Edit Sponsorship Package" : "Create Sponsorship Package"}
+                      </h3>
+                    </div>
+                    {isEditingTier && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsEditingTier(false);
+                          setTierForm({
+                            id: "",
+                            title: "",
+                            amount: "₹50,000",
+                            tag: "High Visibility",
+                            isHighlight: false,
+                            deliverablesText: "",
+                          });
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-800 underline cursor-pointer"
+                      >
+                        Cancel Edit
+                      </button>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleSaveTier} className="space-y-4 text-xs">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Package Title *</label>
+                      <input
+                        type="text"
+                        required
+                        value={tierForm.title}
+                        onChange={(e) => setTierForm({ ...tierForm, title: e.target.value })}
+                        placeholder="e.g. Title / Platinum Partner or Kids Zone Partner"
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <h4 className="font-bold text-sm text-gray-900">{s.name}</h4>
-                        <span className="text-xs text-amber-800 font-semibold bg-amber-100/70 px-2 py-0.5 rounded-full inline-block mt-0.5">
-                          {s.tier}
-                        </span>
-                        {s.website && (
-                          <a href={s.website} target="_blank" rel="noreferrer" className="block text-[11px] text-primary hover:underline mt-0.5 truncate max-w-[160px]">
-                            {s.website}
-                          </a>
-                        )}
+                        <label className="block font-semibold text-gray-700 mb-1">Pricing / Amount *</label>
+                        <input
+                          type="text"
+                          required
+                          value={tierForm.amount}
+                          onChange={(e) => setTierForm({ ...tierForm, amount: e.target.value })}
+                          placeholder="e.g. ₹1,00,000 or ₹75,000"
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Tagline / Badge</label>
+                        <input
+                          type="text"
+                          value={tierForm.tag}
+                          onChange={(e) => setTierForm({ ...tierForm, tag: e.target.value })}
+                          placeholder="e.g. Maximum Dominance"
+                          className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs"
+                        />
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleDeleteSponsor(s.id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition shrink-0"
-                      title="Remove Sponsor"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-xs text-gray-500 py-6 text-center">No corporate sponsors added yet.</p>
-            )}
 
-            {/* Inbound Sponsor Leads Table */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2 p-3 bg-amber-50/60 border border-amber-200 rounded-xl">
+                      <input
+                        type="checkbox"
+                        id="isHighlightTier"
+                        checked={tierForm.isHighlight}
+                        onChange={(e) => setTierForm({ ...tierForm, isHighlight: e.target.checked })}
+                        className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                      />
+                      <label htmlFor="isHighlightTier" className="font-semibold text-amber-950 text-xs cursor-pointer select-none">
+                        ★ Highlight as "Most Popular" (Golden Glow Card)
+                      </label>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-semibold text-gray-700">Package Deliverables / Benefits *</label>
+                        <span className="text-[10px] text-gray-400">One bullet point per line</span>
+                      </div>
+                      <textarea
+                        rows={6}
+                        required
+                        value={tierForm.deliverablesText}
+                        onChange={(e) => setTierForm({ ...tierForm, deliverablesText: e.target.value })}
+                        placeholder="Exclusive Prime Stage LED Backdrop Branding&#10;Grand Pandal Entrance Archway Branding&#10;Prime Anandamela Stall Space (Panchami Evening)&#10;Logo on Official Website & Carousel&#10;Full Page Color Ad in Pujo Souvenir Brochure"
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-sans text-xs leading-relaxed"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingTier}
+                      className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm golden-glow flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Save size={14} />
+                      <span>{isSubmittingTier ? "Saving..." : isEditingTier ? "Update Package Live" : "Publish Package Live"}</span>
+                    </button>
+                  </form>
+                </div>
+
+                {/* Live Cards Grid Preview */}
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-heading text-base font-bold text-gray-900">
+                      Live Sponsorship Packages ({sponsorshipTiers.length} Active Tiers)
+                    </h4>
+                    <span className="text-[11px] text-gray-500">Rendered on /sponsors portal</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {sponsorshipTiers.map((tier) => (
+                      <div
+                        key={tier.id || tier.title}
+                        className={`rounded-2xl p-5 flex flex-col justify-between transition-all border ${
+                          tier.isHighlight
+                            ? "bg-gradient-to-b from-[#FFFDF9] to-[#FFF8ED] border-amber-400 shadow-md relative"
+                            : "bg-white border-gray-200 shadow-2xs hover:shadow-xs"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-900">
+                              {tier.tag || "Brand Tier"}
+                            </span>
+                            {tier.isHighlight && (
+                              <span className="text-[10px] font-bold bg-primary text-white px-2.5 py-0.5 rounded-full shadow-2xs">
+                                ★ Most Popular
+                              </span>
+                            )}
+                          </div>
+
+                          <h4 className="font-heading text-lg font-bold text-gray-900 mb-0.5">{tier.title}</h4>
+                          <div className="text-2xl font-bold text-primary font-heading mb-4 font-mono">{tier.amount}</div>
+
+                          <div className="space-y-2 mb-6">
+                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                              Deliverables ({tier.deliverables?.length || 0}):
+                            </div>
+                            {(tier.deliverables || []).map((item, idx) => (
+                              <div key={idx} className="flex items-start gap-1.5 text-xs text-gray-600">
+                                <CheckCircle2 size={13} className="text-green-600 shrink-0 mt-0.5" />
+                                <span className="line-clamp-2">{item}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Card Edit / Delete Actions */}
+                        <div className="flex items-center gap-2 pt-3 border-t border-gray-100 mt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEditTier(tier)}
+                            className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 py-1.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer"
+                          >
+                            <Edit3 size={13} />
+                            <span>Edit Package</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTier(tier.id, tier.title)}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer"
+                            title="Delete Package"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SUB-VIEW 2: BRAND LOGOS & LIVE MARQUEE */}
+          {sponsorsSubView === "confirmed" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <Building size={18} className="text-primary" />
+                  <h3 className="font-heading text-lg font-bold text-gray-900">Add Corporate Sponsor</h3>
+                </div>
+
+                <form onSubmit={handleAddSponsor} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Company / Brand Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newSponsor.name}
+                      onChange={(e) => setNewSponsor({ ...newSponsor, name: e.target.value })}
+                      placeholder="e.g. ICICI Bank / Ratnadeep"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Sponsorship Tier *</label>
+                    <select
+                      value={newSponsor.tier}
+                      onChange={(e) => setNewSponsor({ ...newSponsor, tier: e.target.value })}
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    >
+                      {sponsorshipTiers.map((t) => (
+                        <option key={t.id || t.title} value={t.title}>
+                          {t.title} ({t.amount})
+                        </option>
+                      ))}
+                      <option value="Food & Bhog Partner">Food &amp; Bhog Partner</option>
+                      <option value="Cultural Stage Partner">Cultural Stage Partner</option>
+                      <option value="Anandamela Stall Partner">Anandamela Stall Partner</option>
+                      <option value="General Corporate Partner">General Corporate Partner</option>
+                    </select>
+                  </div>
+
+                  {/* Sponsor Brand Logo Upload & URL */}
+                  <div className="space-y-2">
+                    <label className="block font-semibold text-gray-700">Brand Logo Image</label>
+                    
+                    {/* File Upload Button */}
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+                        <Upload size={13} />
+                        <span>Upload Logo File</span>
+                        <input
+                          type="file"
+                          accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                          className="hidden"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 2 * 1024 * 1024) {
+                                alert("Please select a logo image smaller than 2MB.");
+                                return;
+                              }
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                if (typeof reader.result === "string") {
+                                  setNewSponsor({ ...newSponsor, logo_url: reader.result });
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                        />
+                      </label>
+                      <span className="text-[10px] text-gray-400">PNG, SVG, or JPG</span>
+                    </div>
+
+                    <div className="text-[10px] text-gray-400 text-center uppercase font-bold tracking-wider">— OR PASTE URL —</div>
+
+                    <input
+                      type="url"
+                      value={newSponsor.logo_url}
+                      onChange={(e) => setNewSponsor({ ...newSponsor, logo_url: e.target.value })}
+                      placeholder="https://example.com/brand-logo.png"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+
+                    {/* Logo Preview if available */}
+                    {newSponsor.logo_url && (
+                      <div className="p-3 bg-gray-50 border border-amber-200 rounded-xl flex items-center gap-3">
+                        <img
+                          src={newSponsor.logo_url}
+                          alt="Logo preview"
+                          className="h-10 max-w-[100px] object-contain"
+                        />
+                        <div className="text-[11px] text-green-700 font-semibold flex items-center gap-1">
+                          <span>✓ Logo ready for preview</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Company Website URL (Optional)</label>
+                    <input
+                      type="url"
+                      value={(newSponsor as any).website || ""}
+                      onChange={(e) => setNewSponsor({ ...newSponsor, website: e.target.value } as any)}
+                      placeholder="https://www.company.com"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingSponsor}
+                    className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm golden-glow cursor-pointer"
+                  >
+                    {isSubmittingSponsor ? "Publishing..." : "Publish Sponsor with Logo"}
+                  </button>
+                </form>
+              </div>
+
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="font-heading text-lg font-bold text-gray-900">
+                      Published Corporate Sponsors &amp; Brand Logos ({sponsorsList.length})
+                    </h3>
+                    <span className="text-xs text-gray-500">
+                      Displayed live in the brand marquee on the homepage &amp; sponsorship deck.
+                    </span>
+                  </div>
+                </div>
+                
+                {sponsorsList.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {sponsorsList.map((s) => (
+                      <div key={s.id} className="p-4 bg-gray-50 rounded-2xl border border-gray-200 hover:border-amber-400 transition flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-14 h-14 bg-white rounded-xl border border-gray-200 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                            {s.logo_url ? (
+                              <img src={s.logo_url} alt={s.name} className="max-h-12 max-w-full object-contain" />
+                            ) : (
+                              <span className="text-xl">🏢</span>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm text-gray-900">{s.name}</h4>
+                            <span className="text-xs text-amber-800 font-semibold bg-amber-100/70 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                              {s.tier}
+                            </span>
+                            {s.website && (
+                              <a href={s.website} target="_blank" rel="noreferrer" className="block text-[11px] text-primary hover:underline mt-0.5 truncate max-w-[160px]">
+                                {s.website}
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleDeleteSponsor(s.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition shrink-0 cursor-pointer"
+                          title="Remove Sponsor"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500 py-6 text-center">No corporate sponsors added yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* SUB-VIEW 3: INBOUND INQUIRIES & CALLBACKS */}
+          {sponsorsSubView === "leads" && (
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
                 <div>
                   <h4 className="font-heading text-base font-bold text-gray-900">
-                    📥 Inbound Sponsor Inquiries & Callbacks ({sponsorLeads.length})
+                    📥 Inbound Sponsor Inquiries &amp; Callbacks ({sponsorLeads.length})
                   </h4>
                   <span className="text-[11px] text-gray-500">
                     Submissions from the public /sponsors partnership portal
@@ -3804,7 +4204,7 @@ function decodeCategoryDescription(desc?: string) {
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
-                        <th className="p-3">Company & Contact</th>
+                        <th className="p-3">Company &amp; Contact</th>
                         <th className="p-3">Phone / WhatsApp</th>
                         <th className="p-3">Preferred Tier</th>
                         <th className="p-3">Message</th>
@@ -3837,7 +4237,7 @@ function decodeCategoryDescription(desc?: string) {
                           <td className="p-3 text-right">
                             <button
                               onClick={() => handleClearSponsorLead(idx)}
-                              className="text-gray-400 hover:text-red-600 p-1"
+                              className="text-gray-400 hover:text-red-600 p-1 cursor-pointer"
                               title="Archive / Remove Lead"
                             >
                               <X size={14} />
@@ -3849,12 +4249,12 @@ function decodeCategoryDescription(desc?: string) {
                   </table>
                 </div>
               ) : (
-                <div className="bg-gray-50 p-4 rounded-xl text-center text-xs text-gray-500">
+                <div className="bg-gray-50 p-6 rounded-xl text-center text-xs text-gray-500">
                   No new sponsor inquiry leads yet. Leads from the public <strong>/sponsors</strong> page will appear here with 1-click WhatsApp callback links.
                 </div>
               )}
             </div>
-          </div>
+          )}
 
         </div>
       )}
