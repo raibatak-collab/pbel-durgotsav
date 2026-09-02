@@ -2473,7 +2473,14 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       return `Rupees ${result.replace(/\s+/g, " ").trim()} Only`;
     }
 
-    const validatePan = (pan) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(pan.trim().toUpperCase());
+    const PAN_REGEX = /^[A-Z]{3}[CPHFATBLJG][A-Z][0-9]{4}[A-Z]$/;
+    const VALID_4TH_CHARS = ["P", "C", "H", "F", "A", "T", "B", "L", "J", "G"];
+    const validatePan = (pan) => {
+      const clean = (pan || "").trim().toUpperCase();
+      if (clean.length !== 10) return false;
+      if (!VALID_4TH_CHARS.includes(clean.charAt(3))) return false;
+      return PAN_REGEX.test(clean);
+    };
 
     it('should accurately convert contribution amounts into Indian Rupee words', () => {
       assert.strictEqual(numberToIndianRupeesWords(1001), "Rupees One Thousand One Only");
@@ -2483,9 +2490,24 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.strictEqual(numberToIndianRupeesWords(100000), "Rupees One Lakh Only");
     });
 
-    it('should strictly validate 10-character Indian PAN format', () => {
+    it('should strictly validate 10-character Indian PAN format and 4th-character legal entity code', () => {
+      // Valid individual devotee PAN (4th char is 'P')
       assert.strictEqual(validatePan("AKNPB0743L"), true);
-      assert.strictEqual(validatePan("abcde1234f"), true); // handles lowercase auto-trim
+      assert.strictEqual(validatePan("abcpb1234f"), true); // handles lowercase auto-trim
+      // Valid company / sponsor PAN (4th char is 'C')
+      assert.strictEqual(validatePan("AABCS1234F"), true);
+      // Valid HUF PAN (4th char is 'H')
+      assert.strictEqual(validatePan("AABHB1234F"), true);
+      // Valid Trust / Firm PAN (4th char is 'T' / 'F')
+      assert.strictEqual(validatePan("AABTB1234F"), true);
+      assert.strictEqual(validatePan("AABFB1234F"), true);
+
+      // INVALID 4th characters (e.g. 'D', 'X', 'Z', 'Q', 'M')
+      assert.strictEqual(validatePan("ABCDE1234F"), false); // 'D' is not a valid legal entity
+      assert.strictEqual(validatePan("ABCXE1234F"), false); // 'X'
+      assert.strictEqual(validatePan("ABCZE1234F"), false); // 'Z'
+
+      // Invalid lengths or junk
       assert.strictEqual(validatePan("1234567890"), false);
       assert.strictEqual(validatePan("AKNPB0743"), false); // 9 chars
       assert.strictEqual(validatePan("AKNPB074312"), false); // 11 chars

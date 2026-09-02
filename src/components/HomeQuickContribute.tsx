@@ -26,6 +26,7 @@ import { buildUpiPayUri } from "@/utils/security";
 import { saveQrCodeToGallery } from "@/utils/qrDownload";
 import OfficialContributionReceipt, { ReceiptData } from "@/components/OfficialContributionReceipt";
 import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig } from "@/config/branding";
+import { validateIndianPan } from "@/utils/panValidation";
 
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
 const SOCIETY_NAME = "PBEL Sanskritik Samiti";
@@ -255,9 +256,9 @@ export function HomeQuickContribute() {
     }
 
     if (formData.requiresTaxExemption) {
-      const cleanPan = formData.panNumber.trim().toUpperCase();
-      if (!cleanPan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
-        setFormError("Please provide a valid 10-character Indian PAN number (e.g. ABCDE1234F) to claim 80G Tax Exemption.");
+      const panRes = validateIndianPan(formData.panNumber);
+      if (!panRes.isValid) {
+        setFormError(panRes.errorMessage || "Please provide a valid Indian PAN number for 80G Tax Exemption.");
         return;
       }
     }
@@ -812,11 +813,21 @@ export function HomeQuickContribute() {
                       placeholder="e.g. ABCDE1234F"
                       className="w-full p-2.5 border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none font-mono font-bold text-xs uppercase tracking-wider"
                     />
-                    {formData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(formData.panNumber) && (
-                      <p className="text-[10.5px] text-red-600 mt-1 font-medium">
-                        Please enter a valid 10-character Indian PAN format (5 letters, 4 digits, 1 letter).
-                      </p>
-                    )}
+                    {formData.panNumber && (() => {
+                      const res = validateIndianPan(formData.panNumber);
+                      if (!res.isValid) {
+                        return (
+                          <p className="text-[10.5px] text-red-600 mt-1 font-medium">
+                            {res.errorMessage}
+                          </p>
+                        );
+                      }
+                      return (
+                        <p className="text-[10.5px] text-green-700 mt-1 font-semibold flex items-center gap-1">
+                          ✓ Verified PAN format ({res.entityType})
+                        </p>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

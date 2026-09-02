@@ -30,6 +30,7 @@ import { buildUpiPayUri } from "@/utils/security";
 import { saveQrCodeToGallery } from "@/utils/qrDownload";
 import OfficialContributionReceipt, { ReceiptData } from "@/components/OfficialContributionReceipt";
 import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
+import { validateIndianPan } from "@/utils/panValidation";
 
 // Official Society Bank Account UPI Configuration
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
@@ -595,9 +596,9 @@ function decodeCategoryDescription(desc?: string) {
     }
 
     if (modalFormData.requiresTaxExemption) {
-      const cleanPan = modalFormData.panNumber.trim().toUpperCase();
-      if (!cleanPan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
-        setModalFormError("Please provide a valid 10-character Indian PAN number (e.g. ABCDE1234F) to claim 80G Tax Exemption.");
+      const panRes = validateIndianPan(modalFormData.panNumber);
+      if (!panRes.isValid) {
+        setModalFormError(panRes.errorMessage || "Please provide a valid Indian PAN number for 80G Tax Exemption.");
         return;
       }
     }
@@ -707,9 +708,9 @@ function decodeCategoryDescription(desc?: string) {
     }
 
     if (customFormData.requiresTaxExemption) {
-      const cleanPan = customFormData.panNumber.trim().toUpperCase();
-      if (!cleanPan || !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(cleanPan)) {
-        setCustomFormError("Please provide a valid 10-character Indian PAN number (e.g. ABCDE1234F) to claim 80G Tax Exemption.");
+      const panRes = validateIndianPan(customFormData.panNumber);
+      if (!panRes.isValid) {
+        setCustomFormError(panRes.errorMessage || "Please provide a valid Indian PAN number for 80G Tax Exemption.");
         return;
       }
     }
@@ -1165,11 +1166,21 @@ function decodeCategoryDescription(desc?: string) {
                         placeholder="e.g. ABCDE1234F"
                         className="w-full p-2.5 border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none font-mono font-bold text-xs uppercase tracking-wider"
                       />
-                      {customFormData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(customFormData.panNumber) && (
-                        <p className="text-[10.5px] text-red-600 mt-1 font-medium">
-                          Please enter a valid 10-character Indian PAN format (5 letters, 4 digits, 1 letter).
-                        </p>
-                      )}
+                      {customFormData.panNumber && (() => {
+                        const res = validateIndianPan(customFormData.panNumber);
+                        if (!res.isValid) {
+                          return (
+                            <p className="text-[10.5px] text-red-600 mt-1 font-medium">
+                              {res.errorMessage}
+                            </p>
+                          );
+                        }
+                        return (
+                          <p className="text-[10.5px] text-green-700 mt-1 font-semibold flex items-center gap-1">
+                            ✓ Verified PAN format ({res.entityType})
+                          </p>
+                        );
+                      })()}
                     </div>
                   )}
                 </div>
@@ -1654,11 +1665,21 @@ function decodeCategoryDescription(desc?: string) {
                       placeholder="e.g. ABCDE1234F"
                       className="w-full p-2.5 border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none font-mono font-bold text-xs uppercase tracking-wider"
                     />
-                    {modalFormData.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(modalFormData.panNumber) && (
-                      <p className="text-[10.5px] text-red-600 mt-1 font-medium">
-                        Please enter a valid 10-character Indian PAN format (5 letters, 4 digits, 1 letter).
-                      </p>
-                    )}
+                    {modalFormData.panNumber && (() => {
+                      const res = validateIndianPan(modalFormData.panNumber);
+                      if (!res.isValid) {
+                        return (
+                          <p className="text-[10.5px] text-red-600 mt-1 font-medium">
+                            {res.errorMessage}
+                          </p>
+                        );
+                      }
+                      return (
+                        <p className="text-[10.5px] text-green-700 mt-1 font-semibold flex items-center gap-1">
+                          ✓ Verified PAN format ({res.entityType})
+                        </p>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
