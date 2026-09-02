@@ -43,7 +43,9 @@ import {
   TrendingUp,
   AlertCircle,
   Building,
-  Upload
+  Upload,
+  Mail,
+  Edit3
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
