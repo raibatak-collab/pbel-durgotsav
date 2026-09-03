@@ -2782,6 +2782,28 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('67. Official Website QR Code & Standee Poster Assets', () => {
+    it('should verify standalone website QR code PNG exists and is valid', () => {
+      assert.ok(fs.existsSync('public/qr-website.png'), 'qr-website.png must exist in public folder');
+      const stats = fs.statSync('public/qr-website.png');
+      assert.ok(stats.size > 500, 'qr-website.png must be non-empty');
+    });
+
+    it('should verify standalone website QR code SVG targets https://www.pbelcitydurgotsav.com/', () => {
+      assert.ok(fs.existsSync('public/qr-website.svg'), 'qr-website.svg must exist in public folder');
+      const content = fs.readFileSync('public/qr-website.svg', 'utf8');
+      assert.ok(content.includes('https://www.pbelcitydurgotsav.com/'), 'QR code must encode target website URL');
+    });
+
+    it('should verify branded standee poster SVG includes festival identity and target URL', () => {
+      assert.ok(fs.existsSync('public/pbelcitydurgotsav-qr-poster.svg'), 'Standee poster SVG must exist');
+      const content = fs.readFileSync('public/pbelcitydurgotsav-qr-poster.svg', 'utf8');
+      assert.ok(content.includes('PBEL CITY DURGOTSAV'), 'Poster must include festival title');
+      assert.ok(content.includes('https://www.pbelcitydurgotsav.com'), 'Poster must display website URL');
+      assert.ok(content.includes('PBEL SANSKRITIK SAMITI'), 'Poster must include organizer name');
+    });
+  });
+
 });
 
 

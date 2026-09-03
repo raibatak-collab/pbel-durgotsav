@@ -5734,6 +5734,65 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
               </div>
 
+              {/* Official Website QR Code & Standee Card */}
+              <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-heading text-lg font-bold text-gray-900">
+                      Official Website QR Code
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Print-ready QR codes for banners, posters, lift flyers &amp; standees pointing to <code className="text-primary font-bold">https://www.pbelcitydurgotsav.com/</code>
+                    </p>
+                  </div>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                    Live Portal QR
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-center gap-5 p-4 bg-amber-50/50 rounded-2xl border border-amber-200/80">
+                  <div className="w-32 h-32 bg-white p-2 rounded-2xl border border-amber-300 shadow-xs flex items-center justify-center shrink-0">
+                    <img
+                      src="/qr-website.png"
+                      alt="PBEL City Durgotsav Website QR Code"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+
+                  <div className="space-y-2.5 flex-1 text-xs">
+                    <div className="font-bold text-gray-900">
+                      Target URL: https://www.pbelcitydurgotsav.com/
+                    </div>
+                    <p className="text-gray-600">
+                      Instant scan access to live Pujo schedule, e-seva bookings, 80G receipts, and stage registrations.
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                      <a
+                        href="/pbelcitydurgotsav-qr-poster.svg"
+                        download="PBEL-City-Durgotsav-Standee-Poster.svg"
+                        className="px-3.5 py-1.5 rounded-xl bg-primary hover:bg-primary-hover text-white font-bold transition flex items-center gap-1.5 shadow-xs"
+                      >
+                        <Download size={13} /> Standee Poster (SVG)
+                      </a>
+                      <a
+                        href="/qr-website.png"
+                        download="pbelcitydurgotsav-qr-1000px.png"
+                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-gray-100 text-gray-800 font-bold border border-gray-300 transition flex items-center gap-1.5"
+                      >
+                        <Download size={13} /> High-Res PNG
+                      </a>
+                      <a
+                        href="/qr-website.svg"
+                        download="pbelcitydurgotsav-qr-vector.svg"
+                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-gray-100 text-gray-800 font-bold border border-gray-300 transition flex items-center gap-1.5"
+                      >
+                        <Download size={13} /> Vector SVG
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {/* Samiti & Festival Logos with Local Uploaders */}
               <div className="bg-white rounded-3xl border border-gray-200 p-6 shadow-xs space-y-4">
                 <h3 className="font-heading text-lg font-bold text-gray-900">
