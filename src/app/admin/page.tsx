@@ -204,6 +204,7 @@ export default function AdminDashboard() {
     is_active: true,
     is_featured: false,
     pujo_day: "",
+    pujo_date: "",
   });
   const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
@@ -1287,19 +1288,21 @@ export default function AdminDashboard() {
     }
   };
 
-// Category limit, status, featured & pujo day metadata helpers for reliable backwards compatibility
-function encodeCategoryDescription(desc: string, maxLimit?: number, isActive?: boolean, isFeatured?: boolean, pujoDay?: string) {
+// Category limit, status, featured, pujo day & exact date metadata helpers for reliable backwards compatibility
+function encodeCategoryDescription(desc: string, maxLimit?: number, isActive?: boolean, isFeatured?: boolean, pujoDay?: string, pujoDate?: string) {
   const clean = (desc || '')
     .replace(/\[limit:\d+\]/g, '')
     .replace(/\[status:(active|inactive)\]/g, '')
     .replace(/\[featured:(true|false)\]/g, '')
     .replace(/\[day:[a-z0-9_-]+\]/g, '')
+    .replace(/\[date:[^\]]+\]/g, '')
     .trim();
   const limitTag = maxLimit !== undefined && maxLimit !== null ? `[limit:${maxLimit}]` : '';
   const statusTag = isActive !== undefined ? `[status:${isActive ? 'active' : 'inactive'}]` : '';
   const featuredTag = isFeatured !== undefined ? `[featured:${isFeatured ? 'true' : 'false'}]` : '';
   const dayTag = pujoDay ? `[day:${pujoDay}]` : '';
-  return `${clean} ${limitTag} ${statusTag} ${featuredTag} ${dayTag}`.trim();
+  const dateTag = pujoDate ? `[date:${pujoDate.trim()}]` : '';
+  return `${clean} ${limitTag} ${statusTag} ${featuredTag} ${dayTag} ${dateTag}`.trim();
 }
 
 function decodeCategoryDescription(desc?: string) {
@@ -1308,20 +1311,23 @@ function decodeCategoryDescription(desc?: string) {
   const statusMatch = str.match(/\[status:(active|inactive)\]/);
   const featuredMatch = str.match(/\[featured:(true|false)\]/);
   const dayMatch = str.match(/\[day:([a-z0-9_-]+)\]/);
+  const dateMatch = str.match(/\[date:([^\]]+)\]/);
 
   const cleanDescription = str
     .replace(/\[limit:\d+\]/g, '')
     .replace(/\[status:(active|inactive)\]/g, '')
     .replace(/\[featured:(true|false)\]/g, '')
     .replace(/\[day:[a-z0-9_-]+\]/g, '')
+    .replace(/\[date:[^\]]+\]/g, '')
     .trim();
 
   const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
   const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
   const parsedFeatured = featuredMatch ? featuredMatch[1] === 'true' : undefined;
   const parsedDay = dayMatch ? dayMatch[1] : undefined;
+  const parsedDate = dateMatch ? dateMatch[1].trim() : undefined;
 
-  return { cleanDescription, parsedLimit, parsedActive, parsedFeatured, parsedDay };
+  return { cleanDescription, parsedLimit, parsedActive, parsedFeatured, parsedDay, parsedDate };
 }
 
   // 1. Overview Calculations
@@ -1340,7 +1346,8 @@ function decodeCategoryDescription(desc?: string) {
         newCategory.max_limit, 
         newCategory.is_active,
         newCategory.is_featured,
-        newCategory.pujo_day
+        newCategory.pujo_day,
+        newCategory.pujo_date
       );
 
       const payload: any = {
@@ -1360,7 +1367,7 @@ function decodeCategoryDescription(desc?: string) {
           alert(`Error updating category: ${error.message}`);
           return;
         }
-        alert("Seva Category & Limits updated successfully!");
+        alert("Seva Category, Date & Limits updated successfully!");
       } else {
         const { error } = await supabase
           .from("contribution_categories")
@@ -1373,7 +1380,7 @@ function decodeCategoryDescription(desc?: string) {
         }
         alert("New Seva Category added successfully!");
       }
-      setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false, pujo_day: "" });
+      setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false, pujo_day: "", pujo_date: "" });
       setIsEditingCategory(false);
       window.dispatchEvent(new Event("pbel_categories_updated"));
       await fetchData();
@@ -1389,7 +1396,7 @@ function decodeCategoryDescription(desc?: string) {
     const decoded = decodeCategoryDescription(cat.description);
     const currentFeatured = decoded.parsedFeatured ?? false;
     const nextFeatured = !currentFeatured;
-    const newDesc = encodeCategoryDescription(decoded.cleanDescription, decoded.parsedLimit, decoded.parsedActive, nextFeatured);
+    const newDesc = encodeCategoryDescription(decoded.cleanDescription, decoded.parsedLimit, decoded.parsedActive, nextFeatured, decoded.parsedDay, decoded.parsedDate);
     try {
       await supabase.from("contribution_categories").update({ description: newDesc }).eq("id", cat.id);
       window.dispatchEvent(new Event("pbel_categories_updated"));
@@ -1400,10 +1407,35 @@ function decodeCategoryDescription(desc?: string) {
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this Seva Category?")) return;
-    await supabase.from("contribution_categories").delete().eq("id", id);
-    setCategoriesList(categoriesList.filter((c) => c.id !== id));
+  const handleDeleteCategory = async (id: string, name?: string) => {
+    const displayName = name || "this Seva Category";
+    if (!confirm(`Are you sure you want to permanently delete "${displayName}"?\n\nThis will remove it from the website immediately.`)) return;
+    try {
+      // 1. Safely unbind foreign key constraints in contributions if any records reference this category
+      const { data: contribs } = await supabase.from("contributions").select("id").eq("category_id", id);
+      if (contribs && contribs.length > 0) {
+        await supabase.from("contributions").update({ category_id: null }).eq("category_id", id);
+      }
+
+      // 2. Delete the category from Supabase
+      const { error } = await supabase.from("contribution_categories").delete().eq("id", id);
+      if (error) {
+        console.error("Error deleting category:", error);
+        alert(`Failed to delete category: ${error.message}`);
+        return;
+      }
+
+      setCategoriesList((prev) => prev.filter((c) => c.id !== id));
+      if (isEditingCategory && newCategory.id === id) {
+        setIsEditingCategory(false);
+        setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false, pujo_day: "", pujo_date: "" });
+      }
+      window.dispatchEvent(new Event("pbel_categories_updated"));
+      alert(`"${displayName}" was permanently deleted and removed from the website.`);
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      alert(`Unexpected error deleting category: ${err.message || err}`);
+    }
   };
 
   // SCHEDULE (Pujo Nirghanto) CMS
@@ -2594,7 +2626,7 @@ function decodeCategoryDescription(desc?: string) {
                 <button
                   onClick={() => {
                     setIsEditingCategory(false);
-                    setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false, pujo_day: "" });
+                    setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false, pujo_day: "", pujo_date: "" });
                   }}
                   className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1"
                 >
@@ -2616,22 +2648,46 @@ function decodeCategoryDescription(desc?: string) {
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold text-gray-700 mb-1">Pujo Day &amp; Date</label>
-                <select
-                  value={newCategory.pujo_day || ""}
-                  onChange={(e) => setNewCategory({ ...newCategory, pujo_day: e.target.value })}
-                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-medium text-amber-950 bg-amber-50/50"
-                >
-                  <option value="">Auto-detect from title (e.g. Saptami, Ashtami)</option>
-                  <option value="panchami">15 Oct • Maha Panchami</option>
-                  <option value="shashthi">16 Oct • Maha Sashti</option>
-                  <option value="saptami">17 Oct • Maha Saptami</option>
-                  <option value="ashtami">18 Oct • Maha Ashtami</option>
-                  <option value="nabami">19 Oct • Maha Nabami</option>
-                  <option value="dashami">20 Oct • Bijoya Dashami</option>
-                  <option value="grand">👑 All 6 Days (Grand Patrons / General)</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">Pujo Phase / Day</label>
+                  <select
+                    value={newCategory.pujo_day || ""}
+                    onChange={(e) => {
+                      const selectedDay = e.target.value;
+                      const dayPreset = PUJO_DAYS[selectedDay];
+                      setNewCategory({ 
+                        ...newCategory, 
+                        pujo_day: selectedDay,
+                        pujo_date: dayPreset ? dayPreset.dateStr : (newCategory.pujo_date || "")
+                      });
+                    }}
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-medium text-amber-950 bg-amber-50/50"
+                  >
+                    <option value="">Auto-detect from Title</option>
+                    <option value="panchami">15 Oct • Maha Panchami</option>
+                    <option value="shashthi">16 Oct • Maha Sashti</option>
+                    <option value="saptami">17 Oct • Maha Saptami</option>
+                    <option value="ashtami">18 Oct • Maha Ashtami</option>
+                    <option value="nabami">19 Oct • Maha Nabami</option>
+                    <option value="dashami">20 Oct • Bijoya Dashami</option>
+                    <option value="grand">👑 All 6 Days (Grand Patrons / General)</option>
+                    <option value="custom">Special / Custom Day</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-gray-700 mb-1">
+                    Calendar Date (Editable)
+                  </label>
+                  <input
+                    type="text"
+                    value={newCategory.pujo_date || ""}
+                    onChange={(e) => setNewCategory({ ...newCategory, pujo_date: e.target.value })}
+                    placeholder="e.g. 17 Oct 2026"
+                    className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-medium text-gray-800"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -2698,14 +2754,27 @@ function decodeCategoryDescription(desc?: string) {
                 />
               </div>
 
-              <button
-                type="submit"
-                disabled={isSubmittingCategory}
-                className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2"
-              >
-                <Save size={15} />
-                <span>{isSubmittingCategory ? "Saving..." : isEditingCategory ? "Update Seva Limits & Info" : "Publish Seva Category"}</span>
-              </button>
+              <div className="space-y-2 pt-1">
+                <button
+                  type="submit"
+                  disabled={isSubmittingCategory}
+                  className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Save size={15} />
+                  <span>{isSubmittingCategory ? "Saving..." : isEditingCategory ? "Update Seva Limits & Info" : "Publish Seva Category"}</span>
+                </button>
+
+                {isEditingCategory && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCategory(newCategory.id, newCategory.name)}
+                    className="w-full bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 size={14} />
+                    <span>Delete This Seva Category Permanently</span>
+                  </button>
+                )}
+              </div>
             </form>
           </div>
 
@@ -2738,7 +2807,7 @@ function decodeCategoryDescription(desc?: string) {
                 <tbody className="divide-y divide-gray-100">
                   {categoriesList.map((cat) => {
                     const decoded = decodeCategoryDescription(cat.description);
-                    const dayInfo = inferSevaDayAndDate(cat.name, decoded.cleanDescription, decoded.parsedDay);
+                    const dayInfo = inferSevaDayAndDate(cat.name, decoded.cleanDescription, decoded.parsedDay, decoded.parsedDate);
                     const booked = contributions.filter(
                       (c) => (c.category_id === cat.id || c.contribution_categories?.name?.toLowerCase() === cat.name?.toLowerCase()) && c.status !== "Rejected"
                     ).length;
@@ -2796,33 +2865,40 @@ function decodeCategoryDescription(desc?: string) {
                             {!isActive ? "Inactive" : isFull ? "🔒 Full" : "✓ Active"}
                           </span>
                         </td>
-                        <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
-                          <button
-                            onClick={() => {
-                              setNewCategory({
-                                id: cat.id,
-                                name: cat.name,
-                                fixed_amount: cat.fixed_amount ? Number(cat.fixed_amount) : 1001,
-                                description: decoded.cleanDescription,
-                                max_limit: max,
-                                is_active: isActive,
-                                is_featured: isFeatured,
-                                pujo_day: decoded.parsedDay || "",
-                              });
-                              setIsEditingCategory(true);
-                            }}
-                            className="p-1.5 text-amber-700 hover:bg-amber-100 rounded-lg transition"
-                            title="Edit / Increase Max Limit & Reactivate"
-                          >
-                            <Edit2 size={14} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteCategory(cat.id)}
-                            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition"
-                            title="Delete Category"
-                          >
-                            <Trash2 size={14} />
-                          </button>
+                        <td className="p-3.5 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                const currentDayInfo = inferSevaDayAndDate(cat.name, decoded.cleanDescription, decoded.parsedDay, decoded.parsedDate);
+                                setNewCategory({
+                                  id: cat.id,
+                                  name: cat.name,
+                                  fixed_amount: cat.fixed_amount ? Number(cat.fixed_amount) : 1001,
+                                  description: decoded.cleanDescription,
+                                  max_limit: max,
+                                  is_active: isActive,
+                                  is_featured: isFeatured,
+                                  pujo_day: decoded.parsedDay || currentDayInfo.dayId || "",
+                                  pujo_date: decoded.parsedDate || currentDayInfo.dateStr || "",
+                                });
+                                setIsEditingCategory(true);
+                                window.scrollTo({ top: 380, behavior: "smooth" });
+                              }}
+                              className="px-2.5 py-1 text-xs font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-300 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                              title="Edit category, limits & dates"
+                            >
+                              <Edit2 size={12} />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteCategory(cat.id, cat.name)}
+                              className="px-2.5 py-1 text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                              title="Delete this Seva category from website"
+                            >
+                              <Trash2 size={12} />
+                              <span>Delete</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

@@ -340,20 +340,23 @@ function decodeCategoryDescription(desc?: string) {
   const statusMatch = str.match(/\[status:(active|inactive)\]/);
   const featuredMatch = str.match(/\[featured:(true|false)\]/);
   const dayMatch = str.match(/\[day:([a-z0-9_-]+)\]/);
+  const dateMatch = str.match(/\[date:([^\]]+)\]/);
 
   const cleanDescription = str
     .replace(/\[limit:\d+\]/g, '')
     .replace(/\[status:(active|inactive)\]/g, '')
     .replace(/\[featured:(true|false)\]/g, '')
     .replace(/\[day:[a-z0-9_-]+\]/g, '')
+    .replace(/\[date:[^\]]+\]/g, '')
     .trim();
 
   const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
   const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
   const parsedFeatured = featuredMatch ? featuredMatch[1] === 'true' : undefined;
   const parsedDay = dayMatch ? dayMatch[1] : undefined;
+  const parsedDate = dateMatch ? dateMatch[1].trim() : undefined;
 
-  return { cleanDescription, parsedLimit, parsedActive, parsedFeatured, parsedDay };
+  return { cleanDescription, parsedLimit, parsedActive, parsedFeatured, parsedDay, parsedDate };
 }
 
   // Fetch dynamic categories and live contribution counts from Supabase
@@ -392,8 +395,13 @@ function decodeCategoryDescription(desc?: string) {
             ? (d.is_active !== false) 
             : (decoded.parsedActive !== undefined ? decoded.parsedActive : true);
 
-          // Intelligently infer Pujo Day & Date
-          const dayInfo = inferSevaDayAndDate(d.name, decoded.cleanDescription, decoded.parsedDay || matched?.day);
+          // Intelligently infer Pujo Day & Date, with explicit admin date override if configured
+          const dayInfo = inferSevaDayAndDate(
+            d.name, 
+            decoded.cleanDescription, 
+            decoded.parsedDay || matched?.day,
+            decoded.parsedDate
+          );
           // Intelligently infer Category & Festive Icon
           const catInfo = inferSevaCategoryAndIcon(d.name, matched?.category);
 
@@ -413,22 +421,8 @@ function decodeCategoryDescription(desc?: string) {
           };
         });
 
-        // Also merge any default offerings that aren't yet in DB (e.g. Panchami or Grand Patrons)
-        const dbTitlesLower = new Set(dbItems.map((item) => item.title.toLowerCase()));
-        const missingDefaults = defaultSevaCatalog
-          .filter((item) => !dbTitlesLower.has(item.title.toLowerCase()))
-          .map((item) => {
-            const booked = contributionsList.filter(
-              (c: any) => c.contribution_categories?.name?.toLowerCase() === item.title.toLowerCase()
-            ).length;
-            return {
-              ...item,
-              bookedCount: booked,
-              isActive: true,
-            };
-          });
-
-        setSevaList([...dbItems, ...missingDefaults]);
+        // Strictly show only what is configured in DB/Admin
+        setSevaList(dbItems);
       } else {
         // Compute against default catalog if categories table is still using defaults
         const updatedDefaults = defaultSevaCatalog.map((item) => {

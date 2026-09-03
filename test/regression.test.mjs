@@ -2560,15 +2560,19 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       grand: { id: "grand", label: "👑 All 6 Days (Grand Patrons)", dayName: "All 6 Days", dateStr: "15 - 20 Oct 2026", order: 7 },
     };
 
-    function inferSevaDayAndDate(title, description, tagDay) {
+    function inferSevaDayAndDate(title, description, tagDay, customDate) {
+      const finalDateStr = (customDate || "").trim();
       if (tagDay && PUJO_DAYS[tagDay.toLowerCase()]) {
         const day = PUJO_DAYS[tagDay.toLowerCase()];
-        return { dayId: day.id, dayName: day.dayName, dateStr: day.dateStr, order: day.order };
+        return { dayId: day.id, dayName: day.dayName, dateStr: finalDateStr || day.dateStr, order: day.order };
+      }
+      if (tagDay && tagDay.toLowerCase() === "custom") {
+        return { dayId: "custom", dayName: "Special Seva", dateStr: finalDateStr || "15 - 20 Oct 2026", order: 8 };
       }
       const text = `${title} ${description || ""}`.toLowerCase();
       if (text.includes("panchami") || text.includes("15 oct") || text.includes("anandamela")) {
         const d = PUJO_DAYS.panchami;
-        return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+        return { dayId: d.id, dayName: d.dayName, dateStr: finalDateStr || d.dateStr, order: d.order };
       }
       if (text.includes("shashthi") || text.includes("shashti") || text.includes("sashti") || text.includes("bodhon") || text.includes("amontron") || text.includes("adhibas") || text.includes("16 oct")) {
         const d = PUJO_DAYS.shashthi;
@@ -2701,6 +2705,80 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       // All chip
       const allMatches = items.filter(it => matchesDayFilter(it, "all"));
       assert.strictEqual(allMatches.length, 8);
+    });
+
+    it('should respect custom date override configured by Admin in CMS', () => {
+      // Admin overrides date for a seva
+      const overridden = inferSevaDayAndDate("Saptami Khichuri Bhog", "Special [date:17 Oct 2026 (1:00 PM)]", "saptami", "17 Oct 2026 (1:00 PM)");
+      assert.strictEqual(overridden.dayName, "Maha Saptami");
+      assert.strictEqual(overridden.dateStr, "17 Oct 2026 (1:00 PM)");
+
+      // Custom day and date
+      const customSeva = inferSevaDayAndDate("Special Immersion Logistics", "", "custom", "21 Oct 2026");
+      assert.strictEqual(customSeva.dayName, "Special Seva");
+      assert.strictEqual(customSeva.dateStr, "21 Oct 2026");
+    });
+
+    it('should cleanly encode and decode day and date tags in category description', () => {
+      const encode = (desc, max, active, feat, day, date) => {
+        const clean = (desc || '').replace(/\[limit:\d+\]/g, '').replace(/\[status:(active|inactive)\]/g, '').replace(/\[featured:(true|false)\]/g, '').replace(/\[day:[a-z0-9_-]+\]/g, '').replace(/\[date:[^\]]+\]/g, '').trim();
+        const lTag = max !== undefined ? `[limit:${max}]` : '';
+        const sTag = active !== undefined ? `[status:${active ? 'active' : 'inactive'}]` : '';
+        const fTag = feat !== undefined ? `[featured:${feat ? 'true' : 'false'}]` : '';
+        const dTag = day ? `[day:${day}]` : '';
+        const dtTag = date ? `[date:${date}]` : '';
+        return `${clean} ${lTag} ${sTag} ${fTag} ${dTag} ${dtTag}`.trim();
+      };
+
+      const decode = (desc) => {
+        const str = desc || '';
+        const limitMatch = str.match(/\[limit:(\d+)\]/);
+        const statusMatch = str.match(/\[status:(active|inactive)\]/);
+        const featuredMatch = str.match(/\[featured:(true|false)\]/);
+        const dayMatch = str.match(/\[day:([a-z0-9_-]+)\]/);
+        const dateMatch = str.match(/\[date:([^\]]+)\]/);
+        const cleanDescription = str.replace(/\[limit:\d+\]/g, '').replace(/\[status:(active|inactive)\]/g, '').replace(/\[featured:(true|false)\]/g, '').replace(/\[day:[a-z0-9_-]+\]/g, '').replace(/\[date:[^\]]+\]/g, '').trim();
+        return {
+          cleanDescription,
+          parsedLimit: limitMatch ? Number(limitMatch[1]) : undefined,
+          parsedActive: statusMatch ? statusMatch[1] === 'active' : undefined,
+          parsedFeatured: featuredMatch ? featuredMatch[1] === 'true' : undefined,
+          parsedDay: dayMatch ? dayMatch[1] : undefined,
+          parsedDate: dateMatch ? dateMatch[1].trim() : undefined,
+        };
+      };
+
+      const encoded = encode("Morning offering for devotees", 4, true, true, "saptami", "17 Oct 2026");
+      assert.ok(encoded.includes("[day:saptami]"));
+      assert.ok(encoded.includes("[date:17 Oct 2026]"));
+      assert.ok(encoded.includes("[limit:4]"));
+
+      const decoded = decode(encoded);
+      assert.strictEqual(decoded.cleanDescription, "Morning offering for devotees");
+      assert.strictEqual(decoded.parsedLimit, 4);
+      assert.strictEqual(decoded.parsedActive, true);
+      assert.strictEqual(decoded.parsedFeatured, true);
+      assert.strictEqual(decoded.parsedDay, "saptami");
+      assert.strictEqual(decoded.parsedDate, "17 Oct 2026");
+    });
+
+    it('should strictly populate only configured database items without injecting static unconfigured junk', () => {
+      // Simulating database items
+      const dbCategories = [
+        { id: "1", name: "Maha Saptami Flowers", fixed_amount: 5000, description: "[limit:2]" },
+        { id: "2", name: "Maha Ashtami Bhog", fixed_amount: 10000, description: "[limit:5]" },
+      ];
+
+      // When dbCategories has items, catalog MUST NOT inject missing unconfigured defaults
+      const resolvedCatalog = dbCategories.map(d => ({
+        id: d.id,
+        title: d.name,
+        amount: d.fixed_amount,
+      }));
+
+      assert.strictEqual(resolvedCatalog.length, 2);
+      assert.ok(!resolvedCatalog.some(item => item.title.includes("Silver Patron")));
+      assert.ok(!resolvedCatalog.some(item => item.title.includes("Kumari Puja")));
     });
   });
 

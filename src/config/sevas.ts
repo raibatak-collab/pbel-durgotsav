@@ -75,42 +75,63 @@ export interface SevaItem {
 
 /**
  * Intelligently infers Pujo Day, Date, and Day ID from the category name, description, or explicit day tag.
+ * Allows explicit custom date override from the Admin panel.
  */
-export function inferSevaDayAndDate(title: string, description?: string, tagDay?: string): { dayId: string; dayName: string; dateStr: string; order: number } {
+export function inferSevaDayAndDate(
+  title: string, 
+  description?: string, 
+  tagDay?: string, 
+  customDate?: string
+): { dayId: string; dayName: string; dateStr: string; order: number } {
+  const finalDateStr = (customDate || "").trim();
+
   if (tagDay && PUJO_DAYS[tagDay.toLowerCase()]) {
     const day = PUJO_DAYS[tagDay.toLowerCase()];
-    return { dayId: day.id, dayName: day.dayName, dateStr: day.dateStr, order: day.order };
+    return { 
+      dayId: day.id, 
+      dayName: day.dayName, 
+      dateStr: finalDateStr || day.dateStr, 
+      order: day.order 
+    };
+  }
+  if (tagDay && tagDay.toLowerCase() === "custom") {
+    return {
+      dayId: "custom",
+      dayName: "Special Seva",
+      dateStr: finalDateStr || "15 - 20 Oct 2026",
+      order: 8,
+    };
   }
 
   const text = `${title} ${description || ""}`.toLowerCase();
 
   if (text.includes("panchami") || text.includes("15 oct") || text.includes("anandamela")) {
     const d = PUJO_DAYS.panchami;
-    return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+    return { dayId: d.id, dayName: d.dayName, dateStr: finalDateStr || d.dateStr, order: d.order };
   }
   if (text.includes("shashthi") || text.includes("shashti") || text.includes("sashti") || text.includes("bodhon") || text.includes("amontron") || text.includes("adhibas") || text.includes("16 oct")) {
     const d = PUJO_DAYS.shashthi;
-    return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+    return { dayId: d.id, dayName: d.dayName, dateStr: finalDateStr || d.dateStr, order: d.order };
   }
   if (text.includes("saptami") || text.includes("nabapatrika") || text.includes("kolabou") || text.includes("17 oct")) {
     const d = PUJO_DAYS.saptami;
-    return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+    return { dayId: d.id, dayName: d.dayName, dateStr: finalDateStr || d.dateStr, order: d.order };
   }
   if (text.includes("ashtami") || text.includes("sandhi") || text.includes("kumari") || text.includes("108 lotus") || text.includes("18 oct")) {
     const d = PUJO_DAYS.ashtami;
-    return { dayId: d.id, dayName: text.includes("sandhi") ? "Maha Ashtami / Sandhi" : d.dayName, dateStr: d.dateStr, order: d.order };
+    return { dayId: d.id, dayName: text.includes("sandhi") ? "Maha Ashtami / Sandhi" : d.dayName, dateStr: finalDateStr || d.dateStr, order: d.order };
   }
   if (text.includes("nabami") || text.includes("navami") || text.includes("dhunuchi") || text.includes("yajna") || text.includes("homa") || text.includes("19 oct")) {
     const d = PUJO_DAYS.nabami;
-    return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+    return { dayId: d.id, dayName: d.dayName, dateStr: finalDateStr || d.dateStr, order: d.order };
   }
   if (text.includes("dashami") || text.includes("bijoya") || text.includes("sindoor") || text.includes("bisorjon") || text.includes("immersion") || text.includes("shobhayatra") || text.includes("20 oct")) {
     const d = PUJO_DAYS.dashami;
-    return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+    return { dayId: d.id, dayName: d.dayName, dateStr: finalDateStr || d.dateStr, order: d.order };
   }
 
   const d = PUJO_DAYS.grand;
-  return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+  return { dayId: d.id, dayName: d.dayName, dateStr: finalDateStr || d.dateStr, order: d.order };
 }
 
 /**
