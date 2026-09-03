@@ -31,25 +31,17 @@ import { saveQrCodeToGallery } from "@/utils/qrDownload";
 import OfficialContributionReceipt, { ReceiptData } from "@/components/OfficialContributionReceipt";
 import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
 import { validateIndianPan } from "@/utils/panValidation";
+import {
+  inferSevaDayAndDate,
+  inferSevaCategoryAndIcon,
+  matchesDayFilter,
+  PUJO_DAYS,
+  SevaItem,
+} from "@/config/sevas";
 
 // Official Society Bank Account UPI Configuration
 const SOCIETY_UPI_ID = "pbelsanskritiksamiti@icici";
 const SOCIETY_NAME = "PBEL Sanskritik Samiti";
-
-interface SevaItem {
-  id: string;
-  title: string;
-  day: string;
-  date: string;
-  amount: number;
-  category: "flowers" | "bhog" | "sweets" | "rituals" | "grand";
-  icon: string;
-  description: string;
-  badge?: string;
-  maxLimit?: number;
-  bookedCount?: number;
-  isActive?: boolean;
-}
 
 const defaultSevaCatalog: SevaItem[] = [
   // Panchami
@@ -346,16 +338,22 @@ function decodeCategoryDescription(desc?: string) {
   const str = desc || '';
   const limitMatch = str.match(/\[limit:(\d+)\]/);
   const statusMatch = str.match(/\[status:(active|inactive)\]/);
+  const featuredMatch = str.match(/\[featured:(true|false)\]/);
+  const dayMatch = str.match(/\[day:([a-z0-9_-]+)\]/);
 
   const cleanDescription = str
     .replace(/\[limit:\d+\]/g, '')
     .replace(/\[status:(active|inactive)\]/g, '')
+    .replace(/\[featured:(true|false)\]/g, '')
+    .replace(/\[day:[a-z0-9_-]+\]/g, '')
     .trim();
 
   const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
   const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
+  const parsedFeatured = featuredMatch ? featuredMatch[1] === 'true' : undefined;
+  const parsedDay = dayMatch ? dayMatch[1] : undefined;
 
-  return { cleanDescription, parsedLimit, parsedActive };
+  return { cleanDescription, parsedLimit, parsedActive, parsedFeatured, parsedDay };
 }
 
   // Fetch dynamic categories and live contribution counts from Supabase
@@ -376,7 +374,9 @@ function decodeCategoryDescription(desc?: string) {
         const dbItems: SevaItem[] = dbCategories.map((d: any) => {
           const decoded = decodeCategoryDescription(d.description);
           const matched = defaultSevaCatalog.find(
-            (def) => def.title.toLowerCase() === d.name.toLowerCase()
+            (def) => def.title.toLowerCase() === d.name.toLowerCase() ||
+                     d.name.toLowerCase().includes(def.title.toLowerCase()) ||
+                     def.title.toLowerCase().includes(d.name.toLowerCase())
           );
 
           // Calculate booked count
@@ -392,14 +392,19 @@ function decodeCategoryDescription(desc?: string) {
             ? (d.is_active !== false) 
             : (decoded.parsedActive !== undefined ? decoded.parsedActive : true);
 
+          // Intelligently infer Pujo Day & Date
+          const dayInfo = inferSevaDayAndDate(d.name, decoded.cleanDescription, decoded.parsedDay || matched?.day);
+          // Intelligently infer Category & Festive Icon
+          const catInfo = inferSevaCategoryAndIcon(d.name, matched?.category);
+
           return {
             id: d.id,
             title: d.name,
-            day: matched?.day || "6-Day Pujo",
-            date: matched?.date || "15 - 20 Oct 2026",
+            day: dayInfo.dayName,
+            date: dayInfo.dateStr,
             amount: d.fixed_amount ? Number(d.fixed_amount) : (matched?.amount || 1001),
-            category: (matched?.category || "rituals") as any,
-            icon: matched?.icon || "🌺",
+            category: catInfo.category,
+            icon: matched?.icon || catInfo.icon,
             description: decoded.cleanDescription || matched?.description || "Special seva offering for PBEL City Durgotsav.",
             badge: matched?.badge || (d.fixed_amount >= 10000 ? "Grand Seva" : undefined),
             maxLimit: max,
@@ -407,7 +412,23 @@ function decodeCategoryDescription(desc?: string) {
             isActive: isActive,
           };
         });
-        setSevaList(dbItems);
+
+        // Also merge any default offerings that aren't yet in DB (e.g. Panchami or Grand Patrons)
+        const dbTitlesLower = new Set(dbItems.map((item) => item.title.toLowerCase()));
+        const missingDefaults = defaultSevaCatalog
+          .filter((item) => !dbTitlesLower.has(item.title.toLowerCase()))
+          .map((item) => {
+            const booked = contributionsList.filter(
+              (c: any) => c.contribution_categories?.name?.toLowerCase() === item.title.toLowerCase()
+            ).length;
+            return {
+              ...item,
+              bookedCount: booked,
+              isActive: true,
+            };
+          });
+
+        setSevaList([...dbItems, ...missingDefaults]);
       } else {
         // Compute against default catalog if categories table is still using defaults
         const updatedDefaults = defaultSevaCatalog.map((item) => {
@@ -543,17 +564,7 @@ function decodeCategoryDescription(desc?: string) {
   const filteredSevas = sevaList
     .filter((item) => {
       if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
-      if (dayFilter !== "all") {
-        const dayLower = (item.day || "").toLowerCase();
-        if (dayFilter === "panchami" && !dayLower.includes("panchami")) return false;
-        if (dayFilter === "shashthi" && !dayLower.includes("shashthi") && !dayLower.includes("sashti")) return false;
-        if (dayFilter === "saptami" && !dayLower.includes("saptami")) return false;
-        if (dayFilter === "ashtami" && !dayLower.includes("ashtami")) return false;
-        if (dayFilter === "nabami" && !dayLower.includes("nabami") && !dayLower.includes("navami")) return false;
-        if (dayFilter === "dashami" && !dayLower.includes("dashami")) return false;
-        if (dayFilter === "grand" && !dayLower.includes("all 6") && !dayLower.includes("grand")) return false;
-      }
-      return true;
+      return matchesDayFilter(item, dayFilter);
     })
     .sort((a, b) => getDayOrder(a.day) - getDayOrder(b.day) || a.amount - b.amount);
 
@@ -1414,8 +1425,11 @@ function decodeCategoryDescription(desc?: string) {
               <p className="text-gray-500 text-xs mt-1">Please select another day or view all offerings.</p>
               <button
                 type="button"
-                onClick={() => setCategoryFilter("all")}
-                className="mt-4 bg-primary text-white text-xs font-bold px-5 py-2 rounded-full hover:bg-primary-hover transition"
+                onClick={() => {
+                  setCategoryFilter("all");
+                  setDayFilter("all");
+                }}
+                className="mt-4 bg-primary text-white text-xs font-bold px-5 py-2 rounded-full hover:bg-primary-hover transition cursor-pointer"
               >
                 Show All Seva Offerings
               </button>

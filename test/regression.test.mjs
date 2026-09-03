@@ -2549,6 +2549,161 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('66. Seva Catalogue Day & Date Resolution, Smart Inferrer & Day Filter Chips', () => {
+    const PUJO_DAYS = {
+      panchami: { id: "panchami", label: "15 Oct • Panchami", dayName: "Maha Panchami", dateStr: "15 Oct 2026", order: 1 },
+      shashthi: { id: "shashthi", label: "16 Oct • Maha Sashti", dayName: "Maha Shashthi", dateStr: "16 Oct 2026", order: 2 },
+      saptami: { id: "saptami", label: "17 Oct • Maha Saptami", dayName: "Maha Saptami", dateStr: "17 Oct 2026", order: 3 },
+      ashtami: { id: "ashtami", label: "18 Oct • Maha Ashtami", dayName: "Maha Ashtami", dateStr: "18 Oct 2026", order: 4 },
+      nabami: { id: "nabami", label: "19 Oct • Maha Nabami", dayName: "Maha Nabami", dateStr: "19 Oct 2026", order: 5 },
+      dashami: { id: "dashami", label: "20 Oct • Bijoya Dashami", dayName: "Bijoya Dashami", dateStr: "20 Oct 2026", order: 6 },
+      grand: { id: "grand", label: "👑 All 6 Days (Grand Patrons)", dayName: "All 6 Days", dateStr: "15 - 20 Oct 2026", order: 7 },
+    };
+
+    function inferSevaDayAndDate(title, description, tagDay) {
+      if (tagDay && PUJO_DAYS[tagDay.toLowerCase()]) {
+        const day = PUJO_DAYS[tagDay.toLowerCase()];
+        return { dayId: day.id, dayName: day.dayName, dateStr: day.dateStr, order: day.order };
+      }
+      const text = `${title} ${description || ""}`.toLowerCase();
+      if (text.includes("panchami") || text.includes("15 oct") || text.includes("anandamela")) {
+        const d = PUJO_DAYS.panchami;
+        return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+      }
+      if (text.includes("shashthi") || text.includes("shashti") || text.includes("sashti") || text.includes("bodhon") || text.includes("amontron") || text.includes("adhibas") || text.includes("16 oct")) {
+        const d = PUJO_DAYS.shashthi;
+        return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+      }
+      if (text.includes("saptami") || text.includes("nabapatrika") || text.includes("kolabou") || text.includes("17 oct")) {
+        const d = PUJO_DAYS.saptami;
+        return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+      }
+      if (text.includes("ashtami") || text.includes("sandhi") || text.includes("kumari") || text.includes("108 lotus") || text.includes("18 oct")) {
+        const d = PUJO_DAYS.ashtami;
+        return { dayId: d.id, dayName: text.includes("sandhi") ? "Maha Ashtami / Sandhi" : d.dayName, dateStr: d.dateStr, order: d.order };
+      }
+      if (text.includes("nabami") || text.includes("navami") || text.includes("dhunuchi") || text.includes("yajna") || text.includes("homa") || text.includes("19 oct")) {
+        const d = PUJO_DAYS.nabami;
+        return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+      }
+      if (text.includes("dashami") || text.includes("bijoya") || text.includes("sindoor") || text.includes("bisorjon") || text.includes("immersion") || text.includes("shobhayatra") || text.includes("20 oct")) {
+        const d = PUJO_DAYS.dashami;
+        return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+      }
+      const d = PUJO_DAYS.grand;
+      return { dayId: d.id, dayName: d.dayName, dateStr: d.dateStr, order: d.order };
+    }
+
+    function matchesDayFilter(item, dayFilter) {
+      if (dayFilter === "all") return true;
+      const dayLower = (item.day || "").toLowerCase();
+      const dateLower = (item.date || "").toLowerCase();
+      const titleLower = (item.title || "").toLowerCase();
+      const isMultiDay = dayLower.includes("all 6") || dateLower.includes("-") || titleLower.includes("all 6");
+
+      if (dayFilter === "grand") {
+        return isMultiDay || dayLower.includes("grand") || titleLower.includes("patron") || titleLower.includes("general");
+      }
+
+      if (isMultiDay && !titleLower.includes(dayFilter)) {
+        return false;
+      }
+
+      const text = `${dayLower} ${dateLower} ${titleLower}`;
+      switch (dayFilter) {
+        case "panchami": return text.includes("panchami") || dateLower.startsWith("15 oct");
+        case "shashthi": return text.includes("shashthi") || text.includes("shashti") || text.includes("sashti") || text.includes("bodhon") || dateLower.startsWith("16 oct");
+        case "saptami": return text.includes("saptami") || text.includes("kolabou") || text.includes("nabapatrika") || dateLower.startsWith("17 oct");
+        case "ashtami": return text.includes("ashtami") || text.includes("sandhi") || text.includes("kumari") || dateLower.startsWith("18 oct");
+        case "nabami": return text.includes("nabami") || text.includes("navami") || text.includes("dhunuchi") || text.includes("yajna") || text.includes("homa") || dateLower.startsWith("19 oct");
+        case "dashami": return text.includes("dashami") || text.includes("bijoya") || text.includes("sindoor") || text.includes("bisorjon") || text.includes("immersion") || dateLower.startsWith("20 oct");
+        default: return true;
+      }
+    }
+
+    it('should accurately infer Pujo Day and exact calendar date from DB category names', () => {
+      // Testing against actual production Supabase categories:
+      const navami = inferSevaDayAndDate("Maha Navami Morning Puja");
+      assert.strictEqual(navami.dayName, "Maha Nabami");
+      assert.strictEqual(navami.dateStr, "19 Oct 2026");
+
+      const ashtamiPrasad = inferSevaDayAndDate("Maha Ashtami Evening Prasad");
+      assert.strictEqual(ashtamiPrasad.dayName, "Maha Ashtami");
+      assert.strictEqual(ashtamiPrasad.dateStr, "18 Oct 2026");
+
+      const saptami = inferSevaDayAndDate("Saptami Nabapatrika & Morning Pujo Samagri");
+      assert.strictEqual(saptami.dayName, "Maha Saptami");
+      assert.strictEqual(saptami.dateStr, "17 Oct 2026");
+
+      const sashti = inferSevaDayAndDate("Maha Sashti Pujo Sweets");
+      assert.strictEqual(sashti.dayName, "Maha Shashthi");
+      assert.strictEqual(sashti.dateStr, "16 Oct 2026");
+
+      const dashami = inferSevaDayAndDate("Maha Dashami Morning Puja");
+      assert.strictEqual(dashami.dayName, "Bijoya Dashami");
+      assert.strictEqual(dashami.dateStr, "20 Oct 2026");
+
+      const sandhi = inferSevaDayAndDate("Sandhi Pujo");
+      assert.strictEqual(sandhi.dayName, "Maha Ashtami / Sandhi");
+      assert.strictEqual(sandhi.dateStr, "18 Oct 2026");
+
+      const general = inferSevaDayAndDate("General Pujo Fund");
+      assert.strictEqual(general.dayName, "All 6 Days");
+      assert.strictEqual(general.dateStr, "15 - 20 Oct 2026");
+    });
+
+    it('should accurately filter items when user clicks day filter chips', () => {
+      const items = [
+        { title: "Maha Navami Morning Puja", day: "Maha Nabami", date: "19 Oct 2026" },
+        { title: "Maha Ashtami Evening Prasad", day: "Maha Ashtami", date: "18 Oct 2026" },
+        { title: "Sandhi Pujo", day: "Maha Ashtami / Sandhi", date: "18 Oct 2026" },
+        { title: "Saptami Nabapatrika & Morning Pujo Samagri", day: "Maha Saptami", date: "17 Oct 2026" },
+        { title: "Maha Sashti Pujo Sweets", day: "Maha Shashthi", date: "16 Oct 2026" },
+        { title: "Maha Dashami Sweets", day: "Bijoya Dashami", date: "20 Oct 2026" },
+        { title: "Panchami Agomoni & Dhaak Seva", day: "Maha Panchami", date: "15 Oct 2026" },
+        { title: "General Pujo Fund", day: "All 6 Days", date: "15 - 20 Oct 2026" },
+      ];
+
+      // Panchami chip
+      const panchamiMatches = items.filter(it => matchesDayFilter(it, "panchami"));
+      assert.strictEqual(panchamiMatches.length, 1);
+      assert.strictEqual(panchamiMatches[0].title, "Panchami Agomoni & Dhaak Seva");
+
+      // Shashthi chip
+      const shashthiMatches = items.filter(it => matchesDayFilter(it, "shashthi"));
+      assert.strictEqual(shashthiMatches.length, 1);
+      assert.strictEqual(shashthiMatches[0].title, "Maha Sashti Pujo Sweets");
+
+      // Saptami chip
+      const saptamiMatches = items.filter(it => matchesDayFilter(it, "saptami"));
+      assert.strictEqual(saptamiMatches.length, 1);
+      assert.strictEqual(saptamiMatches[0].title, "Saptami Nabapatrika & Morning Pujo Samagri");
+
+      // Ashtami chip (includes Ashtami and Sandhi)
+      const ashtamiMatches = items.filter(it => matchesDayFilter(it, "ashtami"));
+      assert.strictEqual(ashtamiMatches.length, 2);
+
+      // Nabami chip (matches spelling variations 'Navami' and 'Nabami')
+      const nabamiMatches = items.filter(it => matchesDayFilter(it, "nabami"));
+      assert.strictEqual(nabamiMatches.length, 1);
+      assert.strictEqual(nabamiMatches[0].title, "Maha Navami Morning Puja");
+
+      // Dashami chip
+      const dashamiMatches = items.filter(it => matchesDayFilter(it, "dashami"));
+      assert.strictEqual(dashamiMatches.length, 1);
+      assert.strictEqual(dashamiMatches[0].title, "Maha Dashami Sweets");
+
+      // Grand / All 6 Days chip
+      const grandMatches = items.filter(it => matchesDayFilter(it, "grand"));
+      assert.strictEqual(grandMatches.length, 1);
+      assert.strictEqual(grandMatches[0].title, "General Pujo Fund");
+
+      // All chip
+      const allMatches = items.filter(it => matchesDayFilter(it, "all"));
+      assert.strictEqual(allMatches.length, 8);
+    });
+  });
+
 });
 
 

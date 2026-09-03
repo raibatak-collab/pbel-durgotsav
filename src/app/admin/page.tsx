@@ -52,6 +52,7 @@ import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredT
 import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
 import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE, sortRitualsByTime, RitualEvent, getStoredHeroChips, saveStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip, DEFAULT_HERO_HIGHLIGHT_CHIPS } from "@/config/schedule";
 import { getStoredSponsorshipTiers, saveStoredSponsorshipTiers, fetchStoredSponsorshipTiers, SponsorshipTier, DEFAULT_SPONSORSHIP_TIERS } from "@/config/sponsors";
+import { inferSevaDayAndDate, PUJO_DAYS } from "@/config/sevas";
 import { 
   AESTHETIC_WALLPAPERS, 
   DEFAULT_BRANDING, 
@@ -202,6 +203,7 @@ export default function AdminDashboard() {
     max_limit: 5, 
     is_active: true,
     is_featured: false,
+    pujo_day: "",
   });
   const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
@@ -1285,17 +1287,19 @@ export default function AdminDashboard() {
     }
   };
 
-// Category limit, status & featured metadata helpers for reliable backwards compatibility
-function encodeCategoryDescription(desc: string, maxLimit?: number, isActive?: boolean, isFeatured?: boolean) {
+// Category limit, status, featured & pujo day metadata helpers for reliable backwards compatibility
+function encodeCategoryDescription(desc: string, maxLimit?: number, isActive?: boolean, isFeatured?: boolean, pujoDay?: string) {
   const clean = (desc || '')
     .replace(/\[limit:\d+\]/g, '')
     .replace(/\[status:(active|inactive)\]/g, '')
     .replace(/\[featured:(true|false)\]/g, '')
+    .replace(/\[day:[a-z0-9_-]+\]/g, '')
     .trim();
   const limitTag = maxLimit !== undefined && maxLimit !== null ? `[limit:${maxLimit}]` : '';
   const statusTag = isActive !== undefined ? `[status:${isActive ? 'active' : 'inactive'}]` : '';
   const featuredTag = isFeatured !== undefined ? `[featured:${isFeatured ? 'true' : 'false'}]` : '';
-  return `${clean} ${limitTag} ${statusTag} ${featuredTag}`.trim();
+  const dayTag = pujoDay ? `[day:${pujoDay}]` : '';
+  return `${clean} ${limitTag} ${statusTag} ${featuredTag} ${dayTag}`.trim();
 }
 
 function decodeCategoryDescription(desc?: string) {
@@ -1303,18 +1307,21 @@ function decodeCategoryDescription(desc?: string) {
   const limitMatch = str.match(/\[limit:(\d+)\]/);
   const statusMatch = str.match(/\[status:(active|inactive)\]/);
   const featuredMatch = str.match(/\[featured:(true|false)\]/);
+  const dayMatch = str.match(/\[day:([a-z0-9_-]+)\]/);
 
   const cleanDescription = str
     .replace(/\[limit:\d+\]/g, '')
     .replace(/\[status:(active|inactive)\]/g, '')
     .replace(/\[featured:(true|false)\]/g, '')
+    .replace(/\[day:[a-z0-9_-]+\]/g, '')
     .trim();
 
   const parsedLimit = limitMatch ? Number(limitMatch[1]) : undefined;
   const parsedActive = statusMatch ? statusMatch[1] === 'active' : undefined;
   const parsedFeatured = featuredMatch ? featuredMatch[1] === 'true' : undefined;
+  const parsedDay = dayMatch ? dayMatch[1] : undefined;
 
-  return { cleanDescription, parsedLimit, parsedActive, parsedFeatured };
+  return { cleanDescription, parsedLimit, parsedActive, parsedFeatured, parsedDay };
 }
 
   // 1. Overview Calculations
@@ -1332,7 +1339,8 @@ function decodeCategoryDescription(desc?: string) {
         newCategory.description, 
         newCategory.max_limit, 
         newCategory.is_active,
-        newCategory.is_featured
+        newCategory.is_featured,
+        newCategory.pujo_day
       );
 
       const payload: any = {
@@ -1365,7 +1373,7 @@ function decodeCategoryDescription(desc?: string) {
         }
         alert("New Seva Category added successfully!");
       }
-      setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false });
+      setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false, pujo_day: "" });
       setIsEditingCategory(false);
       window.dispatchEvent(new Event("pbel_categories_updated"));
       await fetchData();
@@ -2586,7 +2594,7 @@ function decodeCategoryDescription(desc?: string) {
                 <button
                   onClick={() => {
                     setIsEditingCategory(false);
-                    setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false });
+                    setNewCategory({ id: "", name: "", fixed_amount: 1001, description: "", max_limit: 5, is_active: true, is_featured: false, pujo_day: "" });
                   }}
                   className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1"
                 >
@@ -2606,6 +2614,24 @@ function decodeCategoryDescription(desc?: string) {
                   placeholder="e.g. Saptami Maha Bhog Seva"
                   className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1">Pujo Day &amp; Date</label>
+                <select
+                  value={newCategory.pujo_day || ""}
+                  onChange={(e) => setNewCategory({ ...newCategory, pujo_day: e.target.value })}
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-medium text-amber-950 bg-amber-50/50"
+                >
+                  <option value="">Auto-detect from title (e.g. Saptami, Ashtami)</option>
+                  <option value="panchami">15 Oct • Maha Panchami</option>
+                  <option value="shashthi">16 Oct • Maha Sashti</option>
+                  <option value="saptami">17 Oct • Maha Saptami</option>
+                  <option value="ashtami">18 Oct • Maha Ashtami</option>
+                  <option value="nabami">19 Oct • Maha Nabami</option>
+                  <option value="dashami">20 Oct • Bijoya Dashami</option>
+                  <option value="grand">👑 All 6 Days (Grand Patrons / General)</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
@@ -2699,6 +2725,7 @@ function decodeCategoryDescription(desc?: string) {
                 <thead>
                   <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
                     <th className="p-3.5">Seva Title</th>
+                    <th className="p-3.5">Pujo Day</th>
                     <th className="p-3.5">Price</th>
                     <th className="p-3.5">Max Limit</th>
                     <th className="p-3.5">Booked</th>
@@ -2711,6 +2738,7 @@ function decodeCategoryDescription(desc?: string) {
                 <tbody className="divide-y divide-gray-100">
                   {categoriesList.map((cat) => {
                     const decoded = decodeCategoryDescription(cat.description);
+                    const dayInfo = inferSevaDayAndDate(cat.name, decoded.cleanDescription, decoded.parsedDay);
                     const booked = contributions.filter(
                       (c) => (c.category_id === cat.id || c.contribution_categories?.name?.toLowerCase() === cat.name?.toLowerCase()) && c.status !== "Rejected"
                     ).length;
@@ -2731,6 +2759,11 @@ function decodeCategoryDescription(desc?: string) {
                     return (
                       <tr key={cat.id} className={`hover:bg-gray-50/60 ${isFull || !isActive ? "bg-gray-50/70" : ""}`}>
                         <td className="p-3.5 font-bold text-gray-900">{cat.name}</td>
+                        <td className="p-3.5 whitespace-nowrap">
+                          <span className="px-2.5 py-1 rounded-full text-[10.5px] font-bold bg-amber-50 text-amber-900 border border-amber-300">
+                            {dayInfo.dateStr.split(" ")[0]} {dayInfo.dateStr.split(" ")[1]} • {dayInfo.dayName}
+                          </span>
+                        </td>
                         <td className="p-3.5 font-bold text-primary font-mono">₹{cat.fixed_amount ? Number(cat.fixed_amount).toLocaleString("en-IN") : "Custom"}</td>
                         <td className="p-3.5 font-semibold text-gray-800">{max} slots</td>
                         <td className="p-3.5 font-bold text-amber-900">{booked}</td>
@@ -2774,6 +2807,7 @@ function decodeCategoryDescription(desc?: string) {
                                 max_limit: max,
                                 is_active: isActive,
                                 is_featured: isFeatured,
+                                pujo_day: decoded.parsedDay || "",
                               });
                               setIsEditingCategory(true);
                             }}
