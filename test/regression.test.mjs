@@ -2804,6 +2804,39 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('68. WhatsApp & Facebook OpenGraph Link Preview & Social Icon Integrity', () => {
+    it('should verify layout.tsx metadataBase uses production domain www.pbelcitydurgotsav.com', () => {
+      const layoutSrc = fs.readFileSync('src/app/layout.tsx', 'utf8');
+      assert.ok(layoutSrc.includes('https://www.pbelcitydurgotsav.com'), 'metadataBase must point to production domain');
+      assert.ok(!layoutSrc.includes('https://pbeldurgotsav.in'), 'Old dummy domain must not be present in layout.tsx');
+    });
+
+    it('should verify all OpenGraph preview images are PNG format and under 300KB for WhatsApp compatibility', () => {
+      const ogPngPath = 'public/og-image.png';
+      const iconPngPath = 'public/pbel-durgotsav-icon.png';
+      const thumbPngPath = 'public/whatsapp-thumb.png';
+
+      assert.ok(fs.existsSync(ogPngPath), 'og-image.png must exist in public directory');
+      assert.ok(fs.existsSync(iconPngPath), 'pbel-durgotsav-icon.png must exist in public directory');
+      assert.ok(fs.existsSync(thumbPngPath), 'whatsapp-thumb.png must exist in public directory');
+
+      const ogSize = fs.statSync(ogPngPath).size;
+      const iconSize = fs.statSync(iconPngPath).size;
+      const thumbSize = fs.statSync(thumbPngPath).size;
+
+      // WhatsApp crawler strictly requires images under 300KB (307,200 bytes)
+      assert.ok(ogSize < 300 * 1024, `og-image.png (${ogSize} bytes) must be under 300KB for WhatsApp`);
+      assert.ok(iconSize < 300 * 1024, `pbel-durgotsav-icon.png (${iconSize} bytes) must be under 300KB for WhatsApp`);
+      assert.ok(thumbSize < 300 * 1024, `whatsapp-thumb.png (${thumbSize} bytes) must be under 300KB for WhatsApp`);
+    });
+
+    it('should verify App Router opengraph-image.png and icon.png exist for automated metadata serving', () => {
+      assert.ok(fs.existsSync('src/app/opengraph-image.png'), 'App Router opengraph-image.png must exist');
+      assert.ok(fs.existsSync('src/app/icon.png'), 'App Router icon.png must exist');
+      assert.ok(fs.existsSync('src/app/apple-icon.png'), 'App Router apple-icon.png must exist');
+    });
+  });
+
 });
 
 

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Rozha_One } from "next/font/google";
 import "./globals.css";
 import { BottomNav } from "@/components/BottomNav";
@@ -20,8 +20,14 @@ const rozhaOne = Rozha_One({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#850E1F",
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  metadataBase: new URL("https://pbeldurgotsav.in"),
+  metadataBase: new URL("https://www.pbelcitydurgotsav.com"),
   title: {
     default: "PBEL City Durgotsav 2026 | PBEL Sanskritik Samiti",
     template: "%s | PBEL City Durgotsav 2026",
@@ -45,17 +51,35 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_IN",
-    url: "https://pbeldurgotsav.in",
+    url: "https://www.pbelcitydurgotsav.com",
     siteName: "PBEL City Durgotsav 2026",
     title: "PBEL City Durgotsav 2026 | PBEL Sanskritik Samiti",
     description:
-      "Celebrate Durga Pujo with PBEL City Sanskritik Samiti (15-20 Oct 2026). Explore schedule, offer seva, register cultural acts & join community celebrations in Hyderabad.",
+      "Celebrate Durga Pujo with PBEL Sanskritik Samiti (15-20 Oct 2026). Explore ritual schedule, offer seva, register cultural acts & join Hyderabad's grand community festival.",
     images: [
       {
-        url: "/images/wallpapers/durga_ekchala.svg",
+        url: "/og-image.png",
+        secureUrl: "https://www.pbelcitydurgotsav.com/og-image.png",
         width: 1200,
         height: 630,
-        alt: "PBEL City Durgotsav 2026 - Maa Durga",
+        type: "image/png",
+        alt: "PBEL City Durgotsav 2026 - Maa Durga Sacred Emblem & Festival Banner",
+      },
+      {
+        url: "/pbel-durgotsav-icon.png",
+        secureUrl: "https://www.pbelcitydurgotsav.com/pbel-durgotsav-icon.png",
+        width: 512,
+        height: 512,
+        type: "image/png",
+        alt: "PBEL City Durgotsav Official Sacred Icon",
+      },
+      {
+        url: "/whatsapp-thumb.png",
+        secureUrl: "https://www.pbelcitydurgotsav.com/whatsapp-thumb.png",
+        width: 300,
+        height: 300,
+        type: "image/png",
+        alt: "PBEL City Durgotsav WhatsApp Preview Thumbnail",
       },
     ],
   },
@@ -64,19 +88,26 @@ export const metadata: Metadata = {
     title: "PBEL City Durgotsav 2026 | PBEL Sanskritik Samiti",
     description:
       "Join the 6-day grand celebration of devotion, heritage, cultural stage acts, and community unity in Hyderabad (15 - 20 Oct 2026).",
-    images: ["/images/wallpapers/durga_ekchala.svg"],
+    images: ["/og-image.png"],
   },
   icons: {
     icon: [
+      { url: "/pbel-durgotsav-icon.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.png", sizes: "64x64", type: "image/png" },
       { url: "/favicon.svg", type: "image/svg+xml" },
       { url: "/icon.svg", type: "image/svg+xml" },
     ],
     apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
       { url: "/apple-icon.svg", type: "image/svg+xml" },
     ],
-    shortcut: "/favicon.svg",
+    shortcut: "/pbel-durgotsav-icon.png",
   },
-  themeColor: "#850E1F",
+  other: {
+    "image_src": "https://www.pbelcitydurgotsav.com/pbel-durgotsav-icon.png",
+    "og:image:secure_url": "https://www.pbelcitydurgotsav.com/og-image.png",
+    "og:image:type": "image/png",
+  },
 };
 
 export default function RootLayout({

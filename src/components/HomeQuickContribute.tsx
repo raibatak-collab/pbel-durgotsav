@@ -381,7 +381,7 @@ export function HomeQuickContribute() {
             </div>
             <a
               href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                `🌺 ।। শুভ শারদীয়া ।। Joy Maa Durga!\n\nOur family (${receiptData.name}, ${receiptData.flatNumber}) has offered Seva for PBEL City Durgotsav 2026 (${receiptData.category}).\n\nOffer your seva and support our community pujo at https://pbeldurgotsav.in`
+                `🌺 ।। শুভ শারদীয়া ।। Joy Maa Durga!\n\nOur family (${receiptData.name}, ${receiptData.flatNumber}) has offered Seva for PBEL City Durgotsav 2026 (${receiptData.category}).\n\nOffer your seva and support our community pujo at https://www.pbelcitydurgotsav.com`
               )}`}
               target="_blank"
               rel="noopener noreferrer"
