@@ -2838,19 +2838,21 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
   });
 
   describe('69. Devotee Privacy Protection, Admin Receipt Generator & Seva Sponsor Publishing', () => {
-    it('should verify /receipt route enforces strict community privacy protection against public browsing', () => {
+    it('should verify /receipt route enforces direct receipt lookup with privacy fallback against open browsing', () => {
       assert.ok(fs.existsSync('src/app/receipt/page.tsx'), 'src/app/receipt/page.tsx must exist');
       const receiptPageSrc = fs.readFileSync('src/app/receipt/page.tsx', 'utf8');
       assert.ok(receiptPageSrc.includes('Community Privacy Protection'), 'Must display Community Privacy Protection banner');
-      assert.ok(receiptPageSrc.includes('individual contribution amounts and official receipts are private'), 'Must declare that contribution amounts and receipts are strictly private');
-      assert.ok(!receiptPageSrc.includes('supabase.from("contributions")'), 'Public receipt page must NOT query contributions table');
+      assert.ok(receiptPageSrc.includes('OfficialContributionReceipt'), 'Must render OfficialContributionReceipt when valid receipt ID is present');
+      assert.ok(receiptPageSrc.includes('lookupDirectReceipt'), 'Must perform direct exact lookup by payment/id');
     });
 
-    it('should verify DevotionalShareModal protects privacy by not broadcasting amounts or receipt links', () => {
+    it('should verify DevotionalShareModal includes checkbox toggle for receipt sharing on WhatsApp without broadcasting amounts', () => {
       const shareModalSrc = fs.readFileSync('src/components/DevotionalShareModal.tsx', 'utf8');
-      assert.ok(!shareModalSrc.includes('formattedAmount'), 'Must not broadcast donation amounts in WhatsApp share text');
-      assert.ok(!shareModalSrc.includes('receiptUrl'), 'Must not link to public receipts in share text');
-      assert.ok(shareModalSrc.includes('has offered devotional Seva'), 'Must include devotional seva offering text');
+      assert.ok(shareModalSrc.includes('includeReceipt'), 'Must include receipt toggle state');
+      assert.ok(shareModalSrc.includes('Include Official Receipt Link'), 'Must provide checkbox toggle to include receipt');
+      assert.ok(shareModalSrc.includes('https://www.pbelcitydurgotsav.com/receipt'), 'Must link to official receipt route when checked');
+      assert.ok(shareModalSrc.includes('Official Receipt No:'), 'Must include receipt number in message when checked');
+      assert.ok(!shareModalSrc.includes('formattedAmount'), 'Must not disclose raw monetary contribution amounts');
     });
 
     it('should verify Admin Console has Seva column, Receipt modal trigger, and Sponsor copy tool', () => {
