@@ -65,6 +65,7 @@ import {
 import { saveCloudConfig, fetchCloudConfig } from "@/utils/cloudConfig";
 import { sanitizeText, validateDonationAmount, validatePhoneNumber } from "@/utils/security";
 import { SitePopupHighlight, DEFAULT_POPUP_HIGHLIGHT } from "@/components/SiteHighlightModal";
+import { OfficialContributionReceipt, ReceiptData } from "@/components/OfficialContributionReceipt";
 
 export interface AdminUser {
   id: string;
@@ -174,6 +175,14 @@ export default function AdminDashboard() {
   // Live Data States
   const [contributions, setContributions] = useState<any[]>([]);
   const [categoriesList, setCategoriesList] = useState<any[]>([]);
+  // Contribution Filters & Admin Receipt Modal State
+  const [contributionSevaFilter, setContributionSevaFilter] = useState<string>("all");
+  const [contributionStatusFilter, setContributionStatusFilter] = useState<string>("all");
+  const [contributionSearch, setContributionSearch] = useState<string>("");
+  const [selectedReceiptContribution, setSelectedReceiptContribution] = useState<any | null>(null);
+  const [showSponsorCopyModal, setShowSponsorCopyModal] = useState<boolean>(false);
+  const [sponsorCopyCategory, setSponsorCopyCategory] = useState<string>("all");
+  const [sponsorCopied, setSponsorCopied] = useState<boolean>(false);
   const [volunteers, setVolunteers] = useState<any[]>([]);
   const [performances, setPerformances] = useState<any[]>([]);
   const [scheduleDays, setScheduleDays] = useState<DaySchedule[]>(getStoredSchedule());
@@ -1336,6 +1345,142 @@ function decodeCategoryDescription(desc?: string) {
   const totalFunds = verifiedContributions.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
   const pendingFunds = pendingContributions.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
 
+  const getContributionCategoryName = (c: any) => {
+    if (c.contribution_categories && c.contribution_categories.name) {
+      return c.contribution_categories.name;
+    }
+    if (c.category_id) {
+      const matched = categoriesList.find((cat: any) => cat.id === c.category_id);
+      if (matched && matched.name) return matched.name;
+    }
+    return "General Pujo Fund";
+  };
+
+  const getSevaBadge = (categoryName: string) => {
+    const lower = (categoryName || "").toLowerCase();
+    if (lower.includes("general")) {
+      return { icon: "👑", badge: "bg-amber-50 text-amber-900 border-amber-300" };
+    }
+    if (lower.includes("bhog") || lower.includes("prasad")) {
+      return { icon: "🍚", badge: "bg-orange-50 text-orange-900 border-orange-300" };
+    }
+    if (lower.includes("sweet") || lower.includes("mishti")) {
+      return { icon: "🍬", badge: "bg-pink-50 text-pink-900 border-pink-300" };
+    }
+    if (lower.includes("flower") || lower.includes("pushpa") || lower.includes("samagri")) {
+      return { icon: "🌺", badge: "bg-emerald-50 text-emerald-900 border-emerald-300" };
+    }
+    return { icon: "🪔", badge: "bg-red-50 text-red-900 border-red-300" };
+  };
+
+  const formatContributionToReceipt = (contrib: any): ReceiptData => {
+    const panMatch = contrib.email ? contrib.email.match(/\[PAN:([A-Z0-9]+)\]/i) : null;
+    const panNumber = panMatch ? panMatch[1].toUpperCase() : undefined;
+    const cleanEmail = contrib.email ? contrib.email.replace(/\[PAN:[^\]]+\]/i, '').trim() : '';
+    const catName = getContributionCategoryName(contrib);
+    const paymentId = contrib.payment_id || contrib.id;
+
+    return {
+      name: contrib.contributor_name,
+      flatNumber: contrib.flat_number || "PBEL City",
+      phone: contrib.phone || undefined,
+      email: cleanEmail || undefined,
+      amount: Number(contrib.amount) || 0,
+      category: catName,
+      paymentId: paymentId,
+      upiRef: contrib.payment_id?.startsWith("UTR_") ? contrib.payment_id.replace("UTR_", "") : contrib.payment_id,
+      date: new Date(contrib.created_at || Date.now()).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      requiresTaxExemption: Boolean(panNumber),
+      panNumber: panNumber,
+      wantsWhatsappUpdates: true,
+    };
+  };
+
+  const handleSendResidentWhatsapp = (contrib: any) => {
+    const r = formatContributionToReceipt(contrib);
+    const phone = contrib.phone?.replace(/[^0-9]/g, "") || "";
+    const receiptRef = contrib.payment_id?.replace(/^UTR_/i, '').slice(-8).toUpperCase() || "ONLINE";
+    const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(contrib.payment_id || contrib.id)}`;
+    
+    const message = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nDear ${r.name},\nThank you for your pious offering for PBEL City Durgotsav.\n\nContributor: *${r.name}* (${r.flatNumber})\nSeva Offering: *${r.category}*\nAmount: *₹${Number(r.amount).toLocaleString("en-IN")}*\nReceipt No: *PSS-2026-${receiptRef}*\n\n📄 *View & Download Your Official Printable Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga bless you and your family with joy, good health, and prosperity! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
+
+    const waUrl = phone.length >= 10
+      ? `https://api.whatsapp.com/send?phone=91${phone.slice(-10)}&text=${encodeURIComponent(message)}`
+      : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+
+    window.open(waUrl, "_blank");
+  };
+
+  const handleCopySponsorsList = () => {
+    let filtered = contributions.filter((c) => c.status === "Success");
+    let categoryLabel = "All Seva Offerings";
+
+    if (sponsorCopyCategory !== "all") {
+      filtered = filtered.filter((c) => {
+        const catName = getContributionCategoryName(c);
+        if (sponsorCopyCategory === "bhog") return catName.toLowerCase().includes("bhog");
+        if (sponsorCopyCategory === "sweets") return catName.toLowerCase().includes("sweet") || catName.toLowerCase().includes("prasad") || catName.toLowerCase().includes("mishti");
+        if (sponsorCopyCategory === "general") return catName === "General Pujo Fund";
+        return catName === sponsorCopyCategory;
+      });
+      categoryLabel = sponsorCopyCategory === "bhog" ? "Maha Bhog Sponsors" : sponsorCopyCategory === "sweets" ? "Sweets & Prasad Sponsors" : sponsorCopyCategory;
+    }
+
+    if (filtered.length === 0) {
+      alert("No verified contributions found for this category.");
+      return;
+    }
+
+    const totalSponsored = filtered.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+
+    const listLines = filtered.map((c, i) => {
+      const flat = c.flat_number ? ` (${c.flat_number})` : "";
+      const cat = sponsorCopyCategory === "all" ? ` — ${getContributionCategoryName(c)}` : "";
+      return `${i + 1}. ${c.contributor_name}${flat}${cat}`;
+    }).join("\n");
+
+    const textToCopy = `🌸 *PBEL CITY DURGOTSAV 2026 — SEVA SPONSORS* 🌸\n\n*Offering:* ${categoryLabel}\n*Total Devotees:* ${filtered.length} | *Total Seva:* ₹${totalSponsored.toLocaleString("en-IN")}\n\n${listLines}\n\nMay Maa Durga bless all our generous devotees and their families! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
+
+    navigator.clipboard.writeText(textToCopy);
+    setSponsorCopied(true);
+    setTimeout(() => setSponsorCopied(false), 3000);
+  };
+
+  const displayedContributions = contributions.filter((c) => {
+    if (contributionStatusFilter === "verified" && c.status !== "Success") return false;
+    if (contributionStatusFilter === "pending" && c.status !== "Pending" && c.status !== "Pending Verification") return false;
+    if (contributionStatusFilter === "rejected" && c.status !== "Failed" && c.status !== "Rejected") return false;
+
+    const catName = getContributionCategoryName(c);
+    if (contributionSevaFilter !== "all") {
+      if (contributionSevaFilter === "general" && catName !== "General Pujo Fund") return false;
+      if (contributionSevaFilter === "bhog" && !catName.toLowerCase().includes("bhog")) return false;
+      if (contributionSevaFilter === "sweets" && !catName.toLowerCase().includes("sweet") && !catName.toLowerCase().includes("prasad") && !catName.toLowerCase().includes("mishti")) return false;
+      if (contributionSevaFilter === "flowers" && !catName.toLowerCase().includes("flower") && !catName.toLowerCase().includes("pushpa") && !catName.toLowerCase().includes("samagri")) return false;
+      if (contributionSevaFilter !== "general" && contributionSevaFilter !== "bhog" && contributionSevaFilter !== "sweets" && contributionSevaFilter !== "flowers") {
+        if (catName !== contributionSevaFilter) return false;
+      }
+    }
+
+    if (contributionSearch.trim()) {
+      const q = contributionSearch.toLowerCase().trim();
+      const matchesName = (c.contributor_name || "").toLowerCase().includes(q);
+      const matchesFlat = (c.flat_number || "").toLowerCase().includes(q);
+      const matchesPhone = (c.phone || "").toLowerCase().includes(q);
+      const matchesPayment = (c.payment_id || "").toLowerCase().includes(q);
+      const matchesCat = catName.toLowerCase().includes(q);
+      if (!matchesName && !matchesFlat && !matchesPhone && !matchesPayment && !matchesCat) return false;
+    }
+
+    return true;
+  });
+
   // CATEGORIES CMS
   const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2476,137 +2621,404 @@ function decodeCategoryDescription(desc?: string) {
 
       {/* TAB CONTENT: 2. CONTRIBUTIONS CRM */}
       {activeTab === "contributions" && (
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
-          
-          {/* Header & Verification Summary Cards */}
-          <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50/50 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="font-heading text-lg font-bold text-gray-900">Donor Contributions & Verification CRM</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Verify UTR / bank reference numbers against society bank account before approving onto public Wall & Ticker.
-                </p>
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
+            
+            {/* Header & Action Controls */}
+            <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50/50 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-heading text-lg font-bold text-gray-900 flex items-center gap-2">
+                    <HeartHandshake size={20} className="text-primary" />
+                    <span>Devotee Contributions &amp; Seva CRM</span>
+                  </h3>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    Track offerings by Seva category, verify bank UTR references, generate printable official A4 receipts, and publish sponsor lists.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                  <button
+                    onClick={() => setShowSponsorCopyModal(true)}
+                    className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                    title="Generate and copy sponsor announcement for WhatsApp / Notice Board"
+                  >
+                    <ClipboardList size={14} />
+                    <span>Publish Sponsors (WhatsApp)</span>
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                  >
+                    <Download size={14} />
+                    <span>Print Registry</span>
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => window.print()}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1.5 self-start sm:self-auto shadow-2xs"
-              >
-                <Download size={14} /> Export / Print Registry
-              </button>
+
+              {/* Quick Metrics Bar */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-green-50/80 border border-green-200 p-3 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-green-800 uppercase block">Verified Pujo Fund</span>
+                    <span className="text-xl font-bold text-green-700 font-mono">₹{totalFunds.toLocaleString("en-IN")}</span>
+                  </div>
+                  <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded-full font-bold">
+                    {verifiedContributions.length} Verified
+                  </span>
+                </div>
+
+                <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-amber-800 uppercase block">Under Verification</span>
+                    <span className="text-xl font-bold text-amber-700 font-mono">₹{pendingFunds.toLocaleString("en-IN")}</span>
+                  </div>
+                  <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
+                    {pendingContributions.length} Pending
+                  </span>
+                </div>
+
+                <div className="bg-gray-100/80 border border-gray-200 p-3 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-gray-700 uppercase block">Total Devotee Submissions</span>
+                    <span className="text-xl font-bold text-gray-900 font-mono">{contributions.length}</span>
+                  </div>
+                  <span className="text-xs bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full font-bold">
+                    All Records
+                  </span>
+                </div>
+              </div>
+
+              {/* Filter & Search Bar */}
+              <div className="bg-white p-3.5 rounded-xl border border-gray-200 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+                <div className="relative w-full md:w-80">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={contributionSearch}
+                    onChange={(e) => setContributionSearch(e.target.value)}
+                    placeholder="Search Name, Flat, Phone, UTR, Seva..."
+                    className="w-full pl-9 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-primary outline-none"
+                  />
+                  {contributionSearch && (
+                    <button
+                      onClick={() => setContributionSearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
+                  {/* Status Filter */}
+                  <div className="flex items-center gap-1 text-xs">
+                    <Filter size={13} className="text-gray-400" />
+                    <select
+                      value={contributionStatusFilter}
+                      onChange={(e) => setContributionStatusFilter(e.target.value)}
+                      className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700 bg-white outline-none cursor-pointer"
+                    >
+                      <option value="all">All Status</option>
+                      <option value="verified">✓ Verified Only</option>
+                      <option value="pending">⏳ Pending Review</option>
+                      <option value="rejected">✕ Rejected</option>
+                    </select>
+                  </div>
+
+                  {/* Seva Offering Filter */}
+                  <div className="flex items-center gap-1 text-xs">
+                    <span className="text-gray-400">🌺</span>
+                    <select
+                      value={contributionSevaFilter}
+                      onChange={(e) => setContributionSevaFilter(e.target.value)}
+                      className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700 bg-white outline-none cursor-pointer max-w-[200px]"
+                    >
+                      <option value="all">All Sevas &amp; Offerings</option>
+                      <option value="general">👑 General Pujo Fund</option>
+                      <option value="bhog">🍚 Maha Bhog Offerings</option>
+                      <option value="sweets">🍬 Sweets &amp; Prasad</option>
+                      <option value="flowers">🌺 Flowers &amp; Samagri</option>
+                      {categoriesList
+                        .filter((cat) => cat.name !== "General Pujo Fund")
+                        .map((cat) => (
+                          <option key={cat.id} value={cat.name}>
+                            {cat.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  {(contributionSearch || contributionStatusFilter !== "all" || contributionSevaFilter !== "all") && (
+                    <button
+                      onClick={() => {
+                        setContributionSearch("");
+                        setContributionStatusFilter("all");
+                        setContributionSevaFilter("all");
+                      }}
+                      className="text-[11px] text-primary hover:underline font-bold px-1.5 py-1"
+                    >
+                      Reset
+                    </button>
+                  )}
+
+                  <span className="text-[11px] text-gray-400 ml-1 font-mono">
+                    Showing {displayedContributions.length} of {contributions.length}
+                  </span>
+                </div>
+              </div>
+
             </div>
 
-            {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-green-50/80 border border-green-200 p-3 rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-green-800 uppercase block">Verified Pujo Fund</span>
-                  <span className="text-xl font-bold text-green-700 font-mono">₹{totalFunds.toLocaleString("en-IN")}</span>
-                </div>
-                <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded-full font-bold">
-                  {verifiedContributions.length} Verified
-                </span>
-              </div>
-
-              <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-amber-800 uppercase block">Under Verification</span>
-                  <span className="text-xl font-bold text-amber-700 font-mono">₹{pendingFunds.toLocaleString("en-IN")}</span>
-                </div>
-                <span className="text-xs bg-amber-200 text-amber-900 px-2 py-0.5 rounded-full font-bold">
-                  {pendingContributions.length} Pending
-                </span>
-              </div>
-
-              <div className="bg-gray-100/80 border border-gray-200 p-3 rounded-xl flex items-center justify-between">
-                <div>
-                  <span className="text-[11px] font-bold text-gray-700 uppercase block">Total Devotee Submissions</span>
-                  <span className="text-xl font-bold text-gray-900 font-mono">{contributions.length}</span>
-                </div>
-                <span className="text-xs bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full font-bold">
-                  All Records
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
-                  <th className="p-3.5">Contributor Name</th>
-                  <th className="p-3.5">Flat Number</th>
-                  <th className="p-3.5">Phone</th>
-                  <th className="p-3.5">Amount</th>
-                  <th className="p-3.5">UTR / Payment ID</th>
-                  <th className="p-3.5">Wall Visibility</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right">Verification Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {contributions.map((c) => {
-                  const isVerified = c.status === "Success";
-                  const isPending = c.status === "Pending" || c.status === "Pending Verification";
-                  const isRejected = c.status === "Failed" || c.status === "Rejected";
-
-                  return (
-                    <tr key={c.id} className={`hover:bg-gray-50/60 ${isPending ? "bg-amber-50/30" : ""}`}>
-                      <td className="p-3.5 font-bold text-gray-900">{c.contributor_name}</td>
-                      <td className="p-3.5 text-gray-700">{c.flat_number || "N/A"}</td>
-                      <td className="p-3.5 text-gray-600">{c.phone}</td>
-                      <td className="p-3.5 font-bold text-green-700 text-sm font-mono">₹{Number(c.amount).toLocaleString("en-IN")}</td>
-                      <td className="p-3.5 font-mono text-[11px] text-gray-700 font-semibold">{c.payment_id}</td>
-                      <td className="p-3.5">
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.is_name_visible ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
-                          {c.is_name_visible ? "Public" : "Anonymous"}
-                        </span>
-                      </td>
-                      <td className="p-3.5">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          isVerified 
-                            ? "bg-green-100 text-green-800" 
-                            : isPending 
-                            ? "bg-amber-100 text-amber-900 border border-amber-300 animate-pulse" 
-                            : "bg-red-100 text-red-800"
-                        }`}>
-                          {isVerified ? "✓ Verified" : isPending ? "⏳ Pending Review" : "✕ Rejected"}
-                        </span>
-                      </td>
-                      <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
-                        {!isVerified && (
-                          <button
-                            onClick={() => handleUpdateContributionStatus(c.id, "Success")}
-                            className="bg-green-600 hover:bg-green-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs"
-                            title="Approve and add to public fund ticker & Wall"
-                          >
-                            Approve (✓)
-                          </button>
-                        )}
-                        {!isRejected && (
-                          <button
-                            onClick={() => handleUpdateContributionStatus(c.id, "Failed")}
-                            className="bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs"
-                            title="Reject fake/unverified submission"
-                          >
-                            Reject (✕)
-                          </button>
-                        )}
-                        {isVerified && (
-                          <button
-                            onClick={() => handleUpdateContributionStatus(c.id, "Pending")}
-                            className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-[10px] px-2 py-1 rounded-lg transition"
-                            title="Mark back to Pending"
-                          >
-                            Revert
-                          </button>
-                        )}
+            {/* Submissions Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                    <th className="p-3.5">Contributor Name</th>
+                    <th className="p-3.5">Flat Number</th>
+                    <th className="p-3.5">Phone</th>
+                    <th className="p-3.5">Seva / Offering</th>
+                    <th className="p-3.5">Amount</th>
+                    <th className="p-3.5">UTR / Payment ID</th>
+                    <th className="p-3.5">Wall Visibility</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {displayedContributions.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} className="p-8 text-center text-gray-400">
+                        No contributions match the selected filters.
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : (
+                    displayedContributions.map((c) => {
+                      const isVerified = c.status === "Success";
+                      const isPending = c.status === "Pending" || c.status === "Pending Verification";
+                      const isRejected = c.status === "Failed" || c.status === "Rejected";
+                      const catName = getContributionCategoryName(c);
+                      const sevaBadge = getSevaBadge(catName);
+
+                      return (
+                        <tr key={c.id} className={`hover:bg-gray-50/60 ${isPending ? "bg-amber-50/30" : ""}`}>
+                          <td className="p-3.5 font-bold text-gray-900">{c.contributor_name}</td>
+                          <td className="p-3.5 text-gray-700 font-medium">{c.flat_number || "N/A"}</td>
+                          <td className="p-3.5 text-gray-600 font-mono">{c.phone || "N/A"}</td>
+                          <td className="p-3.5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${sevaBadge.badge}`}>
+                              <span>{sevaBadge.icon}</span>
+                              <span className="truncate max-w-[150px]">{catName}</span>
+                            </span>
+                          </td>
+                          <td className="p-3.5 font-bold text-green-700 text-sm font-mono">₹{Number(c.amount).toLocaleString("en-IN")}</td>
+                          <td className="p-3.5 font-mono text-[11px] text-gray-700 font-semibold">{c.payment_id}</td>
+                          <td className="p-3.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.is_name_visible ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
+                              {c.is_name_visible ? "Public" : "Anonymous"}
+                            </span>
+                          </td>
+                          <td className="p-3.5">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                              isVerified 
+                                ? "bg-green-100 text-green-800" 
+                                : isPending 
+                                ? "bg-amber-100 text-amber-900 border border-amber-300 animate-pulse" 
+                                : "bg-red-100 text-red-800"
+                            }`}>
+                              {isVerified ? "✓ Verified" : isPending ? "⏳ Pending Review" : "✕ Rejected"}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                            {/* RECEIPT BUTTON */}
+                            <button
+                              onClick={() => setSelectedReceiptContribution(c)}
+                              className="bg-red-50 hover:bg-red-100 text-primary border border-red-200 hover:border-red-300 font-bold text-[11px] px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                              title="Generate and print official devotional receipt"
+                            >
+                              <Printer size={12} />
+                              <span>Receipt</span>
+                            </button>
+
+                            {!isVerified && (
+                              <button
+                                onClick={() => handleUpdateContributionStatus(c.id, "Success")}
+                                className="bg-green-600 hover:bg-green-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
+                                title="Approve and add to public fund ticker & Wall"
+                              >
+                                Approve (✓)
+                              </button>
+                            )}
+                            {!isRejected && (
+                              <button
+                                onClick={() => handleUpdateContributionStatus(c.id, "Failed")}
+                                className="bg-red-600 hover:bg-red-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
+                                title="Reject fake/unverified submission"
+                              >
+                                Reject (✕)
+                              </button>
+                            )}
+                            {isVerified && (
+                              <button
+                                onClick={() => handleUpdateContributionStatus(c.id, "Pending")}
+                                className="bg-gray-200 hover:bg-gray-300 text-gray-700 text-[10px] px-2 py-1 rounded-lg transition cursor-pointer"
+                                title="Mark back to Pending"
+                              >
+                                Revert
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
+
+          {/* ADMIN OFFICIAL RECEIPT MODAL */}
+          {selectedReceiptContribution && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto">
+              <div className="bg-white rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl border border-amber-300 my-auto max-h-[95vh] overflow-y-auto relative">
+                
+                {/* Modal Top Bar */}
+                <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-200 print:hidden">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-red-100 text-primary flex items-center justify-center font-bold">
+                      🧾
+                    </div>
+                    <div>
+                      <h4 className="font-heading text-base font-bold text-gray-900">
+                        Official Contribution Receipt
+                      </h4>
+                      <p className="text-[11px] text-gray-500">
+                        {selectedReceiptContribution.contributor_name} ({selectedReceiptContribution.flat_number || "PBEL City"}) • ₹{Number(selectedReceiptContribution.amount).toLocaleString("en-IN")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {/* Send WhatsApp to Resident */}
+                    <button
+                      onClick={() => handleSendResidentWhatsapp(selectedReceiptContribution)}
+                      className="bg-[#25D366] hover:bg-[#20BD5A] text-white text-xs font-bold px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                      title="Open WhatsApp chat with resident to send their official receipt"
+                    >
+                      <span>📲 Send to Resident</span>
+                    </button>
+
+                    {/* Copy Public Link */}
+                    <button
+                      onClick={() => {
+                        const url = `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(selectedReceiptContribution.payment_id || selectedReceiptContribution.id)}`;
+                        navigator.clipboard.writeText(url);
+                        alert("Public receipt link copied to clipboard:\n" + url);
+                      }}
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
+                      title="Copy public link that resident can view anytime"
+                    >
+                      <Copy size={13} />
+                      <span className="hidden sm:inline">Copy Link</span>
+                    </button>
+
+                    {/* Close Modal */}
+                    <button
+                      onClick={() => setSelectedReceiptContribution(null)}
+                      className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition cursor-pointer"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Printable Receipt Component */}
+                <OfficialContributionReceipt
+                  receiptData={formatContributionToReceipt(selectedReceiptContribution)}
+                  branding={branding}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* SPONSORS BROADCAST COPY MODAL */}
+          {showSponsorCopyModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-amber-400 relative">
+                <button
+                  onClick={() => {
+                    setShowSponsorCopyModal(false);
+                    setSponsorCopied(false);
+                  }}
+                  className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-700 rounded-full cursor-pointer"
+                >
+                  <X size={18} />
+                </button>
+
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
+                    📢
+                  </div>
+                  <div>
+                    <h4 className="font-heading text-base font-bold text-gray-900">
+                      Publish Seva Sponsors
+                    </h4>
+                    <p className="text-[11px] text-gray-500">
+                      Generate ready-to-share announcement for WhatsApp tower groups &amp; notice boards.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-4 my-4">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Select Offering to Publish:</label>
+                    <select
+                      value={sponsorCopyCategory}
+                      onChange={(e) => setSponsorCopyCategory(e.target.value)}
+                      className="w-full border border-gray-200 rounded-xl p-2.5 text-xs font-semibold text-gray-800 bg-white outline-none cursor-pointer"
+                    >
+                      <option value="all">🌟 All Seva Offerings</option>
+                      <option value="bhog">🍚 Maha Bhog Sponsors</option>
+                      <option value="sweets">🍬 Sweets &amp; Prasad Sponsors</option>
+                      <option value="general">👑 General Pujo Fund</option>
+                      {categoriesList
+                        .filter((c) => c.name !== "General Pujo Fund")
+                        .map((c) => (
+                          <option key={c.id} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+
+                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 text-xs text-gray-600">
+                    <span className="font-bold text-gray-800 block mb-0.5">Note:</span>
+                    Only <strong>Verified (Success)</strong> devotee contributions will be included in the broadcast list.
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
+                  <button
+                    onClick={handleCopySponsorsList}
+                    className="flex-1 bg-primary hover:bg-primary-hover text-white py-2.5 rounded-xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+                  >
+                    {sponsorCopied ? <CheckCircle2 size={15} className="text-amber-300" /> : <Copy size={15} />}
+                    <span>{sponsorCopied ? "Announcement Copied to Clipboard!" : "Copy WhatsApp Announcement"}</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowSponsorCopyModal(false);
+                      setSponsorCopied(false);
+                    }}
+                    className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-4 py-2.5 rounded-xl transition cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 

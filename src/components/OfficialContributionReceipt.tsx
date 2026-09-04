@@ -160,7 +160,7 @@ export function DefaultPresidentSignature({ name = "President", className = "h-1
   );
 }
 
-export default function OfficialContributionReceipt({
+export function OfficialContributionReceipt({
   receiptData,
   branding,
   onMakeAnother,
@@ -184,6 +184,7 @@ export default function OfficialContributionReceipt({
   const signatoryTitle = branding.signatoryTitle || "President / General Secretary";
 
   const is80G = Boolean(receiptData.requiresTaxExemption && receiptData.panNumber);
+  const calculatedReceiptNo = `ONL-${receiptData.paymentId || "PSS2026"}`;
 
   return (
     <div className="w-full max-w-3xl mx-auto my-6">
@@ -205,15 +206,25 @@ export default function OfficialContributionReceipt({
         </div>
 
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          {onOpenShareModal && (
-            <button
-              onClick={onOpenShareModal}
-              className="flex-1 sm:flex-initial bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
-            >
-              <Share2 size={14} />
-              <span>Share WhatsApp</span>
-            </button>
-          )}
+          <button
+            onClick={() => {
+              if (onOpenShareModal) {
+                onOpenShareModal();
+              } else {
+                const receiptIdentifier = receiptData.paymentId || "";
+                const receiptUrl = receiptIdentifier
+                  ? `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(receiptIdentifier)}`
+                  : "https://www.pbelcitydurgotsav.com/receipt";
+                const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOfficial Contribution Receipt of *${receiptData.name}* (${receiptData.flatNumber})\nSeva Offering: *${receiptData.category}*\nAmount: *₹${Number(receiptData.amount).toLocaleString("en-IN")}*\n🧾 *Receipt No:* ${calculatedReceiptNo}\n📄 *View & Download Official PDF Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga bless all residents with joy, health, and prosperity! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, "_blank");
+              }
+            }}
+            className="flex-1 sm:flex-initial bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+            title="Share or forward receipt on WhatsApp"
+          >
+            <Share2 size={14} />
+            <span>Share WhatsApp</span>
+          </button>
 
           <button
             onClick={handlePrint}
@@ -553,3 +564,5 @@ export default function OfficialContributionReceipt({
     </div>
   );
 }
+
+export default OfficialContributionReceipt;

@@ -2837,6 +2837,33 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('69. Devotee Receipt Lookup, Admin Receipt Generator & Seva Sponsor Publishing', () => {
+    it('should verify public receipt lookup route exists and connects to Supabase and OfficialContributionReceipt', () => {
+      assert.ok(fs.existsSync('src/app/receipt/page.tsx'), 'src/app/receipt/page.tsx must exist');
+      const receiptPageSrc = fs.readFileSync('src/app/receipt/page.tsx', 'utf8');
+      assert.ok(receiptPageSrc.includes('OfficialContributionReceipt'), 'Must render OfficialContributionReceipt');
+      assert.ok(receiptPageSrc.includes('lookupById'), 'Must support direct ID lookup');
+      assert.ok(receiptPageSrc.includes('handleSearch'), 'Must support mobile/flat search lookup');
+    });
+
+    it('should verify DevotionalShareModal includes toggle and link for official receipt on WhatsApp', () => {
+      const shareModalSrc = fs.readFileSync('src/components/DevotionalShareModal.tsx', 'utf8');
+      assert.ok(shareModalSrc.includes('includeReceipt'), 'Must include receipt toggle state');
+      assert.ok(shareModalSrc.includes('https://www.pbelcitydurgotsav.com/receipt'), 'Must link to official receipt route');
+      assert.ok(shareModalSrc.includes('Official Receipt No:'), 'Must include receipt number in message');
+    });
+
+    it('should verify Admin Console has Seva column, Receipt modal trigger, and Sponsor copy tool', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('Seva / Offering'), 'Admin table must contain Seva / Offering column');
+      assert.ok(adminSrc.includes('getContributionCategoryName'), 'Must resolve category names for contributions');
+      assert.ok(adminSrc.includes('setSelectedReceiptContribution'), 'Must support opening receipt modal for any contribution');
+      assert.ok(adminSrc.includes('handleSendResidentWhatsapp'), 'Must support sending receipt directly to resident on WhatsApp');
+      assert.ok(adminSrc.includes('handleCopySponsorsList'), 'Must support copying verified sponsors list for WhatsApp / notice board');
+      assert.ok(adminSrc.includes('contributionSevaFilter'), 'Must support filtering contributions by Seva offering');
+    });
+  });
+
 });
 
 

@@ -743,10 +743,17 @@ function decodeCategoryDescription(desc?: string) {
         ? `UTR_${customFormData.upiRef.trim()}` 
         : `WEB_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
 
+      const panTag = customFormData.requiresTaxExemption && customFormData.panNumber.trim()
+        ? `[PAN:${customFormData.panNumber.trim().toUpperCase()}]`
+        : "";
+      const emailWithPan = customFormData.email.trim()
+        ? (panTag ? `${customFormData.email.trim()} ${panTag}` : customFormData.email.trim())
+        : (panTag || "");
+
       // Insert with "Pending"
       const { error } = await supabase.from("contributions").insert({
         contributor_name: customFormData.name.trim(),
-        email: customFormData.email.trim(),
+        email: emailWithPan,
         phone: customFormData.phone.trim(),
         flat_number: formattedFlat,
         amount: Number(customAmount),
@@ -821,6 +828,9 @@ function decodeCategoryDescription(desc?: string) {
           contributorName={receiptData.name}
           categoryName={receiptData.category}
           flatNumber={receiptData.flatNumber}
+          amount={receiptData.amount}
+          paymentId={receiptData.paymentId}
+          receiptNo={`PSS-2026-${(receiptData.paymentId || "ONLINE").replace(/^UTR_/i, "").slice(-8).toUpperCase()}`}
         />
       </div>
     );
