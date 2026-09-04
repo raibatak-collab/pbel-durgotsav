@@ -211,12 +211,7 @@ export function OfficialContributionReceipt({
             onClick={() => {
               if (onOpenShareModal) {
                 onOpenShareModal();
-              } else {
-                const receiptIdentifier = receiptData.paymentId || "";
-                const receiptUrl = receiptIdentifier
-                  ? `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(receiptIdentifier)}`
-                  : "https://www.pbelcitydurgotsav.com/receipt";
-                const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOfficial Contribution Receipt of *${receiptData.name}* (${receiptData.flatNumber})\nSeva Offering: *${receiptData.category}*\nAmount: *₹${Number(receiptData.amount).toLocaleString("en-IN")}*\n🧾 *Receipt No:* ${calculatedReceiptNo}\n📄 *View & Download Official PDF Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga bless all residents with joy, health, and prosperity! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
+                const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOur family (*${receiptData.name}*, *${receiptData.flatNumber}*) has offered devotional Seva for *${receiptData.category}* at PBEL City Durgotsav.\n\nMay Maa Durga bless all residents with joy, health, and prosperity! 🙏\n\nJoin hands in community seva & view the Pujo schedule:\n👉 https://www.pbelcitydurgotsav.com\n\n_PBEL Sanskritik Samiti (PSS)_`;
                 window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, "_blank");
               }
             }}

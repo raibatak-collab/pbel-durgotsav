@@ -11,7 +11,6 @@ import {
   Building2, 
   Award, 
   ShieldCheck, 
-  Receipt, 
   Calendar,
   Users,
   CheckCircle2
@@ -86,7 +85,7 @@ export default function WallOfHonorPage() {
 
   // Compute key impact metrics
   const totalRaised = useMemo(() => {
-    return contributions.reduce((sum, c) => sum + Number(c.amount || 0), 0);
+    return contributions.reduce((sum, item) => sum + Number(item.amount || 0), 0);
   }, [contributions]);
 
   const uniqueTowersRepresented = useMemo(() => {
@@ -165,11 +164,11 @@ export default function WallOfHonorPage() {
             </Link>
 
             <Link
-              href="/receipt"
+              href="/programs"
               className="bg-white/10 hover:bg-white/20 text-amber-200 border border-amber-400/30 px-5 py-2.5 rounded-full font-semibold text-xs sm:text-sm transition backdrop-blur-xs flex items-center gap-1.5"
             >
-              <Receipt size={14} />
-              <span>Download Your Receipt</span>
+              <Sparkles size={14} />
+              <span>View Pujo Nirghanto</span>
             </Link>
           </div>
         </div>
@@ -386,21 +385,17 @@ export default function WallOfHonorPage() {
                     </div>
                   </div>
 
-                  {/* Bottom: Date & Receipt Access */}
+                  {/* Bottom: Date & Devotional Seva Verification */}
                   <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-400">
                     <div className="flex items-center gap-1">
                       <Calendar size={12} />
                       <span>{formattedDate}</span>
                     </div>
 
-                    <Link
-                      href={`/receipt?id=${encodeURIComponent(c.id)}`}
-                      className="text-amber-700 hover:text-amber-900 font-semibold hover:underline flex items-center gap-1"
-                      title="View or download verified receipt"
-                    >
-                      <Receipt size={12} />
-                      <span>Receipt</span>
-                    </Link>
+                    <span className="text-amber-800/80 font-semibold flex items-center gap-1">
+                      <Sparkles size={11} className="text-amber-600" />
+                      <span>Devotional Seva</span>
+                    </span>
                   </div>
                 </div>
               );

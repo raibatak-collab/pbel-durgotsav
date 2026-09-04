@@ -1512,9 +1512,8 @@ function decodeCategoryDescription(desc?: string) {
     const r = formatContributionToReceipt(contrib);
     const phone = contrib.phone?.replace(/[^0-9]/g, "") || "";
     const receiptRef = contrib.payment_id?.replace(/^UTR_/i, '').slice(-8).toUpperCase() || "ONLINE";
-    const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(contrib.payment_id || contrib.id)}`;
     
-    const message = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nDear ${r.name},\nThank you for your pious offering for PBEL City Durgotsav.\n\nContributor: *${r.name}* (${r.flatNumber})\nSeva Offering: *${r.category}*\nAmount: *₹${Number(r.amount).toLocaleString("en-IN")}*\nReceipt No: *PSS-2026-${receiptRef}*\n\n📄 *View & Download Your Official Printable Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga bless you and your family with joy, good health, and prosperity! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
+    const message = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nDear ${r.name},\nThank you for your pious devotional offering for PBEL City Durgotsav.\n\nContributor: *${r.name}* (${r.flatNumber})\nSeva Offering: *${r.category}*\nAmount Received: *₹${Number(r.amount).toLocaleString("en-IN")}*\nOfficial Receipt No: *PSS-2026-${receiptRef}*\nPayment Ref / UTR: *${contrib.payment_id || "Verified"}*\n\nMay Maa Durga shower divine health, happiness, and prosperity upon you and your family! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
 
     const waUrl = phone.length >= 10
       ? `https://api.whatsapp.com/send?phone=91${phone.slice(-10)}&text=${encodeURIComponent(message)}`
@@ -3083,20 +3082,6 @@ function decodeCategoryDescription(desc?: string) {
                       title="Open WhatsApp chat with resident to send their official receipt"
                     >
                       <span>📲 Send to Resident</span>
-                    </button>
-
-                    {/* Copy Public Link */}
-                    <button
-                      onClick={() => {
-                        const url = `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(selectedReceiptContribution.payment_id || selectedReceiptContribution.id)}`;
-                        navigator.clipboard.writeText(url);
-                        alert("Public receipt link copied to clipboard:\n" + url);
-                      }}
-                      className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-xl transition flex items-center gap-1 cursor-pointer"
-                      title="Copy public link that resident can view anytime"
-                    >
-                      <Copy size={13} />
-                      <span className="hidden sm:inline">Copy Link</span>
                     </button>
 
                     {/* Close Modal */}

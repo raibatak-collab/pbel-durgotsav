@@ -2837,20 +2837,20 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
-  describe('69. Devotee Receipt Lookup, Admin Receipt Generator & Seva Sponsor Publishing', () => {
-    it('should verify public receipt lookup route exists and connects to Supabase and OfficialContributionReceipt', () => {
+  describe('69. Devotee Privacy Protection, Admin Receipt Generator & Seva Sponsor Publishing', () => {
+    it('should verify /receipt route enforces strict community privacy protection against public browsing', () => {
       assert.ok(fs.existsSync('src/app/receipt/page.tsx'), 'src/app/receipt/page.tsx must exist');
       const receiptPageSrc = fs.readFileSync('src/app/receipt/page.tsx', 'utf8');
-      assert.ok(receiptPageSrc.includes('OfficialContributionReceipt'), 'Must render OfficialContributionReceipt');
-      assert.ok(receiptPageSrc.includes('lookupById'), 'Must support direct ID lookup');
-      assert.ok(receiptPageSrc.includes('handleSearch'), 'Must support mobile/flat search lookup');
+      assert.ok(receiptPageSrc.includes('Community Privacy Protection'), 'Must display Community Privacy Protection banner');
+      assert.ok(receiptPageSrc.includes('individual contribution amounts and official receipts are private'), 'Must declare that contribution amounts and receipts are strictly private');
+      assert.ok(!receiptPageSrc.includes('supabase.from("contributions")'), 'Public receipt page must NOT query contributions table');
     });
 
-    it('should verify DevotionalShareModal includes toggle and link for official receipt on WhatsApp', () => {
+    it('should verify DevotionalShareModal protects privacy by not broadcasting amounts or receipt links', () => {
       const shareModalSrc = fs.readFileSync('src/components/DevotionalShareModal.tsx', 'utf8');
-      assert.ok(shareModalSrc.includes('includeReceipt'), 'Must include receipt toggle state');
-      assert.ok(shareModalSrc.includes('https://www.pbelcitydurgotsav.com/receipt'), 'Must link to official receipt route');
-      assert.ok(shareModalSrc.includes('Official Receipt No:'), 'Must include receipt number in message');
+      assert.ok(!shareModalSrc.includes('formattedAmount'), 'Must not broadcast donation amounts in WhatsApp share text');
+      assert.ok(!shareModalSrc.includes('receiptUrl'), 'Must not link to public receipts in share text');
+      assert.ok(shareModalSrc.includes('has offered devotional Seva'), 'Must include devotional seva offering text');
     });
 
     it('should verify Admin Console has Seva column, Receipt modal trigger, and Sponsor copy tool', () => {
@@ -2971,8 +2971,8 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(wallSrc.includes('PBEL_TOWERS'), 'Page must import and utilize PBEL_TOWERS for tower filtering');
       assert.ok(wallSrc.includes('matchTower'), 'Page must match resident flat to tower using matchTower');
       assert.ok(wallSrc.includes('searchTerm'), 'Page must support live search filtering');
-      assert.ok(wallSrc.includes('selectedTower'), 'Page must support tower chip filtering');
-      assert.ok(wallSrc.includes('/receipt'), 'Page must link to official receipt download');
+      assert.ok(!wallSrc.includes('/receipt'), 'Wall of Honor must NOT expose public receipt download links');
+      assert.ok(!wallSrc.includes('c.amount'), 'Wall of Honor cards must NOT display individual contribution amounts');
     });
 
     it('should verify Top Navigation Header links directly to /wall-of-honor', () => {

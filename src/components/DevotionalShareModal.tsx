@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, Share2, Check, Sparkles, Heart, FileText, CheckSquare, Square } from "lucide-react";
+import { X, Share2, Check, Sparkles, Heart } from "lucide-react";
 
 interface DevotionalShareModalProps {
   isOpen: boolean;
@@ -25,24 +25,14 @@ export function DevotionalShareModal({
   receiptNo,
 }: DevotionalShareModalProps) {
   const [copied, setCopied] = useState(false);
-  const [includeReceipt, setIncludeReceipt] = useState(true);
 
   if (!isOpen) return null;
 
   const displayName = contributorName || "A Devotee";
   const formattedFlat = flatNumber || "PBEL City";
   const formattedCategory = categoryName || "General Pujo Fund";
-  const formattedAmount = amount ? ` (₹${Number(amount).toLocaleString("en-IN")})` : "";
-  
-  const receiptIdentifier = paymentId || "";
-  const calculatedReceiptNo = receiptNo || (receiptIdentifier ? `PSS-2026-${receiptIdentifier.replace(/^UTR_/i, '').slice(-8).toUpperCase()}` : "PSS-2026-ONLINE");
-  const receiptUrl = receiptIdentifier 
-    ? `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(receiptIdentifier)}`
-    : "https://www.pbelcitydurgotsav.com/receipt";
 
-  const shareText = includeReceipt
-    ? `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOur family (*${displayName}*, *${formattedFlat}*) has offered devotional Seva for *${formattedCategory}*${formattedAmount}.\n\n🧾 *Official Receipt No:* ${calculatedReceiptNo}\n📄 *View & Download Official PDF Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga bless all residents with joy, health, and prosperity! 🙏\n_PBEL Sanskritik Samiti (PSS)_`
-    : `🌺 *শুভ দুর্গোৎসব • PBEL City Durgotsav 2026* 🌺\n\nMay Maa Durga bless our township with joy, health, and prosperity. I have joined the devotional Seva for PBEL City Durgotsav (15th – 20th Oct 2026).\n\nJoin hands in community seva, view the Pujo Nirghanto & contribute:\n👉 https://www.pbelcitydurgotsav.com\n\n_PBEL Sanskritik Samiti (PSS)_`;
+  const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOur family (*${displayName}*, *${formattedFlat}*) has offered devotional Seva for *${formattedCategory}* at PBEL City Durgotsav.\n\nMay Maa Durga bless all residents with joy, health, and prosperity! 🙏\n\nJoin hands in community seva & view the Pujo schedule:\n👉 https://www.pbelcitydurgotsav.com\n\n_PBEL Sanskritik Samiti (PSS)_`;
 
   const handleWhatsAppShare = () => {
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
@@ -81,26 +71,8 @@ export function DevotionalShareModal({
             Share on WhatsApp
           </h3>
           <p className="text-xs text-gray-600 mt-0.5">
-            Share your devotional offering and receipt link with your tower group.
+            Share your devotional seva offering with your PBEL tower neighbors.
           </p>
-        </div>
-
-        {/* RECEIPT INCLUSION TOGGLE */}
-        <div
-          onClick={() => setIncludeReceipt(!includeReceipt)}
-          className={`mb-3.5 p-2.5 rounded-xl border flex items-center justify-between cursor-pointer select-none transition ${
-            includeReceipt ? "bg-amber-50/90 border-amber-300 text-amber-950" : "bg-gray-50 border-gray-200 text-gray-600"
-          }`}
-        >
-          <div className="flex items-center gap-2 text-xs font-semibold">
-            <FileText size={15} className={includeReceipt ? "text-primary" : "text-gray-400"} />
-            <span>Include Official Receipt Link &amp; Details</span>
-          </div>
-          {includeReceipt ? (
-            <CheckSquare size={17} className="text-primary shrink-0" />
-          ) : (
-            <Square size={17} className="text-gray-400 shrink-0" />
-          )}
         </div>
 
         {/* Live Message Preview Card */}
@@ -110,14 +82,11 @@ export function DevotionalShareModal({
           </div>
           <p className="font-bold text-[#1E7E34]">🌺 শুভ শারদীয়া • PBEL City Durgotsav 2026</p>
           <p className="text-[11.5px] leading-relaxed text-gray-800">
-            Our family (<strong>{displayName}</strong>, <strong>{formattedFlat}</strong>) has offered Seva for <strong>{formattedCategory}</strong>{formattedAmount}.
+            Our family (<strong>{displayName}</strong>, <strong>{formattedFlat}</strong>) has offered Seva for <strong>{formattedCategory}</strong> at PBEL City Durgotsav.
           </p>
-          {includeReceipt && (
-            <div className="bg-white p-2 rounded-lg border border-gray-200 text-[10.5px] font-mono text-gray-700 space-y-0.5 mt-1">
-              <div>Receipt No: <strong>{calculatedReceiptNo}</strong></div>
-              <div className="text-primary truncate">Link: {receiptUrl}</div>
-            </div>
-          )}
+          <p className="text-[11px] text-gray-500 italic">
+            May Maa Durga bless all residents with joy, health, and prosperity! 🙏
+          </p>
         </div>
 
         {/* Action Buttons */}
