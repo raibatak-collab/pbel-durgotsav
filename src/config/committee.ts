@@ -26,9 +26,9 @@ export const DEFAULT_COMMITTEE_WINGS: CommitteeWing[] = [
     icon: "👑",
     tagline: "Overall governance, society alignment & festival coordination",
     members: [
-      { id: "m-1", name: "Raibatak Banerjee", role: "Convener & Digital Lead", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-2", name: "Executive Committee Leads", role: "General Administration & Operations", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-3", name: "Senior Resident Mentors", role: "Vedic Rituals & Advisory Council", tower: "PBEL City Community" },
+      { id: "m-1", name: "Kalyan Ghosh", role: "President", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-2", name: "Indranil Pal", role: "General Secretary", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-3", name: "Archita Das", role: "Joint General Secretary", tower: "PBEL City Community" },
     ],
   },
   {
@@ -37,8 +37,10 @@ export const DEFAULT_COMMITTEE_WINGS: CommitteeWing[] = [
     icon: "💰",
     tagline: "Zero-fee bank reconciliation, verified contribution CRM & donor receipts",
     members: [
-      { id: "m-4", name: "Finance & Accounts Lead", role: "Treasurer & Bank Accounts Lead", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-5", name: "Audit & Donor CRM Team", role: "Contribution Verification & Transparency", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-4", name: "Snehasis Bose", role: "Treasurer & Bank Accounts Lead", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-5", name: "Sharmili", role: "Joint Treasurer", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-1788531842301", name: "Partho Pratim Mukherjee", role: "Sponsorship Lead", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-1788532006435", name: "Debashish", role: "Executive member", tower: "PBEL Sanskritik Samiti" },
     ],
   },
   {
@@ -47,9 +49,10 @@ export const DEFAULT_COMMITTEE_WINGS: CommitteeWing[] = [
     icon: "🎭",
     tagline: "Resident stage acts, rehearsals, drama, music bands & sound production",
     members: [
-      { id: "m-6", name: "Cultural Committee Lead", role: "Pratibimb Stage Director", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-7", name: "Drama & Theater Wing", role: "Natok Production & Rehearsals", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-8", name: "Music, Dhaak & Sound Ops", role: "Audio Engineering & Dhaaki Troupe", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-6", name: "Raibatak Chatterjee", role: "Cultural Committee Lead", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-7", name: "Santanu Chatterjee", role: "Natok Production & Rehearsals", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-8", name: "Music, & Sound Ops", role: "Saptarshi Pathak", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-1788531826894", name: "Alokparna Bhattacharya", role: "Dance Drama Production", tower: "PBEL Sanskritik Samiti" },
     ],
   },
   {
@@ -58,8 +61,7 @@ export const DEFAULT_COMMITTEE_WINGS: CommitteeWing[] = [
     icon: "🍚",
     tagline: "Pure ghee bhog preparation, dining passes & resident food stalls",
     members: [
-      { id: "m-9", name: "Bhog Coordination Lead", role: "Maha Bhog Kitchen & Quality Control", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-10", name: "Anandamela Food Fiesta", role: "Home Chef Stalls & Culinary Fiesta", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-9", name: "Kalyan Ghosh", role: "Maha Bhog Kitchen & Quality Control", tower: "PBEL Sanskritik Samiti" },
       { id: "m-11", name: "Dining Hall & Operations", role: "Token Desk & Dining Hall Coordination", tower: "PBEL Sanskritik Samiti" },
     ],
   },
@@ -69,19 +71,28 @@ export const DEFAULT_COMMITTEE_WINGS: CommitteeWing[] = [
     icon: "🌺",
     tagline: "Vedic rites, sacred samagri, 108 deepam, lighting & archway production",
     members: [
-      { id: "m-12", name: "Pujo Samagri & Purohit Seva", role: "Vedic Rites & Havan Coordination", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-13", name: "Pandal & Lighting Production", role: "Pandal Architecture, LED Stage & Lighting", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-14", name: "Dhaaki Troupe Management", role: "Traditional Artistes Care & Logistics", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-12", name: "Amitabh Bose", role: "Pujo Lead", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-13", name: "Sharmiili", role: "Pandal & Decoration", tower: "PBEL Sanskritik Samiti" },
     ],
   },
   {
     id: "wing-crowd",
-    category: "Crowd Discipline, Senior Seating & Volunteer Leads",
+    category: "Operations and Logistics",
     icon: "🤝",
-    tagline: "Resident crowd management, accessible senior citizen care & safety",
+    tagline: "Festival execution, infrastructure & logistics coordination",
     members: [
-      { id: "m-15", name: "Volunteer Operations Lead", role: "Resident Volunteer Scheduling", tower: "PBEL Sanskritik Samiti" },
-      { id: "m-16", name: "Senior Citizen & First Aid", role: "Accessible Pandal Care & Medical Desk", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-15", name: "Roopan", role: "Operations Lead", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-16", name: "Dibyendu Chatterjee", role: "Executive member", tower: "PBEL Sanskritik Samiti" },
+    ],
+  },
+  {
+    id: "wing-1788532031282",
+    category: "Communications",
+    icon: "📢",
+    tagline: "Resident outreach, broadcast notices & digital communication",
+    members: [
+      { id: "m-1788532048476", name: "Kathakali Roy", role: "Communications Lead", tower: "PBEL Sanskritik Samiti" },
+      { id: "m-1788532068201", name: "Anamika", role: "Joint Communication Lead", tower: "PBEL Sanskritik Samiti" },
     ],
   },
 ];

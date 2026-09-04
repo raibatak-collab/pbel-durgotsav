@@ -15,7 +15,8 @@ import {
   Utensils, 
   Compass,
   ChevronDown,
-  Drama
+  Drama,
+  Image as ImageIcon
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
@@ -87,6 +88,7 @@ export function Header() {
   const primaryLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Schedule & Pratibimb", href: "/programs", icon: Calendar },
+    { name: "Gallery", href: "/gallery", icon: ImageIcon },
     { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake },
     { name: "Corporate Sponsors", href: "/sponsors", icon: Award },
   ];

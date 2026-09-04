@@ -2864,6 +2864,93 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('70. 80G Deactivation, Committee Hardening, Dedicated Gallery & YouTube Integration', () => {
+    // Import extractYouTubeVideoId logic
+    function extractYouTubeVideoId(url) {
+      if (!url) return null;
+      const clean = url.trim();
+      if (/^[a-zA-Z0-9_-]{11}$/.test(clean)) return clean;
+      const match = clean.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|live|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i);
+      return match ? match[1] : null;
+    }
+
+    it('should verify 80G checkbox is completely hidden from all contributor touchpoints', () => {
+      const homeSrc = fs.readFileSync('src/components/HomeQuickContribute.tsx', 'utf8');
+      assert.strictEqual(homeSrc.includes('id="home-tax-exemption"'), false, 'HomeQuickContribute must NOT render 80G checkbox');
+      
+      const contributeSrc = fs.readFileSync('src/app/contribute/page.tsx', 'utf8');
+      assert.strictEqual(contributeSrc.includes('id="custom-tax-exemption"'), false, 'Custom contribution must NOT render 80G checkbox');
+      assert.strictEqual(contributeSrc.includes('id="modal-tax-exemption"'), false, 'Seva modal must NOT render 80G checkbox');
+
+      const receiptSrc = fs.readFileSync('src/components/OfficialContributionReceipt.tsx', 'utf8');
+      assert.ok(receiptSrc.includes('const is80G = false;'), 'Receipt must force is80G = false for devotional blessing mode');
+    });
+
+    it('should verify DEFAULT_COMMITTEE_WINGS mirrors the live database 7 wings and real members', () => {
+      const committeeSrc = fs.readFileSync('src/config/committee.ts', 'utf8');
+      // Must NOT contain old dummy placeholder name
+      assert.strictEqual(committeeSrc.includes('Raibatak Banerjee'), false, 'Must not contain old placeholder "Raibatak Banerjee"');
+      
+      // Must contain real live members
+      assert.ok(committeeSrc.includes('Kalyan Ghosh'), 'Must contain Kalyan Ghosh');
+      assert.ok(committeeSrc.includes('Indranil Pal'), 'Must contain Indranil Pal');
+      assert.ok(committeeSrc.includes('Archita Das'), 'Must contain Archita Das');
+      assert.ok(committeeSrc.includes('Snehasis Bose'), 'Must contain Snehasis Bose');
+      assert.ok(committeeSrc.includes('Sharmili'), 'Must contain Sharmili');
+      assert.ok(committeeSrc.includes('Partho Pratim Mukherjee'), 'Must contain Partho Pratim Mukherjee');
+      assert.ok(committeeSrc.includes('Debashish'), 'Must contain Debashish');
+      assert.ok(committeeSrc.includes('Raibatak Chatterjee'), 'Must contain Raibatak Chatterjee');
+      assert.ok(committeeSrc.includes('Santanu Chatterjee'), 'Must contain Santanu Chatterjee');
+      assert.ok(committeeSrc.includes('Alokparna Bhattacharya'), 'Must contain Alokparna Bhattacharya');
+      assert.ok(committeeSrc.includes('Amitabh Bose'), 'Must contain Amitabh Bose');
+      assert.ok(committeeSrc.includes('Roopan'), 'Must contain Roopan');
+      assert.ok(committeeSrc.includes('Dibyendu Chatterjee'), 'Must contain Dibyendu Chatterjee');
+      assert.ok(committeeSrc.includes('Kathakali Roy'), 'Must contain Kathakali Roy');
+      assert.ok(committeeSrc.includes('Anamika'), 'Must contain Anamika');
+
+      // Admin console must hydrate from cloud on mount
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('fetchStoredCommittee'), 'Admin must call fetchStoredCommittee on mount');
+      assert.ok(adminSrc.includes('fetchStoredBranding'), 'Admin must call fetchStoredBranding on mount');
+    });
+
+    it('should accurately parse YouTube video IDs from all standard URL formats', () => {
+      assert.strictEqual(extractYouTubeVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+      assert.strictEqual(extractYouTubeVideoId('https://youtu.be/dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+      assert.strictEqual(extractYouTubeVideoId('https://www.youtube.com/embed/dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+      assert.strictEqual(extractYouTubeVideoId('https://www.youtube.com/live/dQw4w9WgXcQ?feature=share'), 'dQw4w9WgXcQ');
+      assert.strictEqual(extractYouTubeVideoId('https://www.youtube.com/shorts/dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+      assert.strictEqual(extractYouTubeVideoId('dQw4w9WgXcQ'), 'dQw4w9WgXcQ');
+      assert.strictEqual(extractYouTubeVideoId('https://example.com/invalid-video'), null);
+      assert.strictEqual(extractYouTubeVideoId(''), null);
+    });
+
+    it('should verify official social channel defaults including YouTube, Instagram, and Facebook', () => {
+      const brandingSrc = fs.readFileSync('src/config/branding.ts', 'utf8');
+      assert.ok(brandingSrc.includes('https://www.youtube.com/@pbelsanskritiksamiti-offic3003'), 'Must contain official YouTube channel URL');
+      assert.ok(brandingSrc.includes('instagramUrl'), 'Must define instagramUrl in branding');
+      assert.ok(brandingSrc.includes('facebookUrl'), 'Must define facebookUrl in branding');
+    });
+
+    it('should verify dedicated /gallery route, Top Navigation link, and Admin YouTube CMS', () => {
+      assert.ok(fs.existsSync('src/app/gallery/page.tsx'), 'src/app/gallery/page.tsx must exist');
+      const gallerySrc = fs.readFileSync('src/app/gallery/page.tsx', 'utf8');
+      assert.ok(gallerySrc.includes('Photo Gallery'), 'Gallery page must feature photo gallery');
+      assert.ok(gallerySrc.includes('Video Showcase'), 'Gallery page must feature video showcase');
+      assert.ok(gallerySrc.includes('youtube-nocookie.com/embed/'), 'Gallery page must embed privacy-compliant YouTube videos');
+
+      const headerSrc = fs.readFileSync('src/components/Header.tsx', 'utf8');
+      assert.ok(headerSrc.includes('/gallery'), 'Header must contain link to /gallery');
+
+      const pageSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(pageSrc.includes('/gallery'), 'Homepage must contain CTA link to /gallery');
+
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('handleAddVideo'), 'Admin console must include YouTube video CMS');
+      assert.ok(adminSrc.includes('handleSaveSocialChannels'), 'Admin console must support saving social channels');
+    });
+  });
+
 });
 
 

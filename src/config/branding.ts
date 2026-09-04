@@ -64,6 +64,9 @@ export interface SamitiBrandingConfig {
   presidentSignatureUrl?: string;
   signatoryTitle?: string;
   registeredAddress?: string;
+  youtubeChannelUrl?: string;
+  instagramUrl?: string;
+  facebookUrl?: string;
 }
 
 export const DEFAULT_BRANDING: SamitiBrandingConfig = {
@@ -83,6 +86,9 @@ export const DEFAULT_BRANDING: SamitiBrandingConfig = {
   presidentSignatureUrl: "",
   signatoryTitle: "President / General Secretary",
   registeredAddress: "PBEL City, Appa Junction, Peeramcheruvu, Hyderabad, Telangana - 500091",
+  youtubeChannelUrl: "https://www.youtube.com/@pbelsanskritiksamiti-offic3003",
+  instagramUrl: "https://www.instagram.com/pbelsanskritiksamiti",
+  facebookUrl: "https://www.facebook.com/pbelsanskritiksamiti",
 };
 
 export const BRANDING_STORAGE_KEY = "pbel_branding_config";

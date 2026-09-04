@@ -508,6 +508,24 @@ export default async function Home() {
         </div>
 
         <GalleryCarousel />
+
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-center">
+          <Link
+            href="/gallery"
+            className="inline-flex items-center gap-2 bg-primary hover:bg-primary-hover text-white font-bold px-7 py-3 rounded-full text-xs sm:text-sm transition shadow-md golden-glow"
+          >
+            <Sparkles size={16} />
+            <span>Explore Full Photo &amp; Video Gallery →</span>
+          </Link>
+          <a
+            href="https://www.youtube.com/@pbelsanskritiksamiti-offic3003"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-full text-xs sm:text-sm transition shadow-md"
+          >
+            <span>Watch on Official YouTube ↗</span>
+          </a>
+        </div>
       </section>
 
       {/* 8. WALL OF CONTRIBUTORS */}

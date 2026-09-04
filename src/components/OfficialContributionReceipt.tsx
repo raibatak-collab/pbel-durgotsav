@@ -183,7 +183,8 @@ export function OfficialContributionReceipt({
   const registeredAddress = branding.registeredAddress || "PBEL City, Appa Junction, Peeramcheruvu, Hyderabad, Telangana - 500091";
   const signatoryTitle = branding.signatoryTitle || "President / General Secretary";
 
-  const is80G = Boolean(receiptData.requiresTaxExemption && receiptData.panNumber);
+  // 80G Tax Exemption temporarily disabled until formal society registration; receipts exclusively render Devotional Blessing
+  const is80G = false;
   const calculatedReceiptNo = `ONL-${receiptData.paymentId || "PSS2026"}`;
 
   return (

@@ -45,9 +45,13 @@ import {
   Building,
   Upload,
   Mail,
-  Edit3
+  Edit3,
+  Video,
+  Play,
+  ExternalLink
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
+import { GalleryVideo, extractYouTubeVideoId, getStoredGalleryVideos, saveStoredGalleryVideos, fetchStoredGalleryVideos } from "@/config/gallery";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
 import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE, sortRitualsByTime, RitualEvent, getStoredHeroChips, saveStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip, DEFAULT_HERO_HIGHLIGHT_CHIPS } from "@/config/schedule";
@@ -201,6 +205,14 @@ export default function AdminDashboard() {
     { id: "5", title: "Anandamela Food Fiesta", year: "2024", category: "Home Chef Delicacies", emoji: "🍲" },
     { id: "6", title: "Maha Bhog Community Feast", year: "2024", category: "1,500+ Resident Seva", emoji: "🍚" },
   ]);
+  const [galleryVideos, setGalleryVideos] = useState<GalleryVideo[]>(getStoredGalleryVideos());
+  const [newVideo, setNewVideo] = useState({
+    title: "",
+    youtubeUrl: "",
+    category: "Pratibimb Stage",
+    year: "2025",
+    description: "",
+  });
   const [loading, setLoading] = useState(true);
 
   // Form State: Add / Edit Seva Category
@@ -445,8 +457,28 @@ export default function AdminDashboard() {
       });
 
       setBranding(getStoredBranding());
+      fetchStoredBranding().then((cloudBranding) => {
+        if (cloudBranding) {
+          setBranding(cloudBranding);
+          saveStoredBranding(cloudBranding);
+        }
+      });
+
       setCommitteeWings(getStoredCommittee());
+      fetchStoredCommittee().then((cloudCommittee) => {
+        if (cloudCommittee && Array.isArray(cloudCommittee) && cloudCommittee.length > 0) {
+          setCommitteeWings(cloudCommittee);
+          saveStoredCommittee(cloudCommittee);
+        }
+      });
+
       setTowerList(getStoredTowers());
+      fetchStoredTowers().then((cloudTowers) => {
+        if (cloudTowers && Array.isArray(cloudTowers) && cloudTowers.length > 0) {
+          setTowerList(cloudTowers);
+          saveStoredTowers(cloudTowers);
+        }
+      });
       const localSched = getStoredSchedule();
       setScheduleDays(localSched);
       setEveningsConfig(mapScheduleToEveningsConfig(localSched));
@@ -515,6 +547,11 @@ export default function AdminDashboard() {
           localStorage.setItem("pbel_custom_gallery", JSON.stringify(cloudGallery));
         }
       });
+      fetchStoredGalleryVideos().then((cloudVideos) => {
+        if (cloudVideos && Array.isArray(cloudVideos) && cloudVideos.length > 0) {
+          setGalleryVideos(cloudVideos);
+        }
+      });
       fetchCloudConfig<any[]>("anandamela_stalls", []).then((cloudStalls) => {
         if (cloudStalls && cloudStalls.length > 0) {
           setAnandamelaStalls(cloudStalls);
@@ -549,9 +586,12 @@ export default function AdminDashboard() {
         fullName: t.fullName || `${t.tower} (${t.name})`,
         regex: typeof t.regex === "string" ? t.regex : (t.regex?.source || ""),
       }));
-      const currentCommittee = getStoredCommittee();
-      const currentBranding = getStoredBranding();
-      const currentSchedule = getStoredSchedule();
+      const currentCommittee = committeeWings && committeeWings.length > 0 ? committeeWings : getStoredCommittee();
+      const currentBranding = branding && branding.samitiName ? branding : getStoredBranding();
+      const currentSchedule = scheduleDays && scheduleDays.length > 0 ? scheduleDays : getStoredSchedule();
+
+      saveStoredCommittee(currentCommittee);
+      saveStoredBranding(currentBranding);
 
       await Promise.all([
         saveCloudConfig("towers", currentTowers),
@@ -564,6 +604,7 @@ export default function AdminDashboard() {
         saveCloudConfig("pss_members", pssMembers),
         saveCloudConfig("budget_expenses", budgetExpenses),
         saveCloudConfig("gallery", galleryList),
+        saveCloudConfig("gallery_videos", galleryVideos),
         saveCloudConfig("site_popup_highlight", popupHighlight),
       ]);
 
@@ -2002,6 +2043,58 @@ function decodeCategoryDescription(desc?: string) {
     localStorage.setItem("pbel_custom_gallery", JSON.stringify(updated));
     saveCloudConfig("gallery", updated);
     window.dispatchEvent(new Event("pbel_gallery_updated"));
+  };
+
+  // YOUTUBE VIDEO CMS
+  const handleAddVideo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newVideo.title.trim() || !newVideo.youtubeUrl.trim()) {
+      alert("Please enter Video Title and YouTube Link / URL.");
+      return;
+    }
+    const videoId = extractYouTubeVideoId(newVideo.youtubeUrl);
+    if (!videoId) {
+      alert("Invalid YouTube URL or Video ID. Please provide a link like https://www.youtube.com/watch?v=... or https://youtu.be/...");
+      return;
+    }
+    const videoEntry: GalleryVideo = {
+      id: Date.now().toString(),
+      title: sanitizeText(newVideo.title),
+      youtubeUrl: newVideo.youtubeUrl.trim(),
+      youtubeVideoId: videoId,
+      category: sanitizeText(newVideo.category) || "Pratibimb Stage",
+      year: newVideo.year || "2025",
+      description: sanitizeText(newVideo.description),
+      dateAdded: new Date().toISOString(),
+    };
+    const updated = [videoEntry, ...galleryVideos];
+    setGalleryVideos(updated);
+    saveStoredGalleryVideos(updated);
+    saveCloudConfig("gallery_videos", updated);
+    alert("🎉 YouTube video successfully added to the Gallery Page and synced to Cloud!");
+    setNewVideo({ title: "", youtubeUrl: "", category: "Pratibimb Stage", year: "2025", description: "" });
+  };
+
+  const handleDeleteVideo = (id: string) => {
+    if (!confirm("Are you sure you want to remove this video from the Gallery Showcase?")) return;
+    const updated = galleryVideos.filter((v) => v.id !== id);
+    setGalleryVideos(updated);
+    saveStoredGalleryVideos(updated);
+    saveCloudConfig("gallery_videos", updated);
+  };
+
+  const handleSaveSocialChannels = (e: React.FormEvent) => {
+    e.preventDefault();
+    const updatedBranding = {
+      ...branding,
+      youtubeChannelUrl: branding.youtubeChannelUrl || "https://www.youtube.com/@pbelsanskritiksamiti-offic3003",
+      instagramUrl: branding.instagramUrl || "https://www.instagram.com/pbelsanskritiksamiti",
+      facebookUrl: branding.facebookUrl || "https://www.facebook.com/pbelsanskritiksamiti",
+    };
+    setBranding(updatedBranding);
+    saveStoredBranding(updatedBranding);
+    saveCloudConfig("branding", updatedBranding);
+    alert("🎉 Social channels (YouTube, Instagram, Facebook) updated and broadcast across all devices!");
   };
 
   return (
@@ -6442,9 +6535,82 @@ function decodeCategoryDescription(desc?: string) {
         </div>
       )}
 
-      {/* TAB CONTENT: 10. GALLERY CAROUSEL CMS */}
+      {/* TAB CONTENT: 10. GALLERY CAROUSEL CMS & SOCIAL CHANNELS */}
       {activeTab === "gallery" && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="space-y-8">
+          
+          {/* A. OFFICIAL SOCIAL CHANNELS & STREAM LINKS */}
+          <div className="bg-gradient-to-r from-red-50 via-white to-amber-50 rounded-2xl border border-red-200/80 p-6 shadow-xs">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 bg-red-600 text-white rounded-xl flex items-center justify-center shrink-0 shadow-xs">
+                  <Play size={18} className="fill-white translate-x-0.5" />
+                </div>
+                <div>
+                  <h3 className="font-heading text-base font-bold text-gray-900">
+                    Official Social &amp; Video Broadcast Channels
+                  </h3>
+                  <p className="text-[11px] text-gray-500">
+                    Featured across the public Gallery page and social cards.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleSaveSocialChannels}
+                className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Save size={13} />
+                <span>Save Social Channels</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                  Official YouTube Channel Link
+                </label>
+                <input
+                  type="url"
+                  value={branding.youtubeChannelUrl || ""}
+                  onChange={(e) => setBranding({ ...branding, youtubeChannelUrl: e.target.value })}
+                  placeholder="https://www.youtube.com/@pbelsanskritiksamiti-offic3003"
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-mono text-[11px]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-pink-600"></span>
+                  Official Instagram Page Link
+                </label>
+                <input
+                  type="url"
+                  value={branding.instagramUrl || ""}
+                  onChange={(e) => setBranding({ ...branding, instagramUrl: e.target.value })}
+                  placeholder="https://www.instagram.com/pbelsanskritiksamiti"
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-pink-500 outline-none font-mono text-[11px]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-gray-700 mb-1 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                  Official Facebook Page Link
+                </label>
+                <input
+                  type="url"
+                  value={branding.facebookUrl || ""}
+                  onChange={(e) => setBranding({ ...branding, facebookUrl: e.target.value })}
+                  placeholder="https://www.facebook.com/pbelsanskritiksamiti"
+                  className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-mono text-[11px]"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* B. PHOTO CAROUSEL & GALLERY CMS */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
           {/* Add Photo Form with Actual File Upload */}
           <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
@@ -6677,6 +6843,197 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
           )}
+
+          </div>
+
+          {/* C. YOUTUBE VIDEO SHOWCASE CMS */}
+          <div className="pt-6 border-t border-gray-200">
+            <div className="mb-6">
+              <h3 className="font-heading text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Video size={20} className="text-red-600" />
+                <span>YouTube Video Showcase (Gallery Page)</span>
+              </h3>
+              <p className="text-xs text-gray-500">
+                Configure YouTube videos of Pratibimb stage dramas, musical evenings, Sandhi Aarti, and Dhunuchi naach to display on the public Gallery page.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Add Video Form */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                  <Play size={16} className="text-red-600 fill-red-600" />
+                  <h4 className="font-heading text-base font-bold text-gray-900">Add YouTube Video</h4>
+                </div>
+
+                <form onSubmit={handleAddVideo} className="space-y-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      YouTube Video URL or Video ID *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={newVideo.youtubeUrl}
+                      onChange={(e) => setNewVideo({ ...newVideo, youtubeUrl: e.target.value })}
+                      placeholder="e.g. https://www.youtube.com/watch?v=... or youtu.be/..."
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-mono text-[11px]"
+                    />
+                    {newVideo.youtubeUrl && (() => {
+                      const id = extractYouTubeVideoId(newVideo.youtubeUrl);
+                      if (id) {
+                        return (
+                          <div className="mt-2 space-y-1">
+                            <span className="text-[10.5px] text-green-700 font-bold block flex items-center gap-1">
+                              ✓ Valid Video ID: <code className="bg-green-50 px-1 py-0.5 rounded">{id}</code>
+                            </span>
+                            <img
+                              src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`}
+                              alt="Thumbnail Preview"
+                              className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                            />
+                          </div>
+                        );
+                      }
+                      return (
+                        <span className="text-[10.5px] text-amber-700 block mt-1">
+                          ⚠️ Enter a valid YouTube watch, youtu.be or embed link
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Video Title / Act Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={newVideo.title}
+                      onChange={(e) => setNewVideo({ ...newVideo, title: e.target.value })}
+                      placeholder="e.g. Maha Ashtami Dhunuchi Naach 2025"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none font-semibold"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Pujo Year</label>
+                      <select
+                        value={newVideo.year}
+                        onChange={(e) => setNewVideo({ ...newVideo, year: e.target.value })}
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none"
+                      >
+                        <option value="2026">2026</option>
+                        <option value="2025">2025</option>
+                        <option value="2024">2024</option>
+                        <option value="2023">2023</option>
+                        <option value="2022">2022</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-gray-700 mb-1">Category / Tag</label>
+                      <input
+                        type="text"
+                        value={newVideo.category}
+                        onChange={(e) => setNewVideo({ ...newVideo, category: e.target.value })}
+                        placeholder="e.g. Pratibimb Stage / Aarti"
+                        className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Short Description (Optional)</label>
+                    <textarea
+                      rows={2}
+                      value={newVideo.description}
+                      onChange={(e) => setNewVideo({ ...newVideo, description: e.target.value })}
+                      placeholder="Brief note about performers or celebration"
+                      className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-red-500 outline-none resize-none"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Play size={14} className="fill-white" />
+                    <span>Add Video to Gallery Page</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* Videos Roster */}
+              <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-heading text-base font-bold text-gray-900">
+                    Showcase Videos on Gallery Page ({galleryVideos.length})
+                  </h4>
+                  <span className="text-xs text-gray-500">Live sync with /gallery</span>
+                </div>
+
+                {galleryVideos.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {galleryVideos.map((v) => {
+                      const vId = v.youtubeVideoId || extractYouTubeVideoId(v.youtubeUrl);
+                      return (
+                        <div key={v.id} className="p-3 bg-gray-50 rounded-2xl border border-gray-200 flex flex-col justify-between">
+                          <div>
+                            <div className="relative aspect-video rounded-xl overflow-hidden bg-black mb-2.5">
+                              {vId ? (
+                                <img
+                                  src={`https://img.youtube.com/vi/${vId}/hqdefault.jpg`}
+                                  alt={v.title}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-500">
+                                  <Video size={30} />
+                                </div>
+                              )}
+                              <span className="absolute bottom-1 right-1 bg-black/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                                {v.year}
+                              </span>
+                            </div>
+                            <h5 className="font-bold text-xs text-gray-900 line-clamp-1 mb-0.5">{v.title}</h5>
+                            <span className="text-[10px] text-amber-800 font-semibold bg-amber-100/80 px-2 py-0.5 rounded-full inline-block">
+                              {v.category}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-gray-200 text-xs">
+                            <a
+                              href={v.youtubeUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-red-600 hover:text-red-700 font-semibold text-[11px] flex items-center gap-1"
+                            >
+                              <span>Watch</span>
+                              <ExternalLink size={11} />
+                            </a>
+                            <button
+                              onClick={() => handleDeleteVideo(v.id)}
+                              className="text-red-600 hover:bg-red-50 p-1.5 rounded-lg transition"
+                              title="Delete Video"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-200 p-6">
+                    <Video size={32} className="mx-auto text-gray-400 mb-2" />
+                    <p className="font-bold text-xs text-gray-700">No YouTube videos added yet</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5">Use the form on the left to add video links for the Gallery page.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
 
         </div>
       )}

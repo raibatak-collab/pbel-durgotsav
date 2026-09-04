@@ -778,59 +778,7 @@ export function HomeQuickContribute() {
                 </label>
               </div>
 
-              {/* Optional 80G Tax Exemption Toggle & PAN */}
-              <div className="bg-amber-50/80 border border-amber-300/90 rounded-2xl p-3.5 space-y-2.5">
-                <div className="flex items-start gap-2.5">
-                  <input
-                    type="checkbox"
-                    id="home-tax-exemption"
-                    checked={formData.requiresTaxExemption}
-                    onChange={(e) => setFormData({ ...formData, requiresTaxExemption: e.target.checked })}
-                    className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary mt-0.5 cursor-pointer"
-                  />
-                  <label htmlFor="home-tax-exemption" className="text-xs font-bold text-amber-950 cursor-pointer select-none">
-                    📜 I require an 80G Tax Exemption Certificate (Requires PAN)
-                    <span className="block font-normal text-[11px] text-gray-600 mt-0.5">
-                      Optional: Check this if you wish to claim tax deduction under Section 80G of the Income Tax Act.
-                    </span>
-                  </label>
-                </div>
-
-                {formData.requiresTaxExemption && (
-                  <div className="pt-2 border-t border-amber-200/80">
-                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">
-                      Contributor PAN Number (10 alphanumeric digits) *
-                    </label>
-                    <input
-                      type="text"
-                      required={formData.requiresTaxExemption}
-                      maxLength={10}
-                      value={formData.panNumber}
-                      onChange={(e) => {
-                        const val = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10);
-                        setFormData({ ...formData, panNumber: val });
-                      }}
-                      placeholder="e.g. ABCDE1234F"
-                      className="w-full p-2.5 border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-primary outline-none font-mono font-bold text-xs uppercase tracking-wider"
-                    />
-                    {formData.panNumber && (() => {
-                      const res = validateIndianPan(formData.panNumber);
-                      if (!res.isValid) {
-                        return (
-                          <p className="text-[10.5px] text-red-600 mt-1 font-medium">
-                            {res.errorMessage}
-                          </p>
-                        );
-                      }
-                      return (
-                        <p className="text-[10.5px] text-green-700 mt-1 font-semibold flex items-center gap-1">
-                          ✓ Verified PAN format ({res.entityType})
-                        </p>
-                      );
-                    })()}
-                  </div>
-                )}
-              </div>
+              {/* 80G Tax Exemption temporarily hidden until formal society 80G registration order is received */}
 
               <div className="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/60 flex items-start gap-3">
                 <input
