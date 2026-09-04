@@ -2951,6 +2951,52 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  // =========================================================================
+  // SUITE 71: DEVOTEE WALL OF HONOR, ADMIN CONTRIBUTOR EDITING & STREAMLINED HOMEPAGE GALLERY
+  // =========================================================================
+  describe('Suite 71: Devotee Wall of Honor, Admin Contributor Management & Streamlined Homepage Gallery', () => {
+    it('should verify Admin ability to edit contributor names, fix typos, and toggle Wall of Honor visibility', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('handleToggleWallVisibility'), 'Admin must contain 1-click handleToggleWallVisibility');
+      assert.ok(adminSrc.includes('handleSaveContributorEdit'), 'Admin must contain handleSaveContributorEdit for fixing typos');
+      assert.ok(adminSrc.includes('editingContribution'), 'Admin must have editingContribution state');
+      assert.ok(adminSrc.includes('Edit Contributor & Wall of Honor'), 'Admin must render Edit Contributor & Wall of Honor modal');
+      assert.ok(adminSrc.includes('is_name_visible'), 'Admin must allow toggling public is_name_visible attribute');
+    });
+
+    it('should verify dedicated /wall-of-honor route exists with search, tower filters and impact counters', () => {
+      assert.ok(fs.existsSync('src/app/wall-of-honor/page.tsx'), 'src/app/wall-of-honor/page.tsx must exist');
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('Devotee Wall of Honor'), 'Page must display Devotee Wall of Honor header');
+      assert.ok(wallSrc.includes('PBEL_TOWERS'), 'Page must import and utilize PBEL_TOWERS for tower filtering');
+      assert.ok(wallSrc.includes('matchTower'), 'Page must match resident flat to tower using matchTower');
+      assert.ok(wallSrc.includes('searchTerm'), 'Page must support live search filtering');
+      assert.ok(wallSrc.includes('selectedTower'), 'Page must support tower chip filtering');
+      assert.ok(wallSrc.includes('/receipt'), 'Page must link to official receipt download');
+    });
+
+    it('should verify Top Navigation Header links directly to /wall-of-honor', () => {
+      const headerSrc = fs.readFileSync('src/components/Header.tsx', 'utf8');
+      assert.ok(headerSrc.includes('/wall-of-honor'), 'Header must contain link to /wall-of-honor');
+      assert.ok(headerSrc.includes('Devotee Wall of Honor'), 'Header must label the item as Devotee Wall of Honor');
+    });
+
+    it('should verify WallOfContributors has backward-compatible id="devotee-wall" and links to /wall-of-honor', () => {
+      const wallComponentSrc = fs.readFileSync('src/components/WallOfContributors.tsx', 'utf8');
+      assert.ok(wallComponentSrc.includes('id="devotee-wall"'), 'WallOfContributors section must have id="devotee-wall" for anchor navigation');
+      assert.ok(wallComponentSrc.includes('/wall-of-honor'), 'WallOfContributors must link to /wall-of-honor');
+    });
+
+    it('should verify homepage has streamlined 3-card spotlight preview teaser linking to /gallery and YouTube', () => {
+      const pageSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(pageSrc.includes('Maa Durga Pratima Darshan'), 'Homepage must feature Pratima Darshan teaser card');
+      assert.ok(pageSrc.includes('Pratibimb Stage'), 'Homepage must feature Pratibimb Stage teaser card');
+      assert.ok(pageSrc.includes('Video Highlights'), 'Homepage must feature Video Highlights teaser card');
+      assert.ok(pageSrc.includes('https://www.youtube.com/@pbelsanskritiksamiti-offic3003'), 'Homepage must link to official YouTube channel');
+      assert.ok(pageSrc.includes('/gallery'), 'Homepage must link to /gallery');
+    });
+  });
+
 });
 
 

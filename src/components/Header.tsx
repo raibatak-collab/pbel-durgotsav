@@ -96,7 +96,7 @@ export function Header() {
   // Secondary Links for Accessible "More ▾" Dropdown
   const moreLinks = [
     { name: "Organizing Committee", href: "/committee", icon: Users, desc: "Executive wings, leads & volunteer teams" },
-    { name: "Devotee Wall of Honor", href: "/#devotee-wall", icon: Sparkles, desc: "Community contributor recognition" },
+    { name: "Devotee Wall of Honor", href: "/wall-of-honor", icon: Sparkles, desc: "Community contributor recognition & solidarity" },
   ];
 
   return (

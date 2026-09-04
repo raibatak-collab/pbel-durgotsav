@@ -26,7 +26,7 @@ export function WallOfContributors({ contributors }: { contributors: Contributor
   });
 
   return (
-    <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-12">
+    <section id="devotee-wall" className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-12 scroll-mt-24">
       <div className="bg-white rounded-3xl p-8 border border-amber-900/10 shadow-sm text-center">
         <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 bg-amber-100/70 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
           <Sparkles size={13} className="text-primary" />
@@ -36,7 +36,7 @@ export function WallOfContributors({ contributors }: { contributors: Contributor
           Honor Roll of Contributors
         </h2>
         <p className="text-gray-600 text-sm max-w-md mx-auto mb-8">
-          Special gratitude to our PBEL City community residents and well-wishers who have supported this year's Durgotsav!
+          Special gratitude to our PBEL City community residents and well-wishers who have supported this year&apos;s Durgotsav!
         </p>
 
         <div className="flex flex-wrap justify-center gap-2.5 max-w-3xl mx-auto mb-8">
@@ -61,15 +61,13 @@ export function WallOfContributors({ contributors }: { contributors: Contributor
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-4">
-          {validContributors.length > 12 && (
-            <button
-              onClick={() => setShowAllModal(true)}
-              className="inline-flex items-center gap-1.5 bg-amber-100/70 hover:bg-amber-200 text-amber-950 px-5 py-2.5 rounded-full font-bold text-xs transition border border-amber-300 shadow-2xs"
-            >
-              <Users size={14} className="text-primary" />
-              <span>View All {validContributors.length} Contributors</span>
-            </button>
-          )}
+          <Link
+            href="/wall-of-honor"
+            className="inline-flex items-center gap-1.5 bg-amber-100/80 hover:bg-amber-200 text-amber-950 px-5 py-2.5 rounded-full font-bold text-xs transition border border-amber-300 shadow-2xs cursor-pointer"
+          >
+            <Users size={14} className="text-primary" />
+            <span>Search Your Flat on Wall of Honor ({validContributors.length}) →</span>
+          </Link>
 
           <Link
             href="/contribute"

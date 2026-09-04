@@ -14,10 +14,10 @@ import {
   Phone,
   Mail,
   Share2,
-  Utensils
+  Utensils,
+  ExternalLink
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
-import { GalleryCarousel } from "@/components/GalleryCarousel";
 import { TowerParticipation } from "@/components/TowerParticipation";
 import { FestiveHero } from "@/components/FestiveHero";
 import { SponsorLogoCarousel } from "@/components/SponsorLogoCarousel";
@@ -507,7 +507,86 @@ export default async function Home() {
           </p>
         </div>
 
-        <GalleryCarousel />
+        {/* Sleek 3-Card Spotlight Teaser linking to Full Gallery & YouTube */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+          {/* Card 1: Divine Pratima & Rituals */}
+          <Link
+            href="/gallery"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#850E1F]/90 via-[#610815]/95 to-[#2A0208] p-6 text-white shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between min-h-[210px] border border-amber-500/20"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-3xl">🌺</span>
+              <span className="text-[10px] font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30 px-2.5 py-0.5 rounded-full">
+                Traditional Ekchala
+              </span>
+            </div>
+            <div>
+              <h3 className="font-heading text-lg font-bold text-amber-100 group-hover:text-amber-300 transition">
+                Maa Durga Pratima Darshan
+              </h3>
+              <p className="text-xs text-amber-200/70 mt-1">
+                Sacred Bodhon, Sandhi Pujo 108 Deepam, Pushpanjali &amp; Aarti
+              </p>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                <span>View Photo Albums</span>
+                <ArrowRight size={13} className="group-hover:translate-x-1 transition" />
+              </div>
+            </div>
+          </Link>
+
+          {/* Card 2: Pratibimb Cultural Stage */}
+          <Link
+            href="/gallery"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#D99B26]/90 via-[#B8801C]/95 to-[#6E4907] p-6 text-white shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between min-h-[210px] border border-amber-400/30"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-3xl">🎭</span>
+              <span className="text-[10px] font-bold bg-white/20 text-white border border-white/30 px-2.5 py-0.5 rounded-full">
+                Pratibimb Stage
+              </span>
+            </div>
+            <div>
+              <h3 className="font-heading text-lg font-bold text-white group-hover:text-amber-100 transition">
+                Cultural Evenings &amp; Natok
+              </h3>
+              <p className="text-xs text-amber-100/80 mt-1">
+                Dance dramas, community choir, musical nights &amp; resident performances
+              </p>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-white">
+                <span>Browse Stage Moments</span>
+                <ArrowRight size={13} className="group-hover:translate-x-1 transition" />
+              </div>
+            </div>
+          </Link>
+
+          {/* Card 3: Official YouTube Channel */}
+          <a
+            href="https://www.youtube.com/@pbelsanskritiksamiti-offic3003"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#B81932]/90 via-[#850E1F]/95 to-[#3B0009] p-6 text-white shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 flex flex-col justify-between min-h-[210px] border border-red-500/30"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-3xl">🎥</span>
+              <span className="text-[10px] font-bold bg-red-500/40 text-red-200 border border-red-400/40 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                Official Channel
+              </span>
+            </div>
+            <div>
+              <h3 className="font-heading text-lg font-bold text-amber-100 group-hover:text-amber-300 transition">
+                Video Highlights &amp; Streams
+              </h3>
+              <p className="text-xs text-amber-200/70 mt-1">
+                Watch Dhaaki beats, Aarti live streams, and past cultural showcases
+              </p>
+              <div className="mt-4 flex items-center gap-1.5 text-xs font-bold text-amber-300">
+                <span>Watch on YouTube</span>
+                <ExternalLink size={13} className="group-hover:translate-x-1 transition" />
+              </div>
+            </div>
+          </a>
+        </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-center">
           <Link

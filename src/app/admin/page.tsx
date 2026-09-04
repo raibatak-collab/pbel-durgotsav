@@ -184,6 +184,8 @@ export default function AdminDashboard() {
   const [contributionStatusFilter, setContributionStatusFilter] = useState<string>("all");
   const [contributionSearch, setContributionSearch] = useState<string>("");
   const [selectedReceiptContribution, setSelectedReceiptContribution] = useState<any | null>(null);
+  const [editingContribution, setEditingContribution] = useState<any | null>(null);
+  const [isUpdatingContribution, setIsUpdatingContribution] = useState<boolean>(false);
   const [showSponsorCopyModal, setShowSponsorCopyModal] = useState<boolean>(false);
   const [sponsorCopyCategory, setSponsorCopyCategory] = useState<string>("all");
   const [sponsorCopied, setSponsorCopied] = useState<boolean>(false);
@@ -1335,6 +1337,69 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error("Error updating contribution status:", err);
       alert("Failed to update status.");
+    }
+  };
+
+  // Handler to toggle Wall of Honor public visibility
+  const handleToggleWallVisibility = async (c: any) => {
+    const newVisibility = !c.is_name_visible;
+    try {
+      const { error } = await supabase
+        .from("contributions")
+        .update({ is_name_visible: newVisibility })
+        .eq("id", c.id);
+
+      if (error) throw error;
+
+      setContributions((prev) =>
+        prev.map((item) => (item.id === c.id ? { ...item, is_name_visible: newVisibility } : item))
+      );
+    } catch (err: any) {
+      console.error("Error toggling Wall visibility:", err);
+      alert(`Failed to update Wall visibility: ${err.message || err}`);
+    }
+  };
+
+  // Handler to edit contributor details (fix typos in name, flat, or toggle visibility)
+  const handleSaveContributorEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingContribution) return;
+    setIsUpdatingContribution(true);
+    try {
+      const updatedName = editingContribution.contributor_name.trim();
+      const updatedFlat = editingContribution.flat_number?.trim() || "";
+      const updatedVisibility = Boolean(editingContribution.is_name_visible);
+
+      const { error } = await supabase
+        .from("contributions")
+        .update({
+          contributor_name: updatedName,
+          flat_number: updatedFlat,
+          is_name_visible: updatedVisibility,
+        })
+        .eq("id", editingContribution.id);
+
+      if (error) throw error;
+
+      setContributions((prev) =>
+        prev.map((item) =>
+          item.id === editingContribution.id
+            ? {
+                ...item,
+                contributor_name: updatedName,
+                flat_number: updatedFlat,
+                is_name_visible: updatedVisibility,
+              }
+            : item
+        )
+      );
+      alert("✓ Contributor name and Wall visibility updated successfully in database!");
+      setEditingContribution(null);
+    } catch (err: any) {
+      console.error("Error updating contributor details:", err);
+      alert(`Failed to update contributor: ${err.message || err}`);
+    } finally {
+      setIsUpdatingContribution(false);
     }
   };
 
@@ -2907,9 +2972,18 @@ function decodeCategoryDescription(desc?: string) {
                           <td className="p-3.5 font-bold text-green-700 text-sm font-mono">₹{Number(c.amount).toLocaleString("en-IN")}</td>
                           <td className="p-3.5 font-mono text-[11px] text-gray-700 font-semibold">{c.payment_id}</td>
                           <td className="p-3.5">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${c.is_name_visible ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
-                              {c.is_name_visible ? "Public" : "Anonymous"}
-                            </span>
+                            <button
+                              onClick={() => handleToggleWallVisibility(c)}
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold border transition cursor-pointer flex items-center gap-1 ${
+                                c.is_name_visible
+                                  ? "bg-green-50 text-green-800 border-green-300 hover:bg-green-100"
+                                  : "bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200"
+                              }`}
+                              title="Click to toggle Wall of Honor public visibility"
+                            >
+                              {c.is_name_visible ? <Eye size={11} /> : <EyeOff size={11} />}
+                              <span>{c.is_name_visible ? "Public" : "Anonymous"}</span>
+                            </button>
                           </td>
                           <td className="p-3.5">
                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -2923,6 +2997,16 @@ function decodeCategoryDescription(desc?: string) {
                             </span>
                           </td>
                           <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                            {/* EDIT CONTRIBUTOR BUTTON */}
+                            <button
+                              onClick={() => setEditingContribution({ ...c })}
+                              className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] px-2.5 py-1 rounded-lg transition inline-flex items-center gap-1 shadow-2xs cursor-pointer"
+                              title="Edit contributor name or fix typos"
+                            >
+                              <Edit2 size={12} />
+                              <span>Edit</span>
+                            </button>
+
                             {/* RECEIPT BUTTON */}
                             <button
                               onClick={() => setSelectedReceiptContribution(c)}
@@ -3034,7 +3118,149 @@ function decodeCategoryDescription(desc?: string) {
             </div>
           )}
 
-          {/* SPONSORS BROADCAST COPY MODAL */}
+          {/* EDIT CONTRIBUTOR & WALL OF HONOR MODAL */}
+          {editingContribution && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
+              <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-amber-400 relative my-auto">
+                <button
+                  onClick={() => setEditingContribution(null)}
+                  disabled={isUpdatingContribution}
+                  className="absolute top-4 right-4 p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-full transition cursor-pointer disabled:opacity-50"
+                >
+                  <X size={20} />
+                </button>
+
+                <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-100">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center font-bold">
+                    <Edit2 size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-heading text-lg font-bold text-gray-900">
+                      Edit Contributor & Wall of Honor
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      Rectify resident spelling typos, flat number, or adjust Wall of Honor visibility.
+                    </p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleSaveContributorEdit} className="space-y-4">
+                  {/* Reference Meta Info */}
+                  <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="text-gray-500 block">Amount:</span>
+                      <span className="font-bold text-green-700 font-mono text-sm">
+                        ₹{Number(editingContribution.amount || 0).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Payment Ref:</span>
+                      <span className="font-mono text-gray-700 font-medium">
+                        {editingContribution.payment_id || "N/A"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500 block">Status:</span>
+                      <span className="font-bold text-emerald-700">
+                        {editingContribution.status || "Completed"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Contributor Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Contributor Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={editingContribution.contributor_name || ""}
+                      onChange={(e) =>
+                        setEditingContribution({
+                          ...editingContribution,
+                          contributor_name: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Anirban Mukherjee"
+                      className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-hidden transition"
+                    />
+                    <span className="text-[11px] text-gray-500 mt-1 block">
+                      Displayed on the Wall of Honor and Official Contribution Receipt.
+                    </span>
+                  </div>
+
+                  {/* Flat Number */}
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 mb-1">
+                      Flat Number / PBEL Tower
+                    </label>
+                    <input
+                      type="text"
+                      value={editingContribution.flat_number || ""}
+                      onChange={(e) =>
+                        setEditingContribution({
+                          ...editingContribution,
+                          flat_number: e.target.value,
+                        })
+                      }
+                      placeholder="e.g. Tower G - 1402 or Flat 504"
+                      className="w-full px-3.5 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-amber-400 focus:border-amber-400 outline-hidden transition"
+                    />
+                  </div>
+
+                  {/* Wall of Honor Visibility Checkbox */}
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-3.5 flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      id="edit_is_name_visible"
+                      checked={Boolean(editingContribution.is_name_visible)}
+                      onChange={(e) =>
+                        setEditingContribution({
+                          ...editingContribution,
+                          is_name_visible: e.target.checked,
+                        })
+                      }
+                      className="mt-0.5 h-4 w-4 text-amber-600 focus:ring-amber-400 border-gray-300 rounded cursor-pointer"
+                    />
+                    <label htmlFor="edit_is_name_visible" className="text-xs text-gray-700 cursor-pointer">
+                      <span className="font-bold text-gray-900 block">
+                        Show Name on Public Devotee Wall of Honor
+                      </span>
+                      If unchecked, the devotee will appear as{" "}
+                      <span className="font-semibold italic text-gray-800">&quot;Devout Well Wisher&quot;</span> on the website to preserve their privacy.
+                    </label>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setEditingContribution(null)}
+                      disabled={isUpdatingContribution}
+                      className="px-4 py-2 text-xs font-bold text-gray-600 hover:bg-gray-100 rounded-xl transition cursor-pointer disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isUpdatingContribution}
+                      className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm cursor-pointer disabled:opacity-50"
+                    >
+                      {isUpdatingContribution ? (
+                        <span>Saving...</span>
+                      ) : (
+                        <>
+                          <Save size={13} />
+                          <span>Save Changes</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
           {showSponsorCopyModal && (
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
               <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-amber-400 relative">
