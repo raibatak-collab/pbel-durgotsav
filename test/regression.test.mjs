@@ -2998,12 +2998,48 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(pageSrc.includes('/gallery'), 'Homepage must link to /gallery');
     });
   });
+  // =========================================================================
+  // SUITE 72: RECEIPT WHATSAPP SHARING, EXACT SEVA CATEGORIES, KEEPSAKE MEMENTO & DATE FILTER
+  // =========================================================================
+  describe('Suite 72: Receipt WhatsApp Sharing, Exact Seva Categories, Keepsake Memento & Date Filter', () => {
+    it('should verify OfficialContributionReceipt executes standalone WhatsApp sharing when onOpenShareModal is omitted', () => {
+      const receiptSrc = fs.readFileSync('src/components/OfficialContributionReceipt.tsx', 'utf8');
+      assert.ok(receiptSrc.includes('api.whatsapp.com/send'), 'Receipt must support WhatsApp sharing URL');
+      assert.ok(receiptSrc.includes('receiptData.phone'), 'Receipt must inspect phone for direct resident targeting');
+      assert.ok(receiptSrc.includes('receiptRef'), 'Receipt share message must include receipt reference');
+      assert.ok(receiptSrc.includes('/receipt?id='), 'Receipt share message must include secure direct receipt link');
+    });
+
+    it('should verify Admin receipt modal connects onOpenShareModal to handleSendResidentWhatsapp', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('onOpenShareModal={() => handleSendResidentWhatsapp'), 'Admin modal must pass active share handler to OfficialContributionReceipt');
+    });
+
+    it('should verify WallOfHonorPage queries contribution_categories with name and joins relation', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('.select("id, name")'), 'Wall of Honor must query category name column correctly');
+      assert.ok(wallSrc.includes('contribution_categories(name)'), 'Wall of Honor must join contribution_categories relation in contributions query');
+      assert.ok(wallSrc.includes('categoriesMap[c.category_id]'), 'Wall of Honor must dynamically map category id to offering title');
+    });
+
+    it('should verify Devotional Keepsake Memento Card modal renders commemorative message without monetary amounts', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('Thank You for Being Part of PBEL Durgotsav 2026'), 'Memento card must display commemorative title');
+      assert.ok(wallSrc.includes('Memento Card 🪔'), 'Wall of Honor cards must render Memento Card button replacing static text');
+      assert.ok(wallSrc.includes('SamitiOfficialSeal'), 'Memento card must render official verified seal');
+      assert.ok(wallSrc.includes('DefaultPresidentSignature'), 'Memento card must render president signature');
+      assert.ok(wallSrc.includes('Print Memento'), 'Memento modal must include print action');
+      assert.ok(wallSrc.includes('Share WhatsApp'), 'Memento modal must include WhatsApp sharing action');
+      assert.ok(!wallSrc.includes('selectedMemento.amount'), 'Memento modal must strictly omit contribution amount');
+    });
+
+    it('should verify Wall of Honor supports Date Filtering alongside Name and Flat search', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('selectedDate'), 'Wall of Honor must have selectedDate state');
+      assert.ok(wallSrc.includes('type="date"'), 'Wall of Honor must provide HTML5 date picker input');
+      assert.ok(wallSrc.includes('Clear Date'), 'Wall of Honor must provide Clear Date button');
+      assert.ok(wallSrc.includes('Resident Name, Flat Number'), 'Search bar placeholder must explicitly feature Resident Name and Flat Number');
+    });
+  });
 
 });
-
-
-
-
-
-
-

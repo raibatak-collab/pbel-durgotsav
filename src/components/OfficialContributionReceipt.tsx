@@ -211,9 +211,19 @@ export function OfficialContributionReceipt({
             onClick={() => {
               if (onOpenShareModal) {
                 onOpenShareModal();
-                const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOur family (*${receiptData.name}*, *${receiptData.flatNumber}*) has offered devotional Seva for *${receiptData.category}* at PBEL City Durgotsav.\n\nMay Maa Durga bless all residents with joy, health, and prosperity! 🙏\n\nJoin hands in community seva & view the Pujo schedule:\n👉 https://www.pbelcitydurgotsav.com\n\n_PBEL Sanskritik Samiti (PSS)_`;
-                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, "_blank");
+                return;
               }
+              const phone = receiptData.phone ? receiptData.phone.replace(/[^0-9]/g, "") : "";
+              const receiptRef = receiptData.paymentId ? receiptData.paymentId.replace(/^UTR_/i, '').slice(-8).toUpperCase() : "ONLINE";
+              const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(receiptData.paymentId || "")}`;
+              
+              const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOfficial Contribution Receipt for *${receiptData.name}* (${receiptData.flatNumber}).\nSeva Offering: *${receiptData.category}*\nReceipt No: *PSS-2026-${receiptRef}*\nView Official Receipt: ${receiptUrl}\n\nMay Maa Durga shower divine blessings upon your family! 🙏\n👉 https://www.pbelcitydurgotsav.com\n_PBEL Sanskritik Samiti (PSS)_`;
+
+              const waUrl = phone.length >= 10
+                ? `https://api.whatsapp.com/send?phone=91${phone.slice(-10)}&text=${encodeURIComponent(shareText)}`
+                : `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+
+              window.open(waUrl, "_blank");
             }}
             className="flex-1 sm:flex-initial bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             title="Share or forward receipt on WhatsApp"

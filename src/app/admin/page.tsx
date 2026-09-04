@@ -3098,6 +3098,7 @@ function decodeCategoryDescription(desc?: string) {
                 <OfficialContributionReceipt
                   receiptData={formatContributionToReceipt(selectedReceiptContribution)}
                   branding={branding}
+                  onOpenShareModal={() => handleSendResidentWhatsapp(selectedReceiptContribution)}
                 />
               </div>
             </div>
