@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/utils/supabase/client";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
-import { DEFAULT_BRANDING, SamitiBrandingConfig } from "@/config/branding";
+import { DEFAULT_BRANDING, SamitiBrandingConfig, fetchStoredBranding } from "@/config/branding";
 import OfficialContributionReceipt, { ReceiptData } from "@/components/OfficialContributionReceipt";
 import { ShieldCheck, ArrowLeft, Heart, Lock, Mail, Calendar, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 
@@ -19,7 +19,7 @@ function ReceiptViewerContent() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchCloudConfig("branding_config", DEFAULT_BRANDING).then((b) => {
+    fetchStoredBranding().then((b) => {
       if (b) setBranding(b);
     });
   }, []);

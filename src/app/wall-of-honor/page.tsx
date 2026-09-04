@@ -21,6 +21,7 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 import { PBEL_TOWERS, matchTower } from "@/config/towers";
+import { DEFAULT_BRANDING, SamitiBrandingConfig, fetchStoredBranding } from "@/config/branding";
 import { 
   PssLogoFallback, 
   DurgotsavLogoFallback, 
@@ -51,6 +52,7 @@ export default function WallOfHonorPage() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [memberFamiliesCount, setMemberFamiliesCount] = useState<number>(0);
   const [selectedMemento, setSelectedMemento] = useState<ContributorRecord | null>(null);
+  const [branding, setBranding] = useState<SamitiBrandingConfig>(DEFAULT_BRANDING);
 
   useEffect(() => {
     async function loadWallData() {
@@ -95,6 +97,7 @@ export default function WallOfHonorPage() {
     }
 
     loadWallData();
+    fetchStoredBranding().then((b) => { if (b) setBranding(b); });
   }, []);
 
   // Compute key impact metrics
@@ -593,17 +596,42 @@ export default function WallOfHonorPage() {
 
                 {/* Top Logos & Sacred Chant */}
                 <div className="text-center space-y-2">
-                  <div className="flex items-center justify-center gap-3">
-                    <PssLogoFallback className="w-11 h-11" />
+                  {/* Watermark in background */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none opacity-[0.04] print:opacity-[0.06] overflow-hidden">
+                    {branding.durgotsavLogoUrl ? (
+                      <img src={branding.durgotsavLogoUrl} alt="" className="w-56 sm:w-72 object-contain" />
+                    ) : (
+                      <DurgotsavLogoFallback className="w-56 sm:w-72" />
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-center gap-3 relative z-10">
+                    {branding.pssLogoUrl ? (
+                      <img
+                        src={branding.pssLogoUrl}
+                        alt="PBEL Sanskritik Samiti Emblem"
+                        className="w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-xl"
+                      />
+                    ) : (
+                      <PssLogoFallback className="w-12 h-12 sm:w-14 sm:h-14" />
+                    )}
                     <div>
-                      <h4 className="font-heading text-base sm:text-lg font-bold text-primary tracking-tight">
-                        PBEL SANSKRITIK SAMITI
+                      <h4 className="font-heading text-base sm:text-lg font-bold text-primary tracking-tight uppercase">
+                        {branding.samitiName || "PBEL SANSKRITIK SAMITI"}
                       </h4>
-                      <p className="text-[10px] sm:text-xs text-amber-800 font-semibold tracking-wide">
-                        PBEL CITY DURGOTSAV 2026 • HYDERABAD
+                      <p className="text-[10px] sm:text-xs text-amber-800 font-semibold tracking-wide uppercase">
+                        {branding.festivalName || "PBEL CITY DURGOTSAV 2026"} • HYDERABAD
                       </p>
                     </div>
-                    <DurgotsavLogoFallback className="w-11 h-11" />
+                    {branding.durgotsavLogoUrl ? (
+                      <img
+                        src={branding.durgotsavLogoUrl}
+                        alt="PBEL City Durgotsav Logo"
+                        className="w-12 h-12 sm:w-14 sm:h-14 object-contain rounded-xl"
+                      />
+                    ) : (
+                      <DurgotsavLogoFallback className="w-12 h-12 sm:w-14 sm:h-14" />
+                    )}
                   </div>
 
                   {/* Sacred Sanskrit Invocation */}
@@ -687,7 +715,11 @@ export default function WallOfHonorPage() {
                   </div>
 
                   <div className="text-right">
-                    <DefaultPresidentSignature className="h-8 ml-auto" />
+                    {branding.presidentSignatureUrl ? (
+                      <img src={branding.presidentSignatureUrl} alt="President Signature" className="h-8 ml-auto object-contain" />
+                    ) : (
+                      <DefaultPresidentSignature className="h-8 ml-auto" />
+                    )}
                     <span className="text-[10px] font-bold text-gray-700 block border-t border-gray-300 pt-0.5">
                       President / General Secretary
                     </span>

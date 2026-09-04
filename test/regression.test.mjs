@@ -3026,8 +3026,10 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
       assert.ok(wallSrc.includes('Thank You for Being Part of PBEL Durgotsav 2026'), 'Memento card must display commemorative title');
       assert.ok(wallSrc.includes('Memento Card 🪔'), 'Wall of Honor cards must render Memento Card button replacing static text');
+      assert.ok(wallSrc.includes('branding.pssLogoUrl'), 'Memento card must support uploaded PSS logo');
+      assert.ok(wallSrc.includes('branding.durgotsavLogoUrl'), 'Memento card must support uploaded Durgotsav logo');
       assert.ok(wallSrc.includes('SamitiOfficialSeal'), 'Memento card must render official verified seal');
-      assert.ok(wallSrc.includes('DefaultPresidentSignature'), 'Memento card must render president signature');
+      assert.ok(wallSrc.includes('DefaultPresidentSignature'), 'Memento card must render president signature fallback');
       assert.ok(wallSrc.includes('Print Memento'), 'Memento modal must include print action');
       assert.ok(wallSrc.includes('Share WhatsApp'), 'Memento modal must include WhatsApp sharing action');
       assert.ok(!wallSrc.includes('selectedMemento.amount'), 'Memento modal must strictly omit contribution amount');
