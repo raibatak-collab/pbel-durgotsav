@@ -974,8 +974,8 @@ export default function AdminDashboard() {
       }
       alert(
         nextVal
-          ? `✓ Member Subscriptions (₹${(pssMembers.length * 7500).toLocaleString("en-IN")} from ${pssMembers.length} families) are now INCLUDED in the overall public collection counter & tower totals.`
-          : `✓ Member Subscriptions are now EXCLUDED from the public collection counter. Only direct online e-Seva donations are counted.`
+          ? `✓ Member Subscriptions (₹${(pssMembers.length * 7500).toLocaleString("en-IN")} from ${pssMembers.length} families) are now INCLUDED in the overall public collection counter, tower totals, and displayed on the Devotee Wall of Honor / Donation page with offering 'Member Contribution'.`
+          : `✓ Member Subscriptions are now EXCLUDED from the public collection counter and Wall of Honor. Only direct online e-Seva donations are displayed and counted.`
       );
     } catch (err) {
       console.error("Error updating member contribution toggle:", err);
@@ -2463,7 +2463,7 @@ function decodeCategoryDescription(desc?: string) {
                   </span>
                 </div>
                 <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
-                  Controls whether the <strong>₹7,500 annual subscription per member family</strong> ({pssMembers.length} registered families = <strong>₹{(pssMembers.length * 7500).toLocaleString("en-IN")}</strong>) is added to the homepage total fund collection counter and tower breakdown cards.
+                  Controls whether the <strong>₹7,500 annual subscription per member family</strong> ({pssMembers.length} registered families = <strong>₹{(pssMembers.length * 7500).toLocaleString("en-IN")}</strong>) is added to the collection counter, tower breakdown, and displayed on the Devotee Wall of Honor / Donation page with the offering label <strong>&quot;Member Contribution&quot;</strong>.
                 </p>
               </div>
             </div>
@@ -7494,7 +7494,7 @@ function decodeCategoryDescription(desc?: string) {
                       </span>
                     </div>
                     <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
-                      When enabled, the <strong>₹7,500 annual subscription per member family</strong> ({pssMembers.length} registered families = <strong>₹{(pssMembers.length * 7500).toLocaleString("en-IN")}</strong>) is included in the homepage total collection counter and tower breakdown cards.
+                      When enabled, the <strong>₹7,500 annual subscription per member family</strong> ({pssMembers.length} registered families = <strong>₹{(pssMembers.length * 7500).toLocaleString("en-IN")}</strong>) is included in the collection counter, tower breakdown, and displayed on the Devotee Wall of Honor / Donation page with the offering label <strong>&quot;Member Contribution&quot;</strong>.
                     </p>
                   </div>
                 </div>

@@ -46,11 +46,13 @@ export default async function Home() {
   const includeMemberContributions = await fetchCloudConfig<boolean>("include_member_contributions", true);
   let memberSubscriptionTotal = 0;
   let memberFamiliesCount = 0;
+  let pssMembersList: any[] = [];
 
   if (includeMemberContributions) {
     try {
       const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
       if (pssMembers && Array.isArray(pssMembers)) {
+        pssMembersList = pssMembers;
         memberFamiliesCount = pssMembers.length;
         memberSubscriptionTotal = pssMembers.reduce(
           (sum: number, m: any) => sum + (Number(m.membershipFee) || 7500),
@@ -186,11 +188,20 @@ export default async function Home() {
               <Sparkles size={14} className="text-primary" />
               <span>Community Pujo Seva Fund (Live Verified)</span>
             </div>
-            <div className="flex items-baseline gap-3">
-              <span className="font-heading text-4xl sm:text-5xl font-bold text-green-700">
-                {formattedTotal}
-              </span>
-              <span className="text-xs text-gray-500 font-medium">Raised so far from {combinedContributorsCount} resident offerings</span>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-baseline gap-3">
+                <span className="font-heading text-4xl sm:text-5xl font-bold text-green-700">
+                  {formattedTotal}
+                </span>
+                <span className="text-xs text-gray-500 font-medium">Raised so far from {combinedContributorsCount} resident offerings</span>
+              </div>
+
+              {includeMemberContributions && memberSubscriptionTotal > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50 border border-amber-200/90 px-3 py-1 rounded-full font-medium w-fit mt-1 shadow-2xs">
+                  <Sparkles size={12} className="text-amber-600 shrink-0" />
+                  <span>Includes <strong>₹{memberSubscriptionTotal.toLocaleString("en-IN")}</strong> from {memberFamiliesCount} Member Family Subscriptions</span>
+                </div>
+              )}
             </div>
             <p className="text-xs text-gray-600">
               100% of resident contributions fund the Pujo rituals, daily Maha Bhog distribution, Dhaaki artists, and Pratibimb cultural stage.
@@ -608,7 +619,21 @@ export default async function Home() {
       </section>
 
       {/* 8. WALL OF CONTRIBUTORS */}
-      <WallOfContributors contributors={contributionsData || []} />
+      {(() => {
+        const memberContributors = (includeMemberContributions && pssMembersList && Array.isArray(pssMembersList))
+          ? pssMembersList
+              .filter((m: any) => m.status !== "Inactive")
+              .map((m: any) => ({
+                amount: Number(m.membershipFee) || 7500,
+                contributor_name: m.name,
+                flat_number: m.flatNumber ? `${m.tower || ""} - ${m.flatNumber}`.trim() : (m.tower || "PBEL City"),
+                is_name_visible: true,
+                created_at: m.joinedDate || "2026-09-01T00:00:00.000Z",
+              }))
+          : [];
+        const combinedForWall = [...(contributionsData || []), ...memberContributors];
+        return <WallOfContributors contributors={combinedForWall} />;
+      })()}
 
       {/* 9. LUXURY FOOTER */}
       <footer className="w-full bg-[#1A0307] text-amber-100/80 pt-16 pb-24 md:pb-16 px-4 sm:px-6 lg:px-8 border-t border-amber-500/20">

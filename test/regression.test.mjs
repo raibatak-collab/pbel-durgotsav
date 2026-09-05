@@ -3044,4 +3044,51 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  // =========================================================================
+  // SUITE 73: MEMBER CONTRIBUTION BREAKDOWN DISPLAY & DONATION PAGE INTEGRATION
+  // =========================================================================
+  describe('Suite 73: Member Contribution Breakdown Display & Donation Page Integration', () => {
+    it('should verify homepage fund counter displays explicit breakdown badge when member contributions are included', () => {
+      const pageSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(pageSrc.includes('includeMemberContributions && memberSubscriptionTotal > 0'), 'Homepage must conditionally check member contributions total');
+      assert.ok(pageSrc.includes('Includes'), 'Homepage must render "Includes" breakdown badge');
+      assert.ok(pageSrc.includes('Member Family Subscriptions'), 'Breakdown badge must explicitly mention Member Family Subscriptions');
+      assert.ok(pageSrc.includes('memberSubscriptionTotal.toLocaleString("en-IN")'), 'Breakdown badge must format the member amount');
+    });
+
+    it('should verify homepage WallOfContributors receives combined contributors including member families when toggle is ON', () => {
+      const pageSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(pageSrc.includes('combinedForWall'), 'Homepage must compute combinedForWall contributors');
+      assert.ok(pageSrc.includes('pssMembersList'), 'Homepage must check pssMembersList');
+      assert.ok(pageSrc.includes('<WallOfContributors contributors={combinedForWall} />'), 'Homepage must pass combined contributors to WallOfContributors');
+    });
+
+    it('should verify Wall of Honor / Donation page includes member contributions in Devotee Seva Raised counter with subtext badge', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('includeMemberContributions && memberSubscriptionTotal > 0'), 'Wall of Honor must conditionally check member subscription total');
+      assert.ok(wallSrc.includes('Includes ₹'), 'Wall of Honor counter must render subtext badge with member amount');
+      assert.ok(wallSrc.includes('Member Subscriptions'), 'Subtext must state Member Subscriptions');
+    });
+
+    it('should verify Wall of Honor / Donation page dynamically maps member records with offering "Member Contribution"', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('member-contribution'), 'Wall of Honor must define member-contribution identifier');
+      assert.ok(wallSrc.includes('"Member Contribution"'), 'Wall of Honor must label member seva offering as "Member Contribution"');
+      assert.ok(wallSrc.includes('setContributions([...onlineRecs, ...memberRecs])'), 'Wall of Honor must merge online and member records when toggle is ON');
+    });
+
+    it('should verify member records on Wall of Honor maintain zero amount privacy and support Memento Card', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(!wallSrc.includes('c.amount'), 'Wall of Honor contributor cards must never display financial amounts');
+      assert.ok(wallSrc.includes('Memento Card 🪔'), 'Wall of Honor cards must render Memento Card button');
+    });
+
+    it('should verify Admin portal toggle copy reflects inclusion on Donation page / Wall of Honor with "Member Contribution"', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('Member Contribution'), 'Admin toggle must mention Member Contribution label');
+      assert.ok(adminSrc.includes('Wall of Honor'), 'Admin toggle description must mention Wall of Honor / Donation page');
+      assert.ok(adminSrc.includes('handleToggleMemberContributions'), 'Admin must have 1-click toggle handler');
+    });
+  });
+
 });

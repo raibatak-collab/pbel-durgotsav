@@ -51,6 +51,8 @@ export default function WallOfHonorPage() {
   const [selectedTower, setSelectedTower] = useState<string>("all");
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [memberFamiliesCount, setMemberFamiliesCount] = useState<number>(0);
+  const [includeMemberContributions, setIncludeMemberContributions] = useState<boolean>(true);
+  const [memberSubscriptionTotal, setMemberSubscriptionTotal] = useState<number>(0);
   const [selectedMemento, setSelectedMemento] = useState<ContributorRecord | null>(null);
   const [branding, setBranding] = useState<SamitiBrandingConfig>(DEFAULT_BRANDING);
 
@@ -63,7 +65,9 @@ export default function WallOfHonorPage() {
           .from("contribution_categories")
           .select("id, name");
         
-        const catMap: Record<string, string> = {};
+        const catMap: Record<string, string> = {
+          "member-contribution": "Member Contribution",
+        };
         if (dbCategories) {
           dbCategories.forEach((cat: any) => {
             catMap[cat.id] = cat.name;
@@ -71,24 +75,55 @@ export default function WallOfHonorPage() {
         }
         setCategoriesMap(catMap);
 
-        // 2. Fetch all successful contributions with joined category name
+        // 2. Fetch all successful online contributions with joined category name
         const { data: dbContributions, error } = await supabase
           .from("contributions")
           .select("id, amount, contributor_name, flat_number, is_name_visible, category_id, created_at, status, contribution_categories(name)")
           .eq("status", "Success")
           .order("created_at", { ascending: false });
 
+        let onlineRecs: ContributorRecord[] = [];
         if (error) {
           console.error("Error fetching contributions for Wall of Honor:", error);
         } else if (dbContributions) {
-          setContributions(dbContributions as ContributorRecord[]);
+          onlineRecs = dbContributions as ContributorRecord[];
         }
 
-        // 3. Fetch PSS members count for community solidarity
+        // 3. Fetch PSS members and Admin toggle configuration
+        const incMem = await fetchCloudConfig<boolean>("include_member_contributions", true);
+        setIncludeMemberContributions(incMem);
+
+        let memberRecs: ContributorRecord[] = [];
         const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
         if (pssMembers && Array.isArray(pssMembers)) {
           setMemberFamiliesCount(pssMembers.length);
+          const memTotal = pssMembers.reduce(
+            (sum: number, m: any) => sum + (Number(m.membershipFee) || 7500),
+            0
+          );
+          setMemberSubscriptionTotal(memTotal);
+
+          if (incMem) {
+            memberRecs = pssMembers
+              .filter((m: any) => m.status !== "Inactive")
+              .map((m: any) => ({
+                id: `pss-member-${m.id}`,
+                amount: Number(m.membershipFee) || 7500,
+                contributor_name: m.name,
+                flat_number: m.flatNumber ? `${m.tower || ""} - ${m.flatNumber}`.trim() : (m.tower || "PBEL City"),
+                is_name_visible: true,
+                category_id: "member-contribution",
+                created_at: m.joinedDate || "2026-09-01T00:00:00.000Z",
+                status: "Success",
+                contribution_categories: {
+                  name: "Member Contribution",
+                },
+              }));
+          }
         }
+
+        // Merge online contributions and active member contributions (when toggle is ON)
+        setContributions([...onlineRecs, ...memberRecs]);
       } catch (err) {
         console.error("Failed to load Wall of Honor data:", err);
       } finally {
@@ -216,13 +251,18 @@ export default function WallOfHonorPage() {
             </span>
           </div>
 
-          <div className="bg-black/30 border border-amber-500/20 rounded-2xl p-4 backdrop-blur-xs">
+          <div className="bg-black/30 border border-amber-500/20 rounded-2xl p-4 backdrop-blur-xs flex flex-col justify-center">
             <span className="block text-2xl sm:text-3xl font-extrabold font-heading text-amber-300 font-mono">
               ₹{totalRaised.toLocaleString("en-IN")}
             </span>
             <span className="text-[11px] sm:text-xs text-amber-100/70 font-medium">
               Devotee Seva Raised
             </span>
+            {includeMemberContributions && memberSubscriptionTotal > 0 && (
+              <span className="block text-[10px] text-amber-200/90 mt-1 font-sans">
+                (Includes ₹{memberSubscriptionTotal.toLocaleString("en-IN")} Member Subscriptions)
+              </span>
+            )}
           </div>
 
           <div className="bg-black/30 border border-amber-500/20 rounded-2xl p-4 backdrop-blur-xs">
