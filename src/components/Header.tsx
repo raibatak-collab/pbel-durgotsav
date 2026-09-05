@@ -102,7 +102,7 @@ export function Header() {
   return (
     <>
       {/* Top Notification Announcement Bar with Dynamic Content */}
-      <div className="bg-gradient-to-r from-[#5E0A16] via-[#850E1F] to-[#5E0A16] text-[#FDE68A] text-xs font-medium py-1.5 px-4 text-center border-b border-amber-500/20 shadow-inner flex items-center justify-between sm:justify-center gap-2">
+      <div className="bg-gradient-to-r from-[#5E0A16] via-[#850E1F] to-[#5E0A16] text-[#FDE68A] text-xs font-medium py-1.5 px-4 text-center border-b border-amber-500/20 shadow-inner flex items-center justify-between sm:justify-center gap-2 print:hidden">
         <div className="flex items-center gap-1.5 mx-auto">
           <Sparkles size={13} className="text-amber-400 animate-pulse" />
           <span className="truncate max-w-[280px] sm:max-w-none">
@@ -126,7 +126,7 @@ export function Header() {
         )}
       </div>
 
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-amber-900/10 shadow-xs transition-all">
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-amber-900/10 shadow-xs transition-all print:hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             

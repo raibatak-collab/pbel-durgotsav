@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { 
   Sparkles, 
@@ -16,8 +16,12 @@ import {
   CheckCircle2,
   X,
   Printer,
-  Share2
+  Share2,
+  Download,
+  Loader2,
+  Check
 } from "lucide-react";
+import { toPng, toBlob } from "html-to-image";
 import { supabase } from "@/utils/supabase/client";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 import { PBEL_TOWERS, matchTower } from "@/config/towers";
@@ -55,6 +59,9 @@ export default function WallOfHonorPage() {
   const [memberSubscriptionTotal, setMemberSubscriptionTotal] = useState<number>(0);
   const [selectedMemento, setSelectedMemento] = useState<ContributorRecord | null>(null);
   const [branding, setBranding] = useState<SamitiBrandingConfig>(DEFAULT_BRANDING);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     async function loadWallData() {
@@ -198,11 +205,108 @@ export default function WallOfHonorPage() {
     });
   }, [contributions, selectedDate, selectedTower, searchTerm, categoriesMap]);
 
+  // Handlers for Memento Card Download & Native WhatsApp Attachment
+  const handleDownloadMementoImage = async () => {
+    if (!cardRef.current || !selectedMemento) return;
+    setIsGeneratingImage(true);
+    try {
+      const devName = selectedMemento.is_name_visible ? selectedMemento.contributor_name : "Devotee";
+      const cleanName = devName.replace(/[^a-zA-Z0-9]/g, "_");
+      const fileName = `PBEL_Durgotsav_2026_Memento_${cleanName}.png`;
+
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 0.98,
+        pixelRatio: 2.5,
+        backgroundColor: "#FFFDF9",
+      });
+
+      const link = document.createElement("a");
+      link.download = fileName;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setToastMessage("✓ Memento card saved to your device!");
+      setTimeout(() => setToastMessage(null), 4000);
+    } catch (err) {
+      console.error("Error generating memento card image:", err);
+      alert("Could not generate image automatically. You can use Print / PDF to save.");
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleShareMementoWhatsApp = async () => {
+    if (!cardRef.current || !selectedMemento) return;
+    setIsGeneratingImage(true);
+    try {
+      const devName = selectedMemento.is_name_visible ? selectedMemento.contributor_name : "Devout Well Wisher";
+      const flat = selectedMemento.flat_number || "PBEL City";
+      const seva = (selectedMemento.category_id && categoriesMap[selectedMemento.category_id]) || selectedMemento.contribution_categories?.name || "Devotional Seva";
+      const cleanName = devName.replace(/[^a-zA-Z0-9]/g, "_");
+      const fileName = `PBEL_Durgotsav_2026_Memento_${cleanName}.png`;
+
+      const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\n"Thank you for being part of PBEL Durgotsav 2026!" 🙏\n\nDevotional Keepsake Memento for *${devName}* (${flat}).\nSeva Offering: *${seva}*\n\nMay Maa Durga shower divine health, happiness, and peace upon your home!\n\nView Devotee Wall of Honor:\n👉 https://www.pbelcitydurgotsav.com/wall-of-honor\n\n_PBEL Sanskritik Samiti (PSS)_`;
+
+      // 1. Generate Blob for native file sharing
+      const blob = await toBlob(cardRef.current, {
+        quality: 0.98,
+        pixelRatio: 2.5,
+        backgroundColor: "#FFFDF9",
+      });
+
+      if (blob) {
+        const file = new File([blob], fileName, { type: "image/png" });
+
+        // If browser supports native file sharing (Mobile Safari, Android Chrome, etc.), attach file directly to WhatsApp!
+        if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: "PBEL Durgotsav 2026 Keepsake Memento",
+            text: shareText,
+          });
+          setIsGeneratingImage(false);
+          return;
+        }
+      }
+
+      // 2. Desktop or browser without file sharing support:
+      // Download the image automatically so the resident has it in their downloads to attach
+      const dataUrl = await toPng(cardRef.current, {
+        quality: 0.98,
+        pixelRatio: 2.5,
+        backgroundColor: "#FFFDF9",
+      });
+      const link = document.createElement("a");
+      link.download = fileName;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Open WhatsApp chat
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, "_blank");
+
+      setToastMessage("✓ Memento card image downloaded! Please attach it to your WhatsApp chat.");
+      setTimeout(() => setToastMessage(null), 5000);
+    } catch (err) {
+      console.error("Error sharing memento on WhatsApp:", err);
+      const devName = selectedMemento.is_name_visible ? selectedMemento.contributor_name : "Devout Well Wisher";
+      const flat = selectedMemento.flat_number || "PBEL City";
+      const seva = (selectedMemento.category_id && categoriesMap[selectedMemento.category_id]) || selectedMemento.contribution_categories?.name || "Devotional Seva";
+      const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\n"Thank you for being part of PBEL Durgotsav 2026!" 🙏\n\nDevotional Keepsake Memento for *${devName}* (${flat}).\nSeva Offering: *${seva}*\n\nMay Maa Durga shower divine health, happiness, and peace upon your home!\n\nView Devotee Wall of Honor:\n👉 https://www.pbelcitydurgotsav.com/wall-of-honor\n\n_PBEL Sanskritik Samiti (PSS)_`;
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, "_blank");
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#FFFDF7] text-gray-900 pb-20">
       
       {/* 1. HERO HEADER WITH BENGALI CHANTING */}
-      <section className="relative overflow-hidden bg-gradient-to-b from-[#3D0C11] via-[#2A0509] to-[#1F0307] text-white pt-24 pb-20 px-4 sm:px-6 lg:px-8 border-b border-amber-500/20">
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#3D0C11] via-[#2A0509] to-[#1F0307] text-white pt-24 pb-20 px-4 sm:px-6 lg:px-8 border-b border-amber-500/20 print:hidden">
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#F59E0B_1px,transparent_1px)] [background-size:16px_16px]" />
         
         <div className="relative max-w-5xl mx-auto text-center space-y-4">
@@ -286,7 +390,7 @@ export default function WallOfHonorPage() {
       </section>
 
       {/* 3. SEARCH & TOWER / DATE FILTER CONTROLS */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 print:hidden">
         <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-xl border border-amber-200/80 space-y-4">
           
           {/* Search bar */}
@@ -401,7 +505,7 @@ export default function WallOfHonorPage() {
       </section>
 
       {/* 4. DEVOTEE CONTRIBUTORS GRID */}
-      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 print:hidden">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="font-heading text-xl sm:text-2xl font-bold text-gray-900 flex items-center gap-2">
@@ -591,40 +695,68 @@ export default function WallOfHonorPage() {
             </div>
 
             {/* Print & Share Action Bar (Hidden in Print) */}
-            <div className="print:hidden bg-amber-50/90 border-b border-amber-200/60 p-3 px-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-              <p className="text-gray-600 text-[11px] truncate">
-                Official Keepsake Memento • Private &amp; free of monetary amounts
-              </p>
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <button
-                  onClick={() => {
-                    const devName = selectedMemento.is_name_visible ? selectedMemento.contributor_name : "Devout Well Wisher";
-                    const flat = selectedMemento.flat_number || "PBEL City";
-                    const seva = (selectedMemento.category_id && categoriesMap[selectedMemento.category_id]) || selectedMemento.contribution_categories?.name || "Devotional Seva";
-                    const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\n"Thank you for being part of PBEL Durgotsav 2026!" 🙏\n\nDevotional Keepsake Memento for *${devName}* (${flat}).\nSeva Offering: *${seva}*\n\nMay Maa Durga shower divine health, happiness, and peace upon your home!\n\nView Devotee Wall of Honor:\n👉 https://www.pbelcitydurgotsav.com/wall-of-honor\n\n_PBEL Sanskritik Samiti (PSS)_`;
-                    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`, "_blank");
-                  }}
-                  className="flex-1 sm:flex-initial bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-3 py-1.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
-                  title="Share Memento on WhatsApp"
-                >
-                  <Share2 size={13} />
-                  <span>Share WhatsApp</span>
-                </button>
-                <button
-                  onClick={() => window.print()}
-                  className="flex-1 sm:flex-initial bg-primary hover:bg-primary-hover text-white font-bold px-3 py-1.5 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs golden-glow"
-                  title="Print or Save Memento as PDF"
-                >
-                  <Printer size={13} />
-                  <span>Print Memento</span>
-                </button>
+            <div className="print:hidden bg-amber-50/90 border-b border-amber-200/60 p-3 px-4 sm:px-6 flex flex-col gap-2.5 text-xs">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-gray-600 text-[11px] truncate">
+                  Official Keepsake Memento • Private &amp; free of monetary amounts
+                </p>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  {/* WhatsApp Forwarding / Native Image Attachment */}
+                  <button
+                    onClick={handleShareMementoWhatsApp}
+                    disabled={isGeneratingImage}
+                    className="flex-1 sm:flex-initial bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-3.5 py-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                    title="Share WhatsApp • Forward Memento Card (Attaches card image)"
+                  >
+                    {isGeneratingImage ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Share2 size={14} />
+                    )}
+                    <span>Forward on WhatsApp</span>
+                  </button>
+
+                  {/* Direct PNG Image Download */}
+                  <button
+                    onClick={handleDownloadMementoImage}
+                    disabled={isGeneratingImage}
+                    className="flex-1 sm:flex-initial bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold px-3.5 py-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs disabled:opacity-50"
+                    title="Download crisp Memento Card image to your device / gallery"
+                  >
+                    {isGeneratingImage ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Download size={14} />
+                    )}
+                    <span>Download Card (PNG)</span>
+                  </button>
+
+                  {/* Print / Save as PDF */}
+                  <button
+                    onClick={() => window.print()}
+                    disabled={isGeneratingImage}
+                    className="sm:flex-initial bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 font-bold px-3 py-2 rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                    title="Print Memento or Save as PDF (Cleanly isolated, zero surrounding webpage)"
+                  >
+                    <Printer size={14} />
+                    <span>Print Memento</span>
+                  </button>
+                </div>
               </div>
+
+              {/* Status / Feedback Banner */}
+              {toastMessage && (
+                <div className="bg-emerald-100/90 border border-emerald-300 text-emerald-900 px-3 py-1.5 rounded-xl font-medium text-xs flex items-center gap-1.5 animate-in fade-in">
+                  <Check size={14} className="text-emerald-700 shrink-0" />
+                  <span>{toastMessage}</span>
+                </div>
+              )}
             </div>
 
             {/* MEMENTO CERTIFICATE BODY (PRINT-PERFECT LAYOUT) */}
-            <div className="p-5 sm:p-7 bg-[#FFFDF9] text-gray-900 relative print:p-6">
+            <div id="memento-certificate-card" ref={cardRef} className="p-5 sm:p-7 bg-[#FFFDF9] text-gray-900 relative print:p-4 print:m-0 print:w-full">
               {/* Outer Traditional Crimson & Gold Border */}
-              <div className="rounded-2xl border-4 border-[#991B1B] p-5 sm:p-6 relative shadow-inner bg-[radial-gradient(#FFF8EE_1px,transparent_1px)] [background-size:12px_12px]">
+              <div className="rounded-2xl border-4 border-[#991B1B] p-5 sm:p-6 relative shadow-inner bg-[radial-gradient(#FFF8EE_1px,transparent_1px)] [background-size:12px_12px] print:shadow-none print:border-4">
                 {/* Inner Gold Inset Frame */}
                 <div className="absolute inset-1.5 border border-[#D97706]/70 rounded-xl pointer-events-none" />
 
@@ -771,6 +903,41 @@ export default function WallOfHonorPage() {
           </div>
         </div>
       )}
+
+      {/* Global CSS for Print / PDF isolation */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            margin: 6mm;
+            size: portrait;
+          }
+          body, html {
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #memento-certificate-card,
+          #memento-certificate-card * {
+            visibility: visible !important;
+          }
+          #memento-certificate-card {
+            position: fixed !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            z-index: 999999 !important;
+          }
+        }
+      `}</style>
 
     </div>
   );

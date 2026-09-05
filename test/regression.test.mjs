@@ -3091,4 +3091,48 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  // =========================================================================
+  // SUITE 74: MEMENTO CARD PNG DOWNLOAD, WHATSAPP IMAGE ATTACHMENT & MOBILE PRINT ISOLATION
+  // =========================================================================
+  describe('Suite 74: Memento Card PNG Download, WhatsApp Image Attachment & Mobile Print Isolation', () => {
+    it('should verify BottomNav and Header are strictly hidden during printing', () => {
+      const bottomNavSrc = fs.readFileSync('src/components/BottomNav.tsx', 'utf8');
+      assert.ok(bottomNavSrc.includes('print:hidden'), 'BottomNav must contain print:hidden to prevent printing mobile toolbar');
+      const headerSrc = fs.readFileSync('src/components/Header.tsx', 'utf8');
+      assert.ok(headerSrc.includes('print:hidden'), 'Header must contain print:hidden to prevent printing header');
+    });
+
+    it('should verify background sections in Wall of Honor are hidden during print', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('print:hidden'), 'Hero header must have print:hidden');
+      assert.ok(wallSrc.includes('3. SEARCH & TOWER / DATE FILTER CONTROLS */}\n      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 print:hidden">'), 'Search & Tower controls must have print:hidden');
+      assert.ok(wallSrc.includes('4. DEVOTEE CONTRIBUTORS GRID */}\n      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 print:hidden">'), 'Contributors grid must have print:hidden');
+    });
+
+    it('should verify global print CSS strictly isolates #memento-certificate-card', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('#memento-certificate-card'), 'Wall of Honor must define #memento-certificate-card');
+      assert.ok(wallSrc.includes('@media print'), 'Wall of Honor must contain @media print CSS');
+      assert.ok(wallSrc.includes('visibility: hidden'), 'Print CSS must hide background elements');
+      assert.ok(wallSrc.includes('visibility: visible'), 'Print CSS must show only memento certificate');
+    });
+
+    it('should verify Memento Card supports direct PNG image download with html-to-image', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('handleDownloadMementoImage'), 'Page must implement handleDownloadMementoImage');
+      assert.ok(wallSrc.includes('toPng'), 'Page must import and utilize toPng');
+      assert.ok(wallSrc.includes('Download Card (PNG)'), 'Modal must render Download Card (PNG) action button');
+      assert.ok(wallSrc.includes('cardRef'), 'Modal must link cardRef to certificate element');
+    });
+
+    it('should verify Memento Card WhatsApp forwarding supports native file sharing and download fallback', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('handleShareMementoWhatsApp'), 'Page must implement handleShareMementoWhatsApp');
+      assert.ok(wallSrc.includes('navigator.canShare'), 'Page must check navigator.canShare for file attachments');
+      assert.ok(wallSrc.includes('navigator.share'), 'Page must invoke navigator.share with files');
+      assert.ok(wallSrc.includes('Forward on WhatsApp'), 'Modal must render Forward on WhatsApp button');
+      assert.ok(wallSrc.includes('isGeneratingImage'), 'Modal must track isGeneratingImage state with loading indicator');
+    });
+  });
+
 });

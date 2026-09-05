@@ -16,7 +16,7 @@ export function BottomNav() {
   ];
 
   return (
-    <nav aria-label="Mobile Bottom Navigation" className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-amber-900/10 shadow-2xl lg:hidden z-50">
+    <nav aria-label="Mobile Bottom Navigation" className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-xl border-t border-amber-900/10 shadow-2xl lg:hidden z-50 print:hidden">
       <div className="flex justify-around items-center h-16 px-1">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname === item.href.split('#')[0]);
