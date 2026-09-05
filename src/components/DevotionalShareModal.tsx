@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Share2, Check, Sparkles, Heart, FileText, CheckSquare, Square } from "lucide-react";
+import { X, Share2, Check, Sparkles, Heart, FileText, CheckSquare, Square, Loader2 } from "lucide-react";
+import { toBlob, toPng } from "html-to-image";
 
 interface DevotionalShareModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ interface DevotionalShareModalProps {
   amount?: number;
   paymentId?: string;
   receiptNo?: string;
+  receiptElementId?: string;
 }
 
 export function DevotionalShareModal({
@@ -23,9 +25,11 @@ export function DevotionalShareModal({
   amount,
   paymentId,
   receiptNo,
+  receiptElementId,
 }: DevotionalShareModalProps) {
   const [copied, setCopied] = useState(false);
   const [includeReceipt, setIncludeReceipt] = useState(true);
+  const [isSharingImage, setIsSharingImage] = useState(false);
 
   if (!isOpen) return null;
 
@@ -43,7 +47,48 @@ export function DevotionalShareModal({
     ? `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOur family (*${displayName}*, *${formattedFlat}*) has offered devotional Seva for *${formattedCategory}*.\n\n🧾 *Official Receipt No:* ${calculatedReceiptNo}\n📄 *View & Download Official Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga bless all residents with joy, health, and prosperity! 🙏\n_PBEL Sanskritik Samiti (PSS)_`
     : `🌺 *শুভ দুর্গোৎসব • PBEL City Durgotsav 2026* 🌺\n\nMay Maa Durga bless our township with joy, health, and prosperity. I have joined the devotional Seva for PBEL City Durgotsav (15th – 20th Oct 2026).\n\nJoin hands in community seva, view the Pujo Nirghanto & contribute:\n👉 https://www.pbelcitydurgotsav.com\n\n_PBEL Sanskritik Samiti (PSS)_`;
 
-  const handleWhatsAppShare = () => {
+  const handleWhatsAppShare = async () => {
+    setIsSharingImage(true);
+    try {
+      if (includeReceipt) {
+        const el = document.getElementById(receiptElementId || "pbel-official-receipt");
+        if (el) {
+          const cleanName = displayName.replace(/[^a-zA-Z0-9]/g, "_");
+          const receiptRef = calculatedReceiptNo.replace(/[^a-zA-Z0-9]/g, "_");
+          const fileName = `PBEL_Durgotsav_2026_Receipt_${cleanName}_${receiptRef}.png`;
+
+          // 1. Check for native file sharing on mobile devices (iOS / Android)
+          const blob = await toBlob(el, { quality: 0.98, pixelRatio: 2.5, backgroundColor: "#FFFDF9" });
+          if (blob) {
+            const file = new File([blob], fileName, { type: "image/png" });
+            if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: "PBEL City Durgotsav 2026 Official Receipt",
+                text: shareText,
+              });
+              setIsSharingImage(false);
+              onClose();
+              return;
+            }
+          }
+
+          // 2. Desktop fallback: auto-download the receipt image so user can attach to WhatsApp Web
+          const dataUrl = await toPng(el, { quality: 0.98, pixelRatio: 2.5, backgroundColor: "#FFFDF9" });
+          const link = document.createElement("a");
+          link.download = fileName;
+          link.href = dataUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      }
+    } catch (err) {
+      console.error("Error generating receipt attachment:", err);
+    } finally {
+      setIsSharingImage(false);
+    }
+
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
     const a = document.createElement("a");
     a.href = url;
@@ -54,6 +99,7 @@ export function DevotionalShareModal({
     setTimeout(() => {
       if (document.body.contains(a)) document.body.removeChild(a);
     }, 100);
+    onClose();
   };
 
   const handleCopyText = () => {
@@ -135,10 +181,20 @@ export function DevotionalShareModal({
         <div className="space-y-2">
           <button
             onClick={handleWhatsAppShare}
-            className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+            disabled={isSharingImage}
+            className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-75"
           >
-            <Share2 size={16} />
-            <span>Forward to WhatsApp</span>
+            {isSharingImage ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                <span>Preparing Receipt Image...</span>
+              </>
+            ) : (
+              <>
+                <Share2 size={16} />
+                <span>Forward to WhatsApp</span>
+              </>
+            )}
           </button>
 
           <button

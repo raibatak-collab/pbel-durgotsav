@@ -3195,6 +3195,34 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(modalSrc.includes('document.createElement("a")'), 'DevotionalShareModal must use anchor dispatch');
       assert.ok(modalSrc.includes('a.rel = "noopener noreferrer"'), 'DevotionalShareModal anchor must include security attributes');
     });
+
+    it('should verify /receipt route uses valid column selection and guards UUID syntax', () => {
+      const receiptPageSrc = fs.readFileSync('src/app/receipt/page.tsx', 'utf8');
+      assert.ok(receiptPageSrc.includes('contribution_categories(id, name)'), 'Must query valid columns in contribution_categories without non-existent title');
+      assert.ok(!receiptPageSrc.includes('contribution_categories(id, title, name)'), 'Must not query non-existent title column');
+      assert.ok(receiptPageSrc.includes('isUuid'), 'Must check if parameter is UUID before attempting id.eq');
+    });
+
+    it('should verify OfficialContributionReceipt implements isolated iframe printing to prevent dark pages and pagination breaks', () => {
+      const receiptSrc = fs.readFileSync('src/components/OfficialContributionReceipt.tsx', 'utf8');
+      assert.ok(receiptSrc.includes('document.createElement("iframe")'), 'Must use isolated iframe print');
+      assert.ok(receiptSrc.includes('iframe.contentWindow?.print()'), 'Must trigger print on isolated iframe window');
+      assert.ok(receiptSrc.includes('DevotionalShareModal'), 'Must integrate DevotionalShareModal');
+    });
+
+    it('should verify DevotionalShareModal supports receipt image attachment via toBlob and navigator.share', () => {
+      const modalSrc = fs.readFileSync('src/components/DevotionalShareModal.tsx', 'utf8');
+      assert.ok(modalSrc.includes('toBlob'), 'DevotionalShareModal must import and use toBlob');
+      assert.ok(modalSrc.includes('navigator.share'), 'DevotionalShareModal must support native file attachment via navigator.share');
+      assert.ok(modalSrc.includes('includeReceipt'), 'DevotionalShareModal must support includeReceipt toggle');
+      assert.ok(modalSrc.includes('Include Official Receipt Link'), 'DevotionalShareModal must render toggle copy');
+    });
+
+    it('should verify Admin handleSendResidentWhatsapp supports receipt image attachment', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('toBlob(receiptEl'), 'Admin must capture receipt image via toBlob');
+      assert.ok(adminSrc.includes('navigator.share'), 'Admin must support native file share with resident');
+    });
   });
 
 });

@@ -70,6 +70,7 @@ import { saveCloudConfig, fetchCloudConfig } from "@/utils/cloudConfig";
 import { sanitizeText, validateDonationAmount, validatePhoneNumber } from "@/utils/security";
 import { SitePopupHighlight, DEFAULT_POPUP_HIGHLIGHT } from "@/components/SiteHighlightModal";
 import { OfficialContributionReceipt, ReceiptData } from "@/components/OfficialContributionReceipt";
+import { toBlob, toPng } from "html-to-image";
 
 export interface AdminUser {
   id: string;
@@ -1508,7 +1509,7 @@ function decodeCategoryDescription(desc?: string) {
     };
   };
 
-  const handleSendResidentWhatsapp = (contrib: any) => {
+  const handleSendResidentWhatsapp = async (contrib: any) => {
     const r = formatContributionToReceipt(contrib);
     const phone = contrib.phone?.replace(/[^0-9]/g, "") || "";
     const receiptRef = contrib.payment_id?.replace(/^UTR_/i, '').slice(-8).toUpperCase() || "ONLINE";
@@ -1516,6 +1517,39 @@ function decodeCategoryDescription(desc?: string) {
     const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${receiptIdentifier}`;
     
     const message = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nDear ${r.name},\nThank you for your pious devotional offering for PBEL City Durgotsav.\n\nContributor: *${r.name}* (${r.flatNumber})\nSeva Offering: *${r.category}*\nAmount Received: *₹${Number(r.amount).toLocaleString("en-IN")}*\nOfficial Receipt No: *PSS-2026-${receiptRef}*\nPayment Ref / UTR: *${contrib.payment_id || "Verified"}*\n\n🧾 *View & Download Official Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga shower divine health, happiness, and prosperity upon you and your family! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
+
+    // Attempt to capture and attach the receipt image if modal is mounted
+    const receiptEl = document.getElementById("pbel-official-receipt");
+    if (receiptEl) {
+      try {
+        const cleanName = (r.name || "Resident").replace(/[^a-zA-Z0-9]/g, "_");
+        const fileName = `PBEL_Durgotsav_2026_Receipt_${cleanName}_${receiptRef}.png`;
+
+        const blob = await toBlob(receiptEl, { quality: 0.98, pixelRatio: 2.5, backgroundColor: "#FFFDF9" });
+        if (blob) {
+          const file = new File([blob], fileName, { type: "image/png" });
+          if (typeof navigator !== "undefined" && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: `PBEL Durgotsav 2026 Official Receipt - ${r.name}`,
+              text: message,
+            });
+            return;
+          }
+        }
+
+        // Desktop fallback: auto-download so Admin has the receipt card ready to attach
+        const dataUrl = await toPng(receiptEl, { quality: 0.98, pixelRatio: 2.5, backgroundColor: "#FFFDF9" });
+        const link = document.createElement("a");
+        link.download = fileName;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (err) {
+        console.error("Could not capture receipt image for resident WhatsApp:", err);
+      }
+    }
 
     const waUrl = phone.length >= 10
       ? `https://api.whatsapp.com/send?phone=91${phone.slice(-10)}&text=${encodeURIComponent(message)}`

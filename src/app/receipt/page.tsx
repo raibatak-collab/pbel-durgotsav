@@ -64,13 +64,42 @@ function ReceiptViewerContent() {
       setErrorMsg(null);
 
       try {
-        const clean = initialId.replace(/^PSS-2026-/i, "").trim();
-        // Strict exact matching by unique Payment Ref or ID - No open search or wildcards allowed
-        const { data, error } = await supabase
-          .from("contributions")
-          .select("*, contribution_categories(id, title, name)")
-          .or(`id.eq.${clean},payment_id.eq.${clean}`)
-          .limit(1);
+        const raw = initialId.trim();
+        const clean = raw.replace(/^(PSS-2026-|ONL-)/i, "").trim();
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(clean);
+
+        let data = null;
+        let error = null;
+
+        if (isUuid) {
+          const res = await supabase
+            .from("contributions")
+            .select("*, contribution_categories(id, name)")
+            .eq("id", clean)
+            .limit(1);
+          data = res.data;
+          error = res.error;
+        }
+
+        if (!data || data.length === 0) {
+          const res = await supabase
+            .from("contributions")
+            .select("*, contribution_categories(id, name)")
+            .or(`payment_id.eq.${clean},payment_id.eq.UTR_${clean}`)
+            .limit(1);
+          if (res.data && res.data.length > 0) {
+            data = res.data;
+          } else if (!isUuid && clean.length >= 4) {
+            const res2 = await supabase
+              .from("contributions")
+              .select("*, contribution_categories(id, name)")
+              .ilike("payment_id", `%${clean}%`)
+              .limit(1);
+            if (res2.data && res2.data.length > 0) {
+              data = res2.data;
+            }
+          }
+        }
 
         if (error) throw error;
 

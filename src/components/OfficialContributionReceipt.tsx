@@ -5,6 +5,7 @@ import { Download, Share2, ShieldCheck, CheckCircle2, RotateCcw, Printer, Loader
 import { toPng } from "html-to-image";
 import { SamitiBrandingConfig } from "@/config/branding";
 import { numberToIndianRupeesWords } from "@/utils/numberToWords";
+import { DevotionalShareModal } from "@/components/DevotionalShareModal";
 
 export interface ReceiptData {
   name: string;
@@ -169,9 +170,98 @@ export function OfficialContributionReceipt({
 }: OfficialContributionReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
   const [isDownloadingImage, setIsDownloadingImage] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   const handlePrint = () => {
-    window.print();
+    if (!receiptRef.current) {
+      window.print();
+      return;
+    }
+
+    // Isolated print iframe: completely eliminates dark modal backdrops, admin menus, and multi-page blank pagination
+    const iframe = document.createElement("iframe");
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "0";
+    iframe.style.height = "0";
+    iframe.style.border = "0";
+    iframe.style.visibility = "hidden";
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    const styles = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
+      .map((el) => el.outerHTML)
+      .join("\n");
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Official Devotional Receipt - PBEL Sanskritik Samiti</title>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          ${styles}
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 8mm;
+            }
+            html, body {
+              background: #ffffff !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              height: auto !important;
+              min-height: 100% !important;
+              overflow: visible !important;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            #pbel-official-receipt {
+              display: block !important;
+              visibility: visible !important;
+              position: static !important;
+              width: 100% !important;
+              max-width: 760px !important;
+              margin: 0 auto !important;
+              padding: 16px 20px !important;
+              border-width: 2px !important;
+              box-shadow: none !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+            }
+          </style>
+        </head>
+        <body style="background:#ffffff; margin:0; padding:10px;">
+          <div style="width:100%; max-width:780px; margin:0 auto;">
+            ${receiptRef.current.outerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error("Iframe print error:", e);
+        window.print();
+      } finally {
+        setTimeout(() => {
+          if (document.body.contains(iframe)) {
+            document.body.removeChild(iframe);
+          }
+        }, 1500);
+      }
+    }, 300);
   };
 
   const handleDownloadReceiptImage = async () => {
@@ -202,6 +292,25 @@ export function OfficialContributionReceipt({
     } finally {
       setIsDownloadingImage(false);
     }
+  };
+
+  // Direct standalone share fallback helper
+  const executeDirectWhatsAppShare = () => {
+    const receiptRef = receiptData.paymentId ? receiptData.paymentId.replace(/^UTR_/i, '').slice(-8).toUpperCase() : "ONLINE";
+    const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(receiptData.paymentId || "")}`;
+    const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOfficial Contribution Receipt for *${receiptData.name}* (${receiptData.flatNumber}).\nSeva Offering: *${receiptData.category}*\nReceipt No: *PSS-2026-${receiptRef}*\n\n🧾 *View & Download Official Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga shower divine blessings upon your family! 🙏\n👉 https://www.pbelcitydurgotsav.com\n_PBEL Sanskritik Samiti (PSS)_`;
+    
+    // Public devotee sharing: share to any contact or tower group without forcing own phone number (receiptData.phone)
+    const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    const a = document.createElement("a");
+    a.href = waUrl;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (document.body.contains(a)) document.body.removeChild(a);
+    }, 100);
   };
 
   const amountInWords = numberToIndianRupeesWords(receiptData.amount);
@@ -244,26 +353,9 @@ export function OfficialContributionReceipt({
             onClick={() => {
               if (onOpenShareModal) {
                 onOpenShareModal();
-                return;
+              } else {
+                setIsShareModalOpen(true);
               }
-              const receiptRef = receiptData.paymentId ? receiptData.paymentId.replace(/^UTR_/i, '').slice(-8).toUpperCase() : "ONLINE";
-              const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(receiptData.paymentId || "")}`;
-              
-              const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOfficial Contribution Receipt for *${receiptData.name}* (${receiptData.flatNumber}).\nSeva Offering: *${receiptData.category}*\nReceipt No: *PSS-2026-${receiptRef}*\n\n🧾 *View & Download Official Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga shower divine blessings upon your family! 🙏\n👉 https://www.pbelcitydurgotsav.com\n_PBEL Sanskritik Samiti (PSS)_`;
-
-              // Public devotee sharing: share to any contact or tower group without forcing own phone number (receiptData.phone)
-              const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-
-              // Resilient DOM anchor dispatch to prevent popup blocking on mobile & desktop browsers
-              const a = document.createElement("a");
-              a.href = waUrl;
-              a.target = "_blank";
-              a.rel = "noopener noreferrer";
-              document.body.appendChild(a);
-              a.click();
-              setTimeout(() => {
-                if (document.body.contains(a)) document.body.removeChild(a);
-              }, 100);
             }}
             className="flex-1 sm:flex-initial bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-3.5 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             title="Share or forward receipt on WhatsApp"
@@ -638,6 +730,19 @@ export function OfficialContributionReceipt({
           }
         }
       `}</style>
+
+      {/* Devotional Share Modal with Receipt Toggle & Attachment Support */}
+      <DevotionalShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        contributorName={receiptData.name}
+        categoryName={receiptData.category}
+        flatNumber={receiptData.flatNumber}
+        amount={receiptData.amount}
+        paymentId={receiptData.paymentId}
+        receiptNo={`PSS-2026-${receiptData.paymentId ? receiptData.paymentId.replace(/^UTR_/i, '').slice(-8).toUpperCase() : "ONLINE"}`}
+        receiptElementId="pbel-official-receipt"
+      />
 
     </div>
   );
