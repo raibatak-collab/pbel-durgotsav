@@ -3135,4 +3135,66 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  // =========================================================================
+  // SUITE 75: RECEIPT WHATSAPP LINK INTEGRATION, PRINT ISOLATION & PNG DOWNLOAD
+  // =========================================================================
+  describe('Suite 75: Receipt WhatsApp Link Integration, Print Isolation & PNG Download', () => {
+    it('should verify Admin handleSendResidentWhatsapp generates and includes live receipt URL', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('handleSendResidentWhatsapp'), 'Admin must have handleSendResidentWhatsapp');
+      assert.ok(adminSrc.includes('receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id='), 'Admin must dynamically build receiptUrl with receipt id');
+      assert.ok(adminSrc.includes('View & Download Official Receipt'), 'Admin message must include receipt view/download callout');
+      assert.ok(adminSrc.includes('${receiptUrl}'), 'Admin message must interpolate receiptUrl');
+    });
+
+    it('should verify Admin WhatsApp forwarder uses resilient DOM anchor dispatch to prevent popup blocking', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('document.createElement("a")'), 'Admin must create anchor element for dispatch');
+      assert.ok(adminSrc.includes('a.rel = "noopener noreferrer"'), 'Anchor must include security attributes');
+    });
+
+    it('should verify Admin receipt modal container removes clipping and scroll constraints in print mode', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('print:overflow-visible'), 'Admin receipt modal must specify print:overflow-visible');
+      assert.ok(adminSrc.includes('print:max-h-none'), 'Admin receipt modal must remove max-h limit in print');
+      assert.ok(adminSrc.includes('print:static'), 'Admin receipt modal must be static in print to prevent viewport pagination');
+    });
+
+    it('should verify OfficialContributionReceipt provides standalone WhatsApp share open to any contact/group', () => {
+      const receiptSrc = fs.readFileSync('src/components/OfficialContributionReceipt.tsx', 'utf8');
+      assert.ok(receiptSrc.includes('https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}'), 'Receipt share must allow sending to any contact/group without self-phone lock');
+      assert.ok(receiptSrc.includes('receiptRef'), 'Share text must include receiptRef');
+      assert.ok(receiptSrc.includes('/receipt?id='), 'Share text must include receiptUrl');
+    });
+
+    it('should verify OfficialContributionReceipt implements 1-click retina PNG download with html-to-image', () => {
+      const receiptSrc = fs.readFileSync('src/components/OfficialContributionReceipt.tsx', 'utf8');
+      assert.ok(receiptSrc.includes('handleDownloadReceiptImage'), 'Receipt component must implement handleDownloadReceiptImage');
+      assert.ok(receiptSrc.includes('toPng(receiptRef.current'), 'Receipt component must call toPng on receiptRef');
+      assert.ok(receiptSrc.includes('Download PNG'), 'Receipt component must render Download PNG button');
+      assert.ok(receiptSrc.includes('isDownloadingImage'), 'Receipt component must track isDownloadingImage state');
+    });
+
+    it('should verify OfficialContributionReceipt print CSS specifies visibility !important and page-break rules', () => {
+      const receiptSrc = fs.readFileSync('src/components/OfficialContributionReceipt.tsx', 'utf8');
+      assert.ok(receiptSrc.includes('#pbel-official-receipt,'), 'Print CSS must target #pbel-official-receipt');
+      assert.ok(receiptSrc.includes('visibility: visible !important;'), 'Print CSS must force visibility: visible !important on receipt');
+      assert.ok(receiptSrc.includes('page-break-inside: avoid !important;'), 'Print CSS must prevent page breaks inside receipt');
+      assert.ok(receiptSrc.includes('break-inside: avoid !important;'), 'Print CSS must use modern break-inside: avoid');
+      assert.ok(receiptSrc.includes('overflow: visible !important;'), 'Print CSS must reset html/body overflow');
+    });
+
+    it('should verify Wall of Honor print styles protect #pbel-official-receipt from visibility suppression', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('#pbel-official-receipt'), 'Wall of Honor print style must protect #pbel-official-receipt');
+      assert.ok(wallSrc.includes('#pbel-official-receipt *'), 'Wall of Honor print style must protect all receipt descendants');
+    });
+
+    it('should verify DevotionalShareModal uses resilient DOM anchor dispatch for WhatsApp sharing', () => {
+      const modalSrc = fs.readFileSync('src/components/DevotionalShareModal.tsx', 'utf8');
+      assert.ok(modalSrc.includes('document.createElement("a")'), 'DevotionalShareModal must use anchor dispatch');
+      assert.ok(modalSrc.includes('a.rel = "noopener noreferrer"'), 'DevotionalShareModal anchor must include security attributes');
+    });
+  });
+
 });

@@ -45,7 +45,15 @@ export function DevotionalShareModal({
 
   const handleWhatsAppShare = () => {
     const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
-    window.open(url, "_blank");
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (document.body.contains(a)) document.body.removeChild(a);
+    }, 100);
   };
 
   const handleCopyText = () => {

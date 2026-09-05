@@ -1512,14 +1512,25 @@ function decodeCategoryDescription(desc?: string) {
     const r = formatContributionToReceipt(contrib);
     const phone = contrib.phone?.replace(/[^0-9]/g, "") || "";
     const receiptRef = contrib.payment_id?.replace(/^UTR_/i, '').slice(-8).toUpperCase() || "ONLINE";
+    const receiptIdentifier = encodeURIComponent(contrib.payment_id || contrib.id || "");
+    const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${receiptIdentifier}`;
     
-    const message = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nDear ${r.name},\nThank you for your pious devotional offering for PBEL City Durgotsav.\n\nContributor: *${r.name}* (${r.flatNumber})\nSeva Offering: *${r.category}*\nAmount Received: *₹${Number(r.amount).toLocaleString("en-IN")}*\nOfficial Receipt No: *PSS-2026-${receiptRef}*\nPayment Ref / UTR: *${contrib.payment_id || "Verified"}*\n\nMay Maa Durga shower divine health, happiness, and prosperity upon you and your family! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
+    const message = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nDear ${r.name},\nThank you for your pious devotional offering for PBEL City Durgotsav.\n\nContributor: *${r.name}* (${r.flatNumber})\nSeva Offering: *${r.category}*\nAmount Received: *₹${Number(r.amount).toLocaleString("en-IN")}*\nOfficial Receipt No: *PSS-2026-${receiptRef}*\nPayment Ref / UTR: *${contrib.payment_id || "Verified"}*\n\n🧾 *View & Download Official Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga shower divine health, happiness, and prosperity upon you and your family! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
 
     const waUrl = phone.length >= 10
       ? `https://api.whatsapp.com/send?phone=91${phone.slice(-10)}&text=${encodeURIComponent(message)}`
       : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
 
-    window.open(waUrl, "_blank");
+    // Resilient anchor click to prevent browser popup blocking
+    const a = document.createElement("a");
+    a.href = waUrl;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      if (document.body.contains(a)) document.body.removeChild(a);
+    }, 100);
   };
 
   const handleCopySponsorsList = () => {
@@ -3055,8 +3066,8 @@ function decodeCategoryDescription(desc?: string) {
 
           {/* ADMIN OFFICIAL RECEIPT MODAL */}
           {selectedReceiptContribution && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto">
-              <div className="bg-white rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl border border-amber-300 my-auto max-h-[95vh] overflow-y-auto relative">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-xs overflow-y-auto print:static print:p-0 print:bg-white print:overflow-visible print:z-auto">
+              <div className="bg-white rounded-3xl max-w-4xl w-full p-4 sm:p-6 shadow-2xl border border-amber-300 my-auto max-h-[95vh] overflow-y-auto relative print:static print:p-0 print:border-none print:shadow-none print:max-h-none print:overflow-visible">
                 
                 {/* Modal Top Bar */}
                 <div className="flex items-center justify-between pb-3 mb-4 border-b border-gray-200 print:hidden">

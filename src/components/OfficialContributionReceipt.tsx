@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef } from "react";
-import { Download, Share2, ShieldCheck, CheckCircle2, RotateCcw } from "lucide-react";
+import React, { useRef, useState } from "react";
+import { Download, Share2, ShieldCheck, CheckCircle2, RotateCcw, Printer, Loader2 } from "lucide-react";
+import { toPng } from "html-to-image";
 import { SamitiBrandingConfig } from "@/config/branding";
 import { numberToIndianRupeesWords } from "@/utils/numberToWords";
 
@@ -167,9 +168,40 @@ export function OfficialContributionReceipt({
   onOpenShareModal,
 }: OfficialContributionReceiptProps) {
   const receiptRef = useRef<HTMLDivElement>(null);
+  const [isDownloadingImage, setIsDownloadingImage] = useState(false);
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleDownloadReceiptImage = async () => {
+    if (!receiptRef.current) return;
+    setIsDownloadingImage(true);
+    try {
+      const cleanName = (receiptData.name || "Devotee").replace(/[^a-zA-Z0-9]/g, "_");
+      const receiptRefCode = receiptData.paymentId ? receiptData.paymentId.replace(/^UTR_/i, '').slice(-8).toUpperCase() : "RECEIPT";
+      const fileName = `PBEL_Durgotsav_2026_Receipt_${cleanName}_${receiptRefCode}.png`;
+
+      const dataUrl = await toPng(receiptRef.current, {
+        quality: 0.98,
+        pixelRatio: 2.5,
+        backgroundColor: "#FFFDF9",
+      });
+
+      const link = document.createElement("a");
+      link.download = fileName;
+      link.href = dataUrl;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        if (document.body.contains(link)) document.body.removeChild(link);
+      }, 100);
+    } catch (err) {
+      console.error("Failed to generate receipt image:", err);
+      window.print();
+    } finally {
+      setIsDownloadingImage(false);
+    }
   };
 
   const amountInWords = numberToIndianRupeesWords(receiptData.amount);
@@ -206,38 +238,63 @@ export function OfficialContributionReceipt({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          {/* Share on WhatsApp */}
           <button
             onClick={() => {
               if (onOpenShareModal) {
                 onOpenShareModal();
                 return;
               }
-              const phone = receiptData.phone ? receiptData.phone.replace(/[^0-9]/g, "") : "";
               const receiptRef = receiptData.paymentId ? receiptData.paymentId.replace(/^UTR_/i, '').slice(-8).toUpperCase() : "ONLINE";
               const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${encodeURIComponent(receiptData.paymentId || "")}`;
               
-              const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOfficial Contribution Receipt for *${receiptData.name}* (${receiptData.flatNumber}).\nSeva Offering: *${receiptData.category}*\nReceipt No: *PSS-2026-${receiptRef}*\nView Official Receipt: ${receiptUrl}\n\nMay Maa Durga shower divine blessings upon your family! 🙏\n👉 https://www.pbelcitydurgotsav.com\n_PBEL Sanskritik Samiti (PSS)_`;
+              const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nOfficial Contribution Receipt for *${receiptData.name}* (${receiptData.flatNumber}).\nSeva Offering: *${receiptData.category}*\nReceipt No: *PSS-2026-${receiptRef}*\n\n🧾 *View & Download Official Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga shower divine blessings upon your family! 🙏\n👉 https://www.pbelcitydurgotsav.com\n_PBEL Sanskritik Samiti (PSS)_`;
 
-              const waUrl = phone.length >= 10
-                ? `https://api.whatsapp.com/send?phone=91${phone.slice(-10)}&text=${encodeURIComponent(shareText)}`
-                : `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+              // Public devotee sharing: share to any contact or tower group without forcing own phone number (receiptData.phone)
+              const waUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
 
-              window.open(waUrl, "_blank");
+              // Resilient DOM anchor dispatch to prevent popup blocking on mobile & desktop browsers
+              const a = document.createElement("a");
+              a.href = waUrl;
+              a.target = "_blank";
+              a.rel = "noopener noreferrer";
+              document.body.appendChild(a);
+              a.click();
+              setTimeout(() => {
+                if (document.body.contains(a)) document.body.removeChild(a);
+              }, 100);
             }}
-            className="flex-1 sm:flex-initial bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold px-3.5 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
             title="Share or forward receipt on WhatsApp"
           >
             <Share2 size={14} />
             <span>Share WhatsApp</span>
           </button>
 
+          {/* Direct PNG Image Download */}
+          <button
+            onClick={handleDownloadReceiptImage}
+            disabled={isDownloadingImage}
+            className="flex-1 sm:flex-initial bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer disabled:opacity-50"
+            title="Download crisp receipt image (PNG) directly to device"
+          >
+            {isDownloadingImage ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <Download size={14} />
+            )}
+            <span>Download PNG</span>
+          </button>
+
+          {/* Print / Save as PDF */}
           <button
             onClick={handlePrint}
-            className="flex-1 sm:flex-initial bg-primary hover:bg-primary-hover text-white font-bold px-4 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm golden-glow cursor-pointer"
+            className="flex-1 sm:flex-initial bg-primary hover:bg-primary-hover text-white font-bold px-3.5 py-2 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm golden-glow cursor-pointer"
+            title="Print single-page receipt or Save as PDF"
           >
-            <Download size={14} />
-            <span>Print / Save PDF</span>
+            <Printer size={14} />
+            <span>Print / PDF</span>
           </button>
 
           {onMakeAnother && (
@@ -541,28 +598,43 @@ export function OfficialContributionReceipt({
       {/* PRINT-ONLY CSS HELPER */}
       <style jsx global>{`
         @media print {
-          body * {
-            visibility: hidden;
+          @page {
+            size: A4 portrait;
+            margin: 8mm;
           }
-          #pbel-official-receipt, #pbel-official-receipt * {
-            visibility: visible;
+          html, body {
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: 100% !important;
+            overflow: visible !important;
+          }
+          body * {
+            visibility: hidden !important;
+          }
+          #pbel-official-receipt,
+          #pbel-official-receipt * {
+            visibility: visible !important;
           }
           #pbel-official-receipt {
-            position: absolute;
-            left: 0;
-            top: 0;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            margin: 0 !important;
-            padding: 18px 24px !important;
+            margin: 0 auto !important;
+            padding: 16px 20px !important;
             border-width: 2px !important;
             box-shadow: none !important;
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
+            display: block !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
-          @page {
-            size: A4 portrait;
-            margin: 10mm;
+          .print\\:hidden {
+            display: none !important;
           }
         }
       `}</style>

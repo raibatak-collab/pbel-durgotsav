@@ -901,43 +901,45 @@ export default function WallOfHonorPage() {
               </div>
             </div>
           </div>
+
+          {/* Scoped CSS for Memento Print / PDF isolation */}
+          <style jsx global>{`
+            @media print {
+              @page {
+                margin: 6mm;
+                size: portrait;
+              }
+              body, html {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                overflow: visible !important;
+              }
+              body * {
+                visibility: hidden !important;
+              }
+              #memento-certificate-card,
+              #memento-certificate-card *,
+              #pbel-official-receipt,
+              #pbel-official-receipt * {
+                visibility: visible !important;
+              }
+              #memento-certificate-card {
+                position: fixed !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                z-index: 999999 !important;
+              }
+            }
+          `}</style>
         </div>
       )}
-
-      {/* Global CSS for Print / PDF isolation */}
-      <style jsx global>{`
-        @media print {
-          @page {
-            margin: 6mm;
-            size: portrait;
-          }
-          body, html {
-            background: #ffffff !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            overflow: visible !important;
-          }
-          body * {
-            visibility: hidden !important;
-          }
-          #memento-certificate-card,
-          #memento-certificate-card * {
-            visibility: visible !important;
-          }
-          #memento-certificate-card {
-            position: fixed !important;
-            left: 0 !important;
-            top: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            margin: 0 !important;
-            padding: 0 !important;
-            box-shadow: none !important;
-            border: none !important;
-            z-index: 999999 !important;
-          }
-        }
-      `}</style>
 
     </div>
   );
