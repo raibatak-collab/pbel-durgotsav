@@ -55,7 +55,7 @@ import { GalleryVideo, extractYouTubeVideoId, getStoredGalleryVideos, saveStored
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
 import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE, sortRitualsByTime, RitualEvent, getStoredHeroChips, saveStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip, DEFAULT_HERO_HIGHLIGHT_CHIPS } from "@/config/schedule";
-import { getStoredSponsorshipTiers, saveStoredSponsorshipTiers, fetchStoredSponsorshipTiers, SponsorshipTier, DEFAULT_SPONSORSHIP_TIERS } from "@/config/sponsors";
+import { getStoredSponsorshipTiers, saveStoredSponsorshipTiers, fetchStoredSponsorshipTiers, SponsorshipTier, DEFAULT_SPONSORSHIP_TIERS, mapTierToDb, STANDARD_SPONSOR_TIERS } from "@/config/sponsors";
 import { inferSevaDayAndDate, PUJO_DAYS } from "@/config/sevas";
 import { 
   AESTHETIC_WALLPAPERS, 
@@ -242,7 +242,7 @@ export default function AdminDashboard() {
   const [editingEvening, setEditingEvening] = useState<any | null>(null);
 
   // Form State: Sponsor
-  const [newSponsor, setNewSponsor] = useState({ name: "", tier: "Gold", logo_url: "" });
+  const [newSponsor, setNewSponsor] = useState({ name: "", tier: "Associate Partner", logo_url: "" });
   const [isSubmittingSponsor, setIsSubmittingSponsor] = useState(false);
   const [sponsorLeads, setSponsorLeads] = useState<any[]>([]);
 
@@ -409,13 +409,38 @@ export default function AdminDashboard() {
         setSponsorshipTiers(cloudTiers);
       }
 
-      // 6. Fetch Sponsors
-      const { data: sps } = await supabase
+      // 6. Fetch Sponsors - Reconcile DB and Cloud Config
+      const { data: dbSps } = await supabase
         .from("sponsors")
         .select("*")
         .order("created_at", { ascending: false });
-      if (sps) setSponsorsList(sps);
+      const cloudSps = await fetchCloudConfig<any[]>("sponsors", []);
 
+      let mergedSponsors: any[] = [];
+      if (cloudSps && Array.isArray(cloudSps) && cloudSps.length > 0) {
+        mergedSponsors = [...cloudSps];
+        if (dbSps && dbSps.length > 0) {
+          for (const dbItem of dbSps) {
+            const idx = mergedSponsors.findIndex(
+              (c) => c.id === dbItem.id || c.name?.trim().toLowerCase() === dbItem.name?.trim().toLowerCase()
+            );
+            if (idx >= 0) {
+              mergedSponsors[idx].id = dbItem.id;
+              if (!mergedSponsors[idx].logo_url && dbItem.logo_url) {
+                mergedSponsors[idx].logo_url = dbItem.logo_url;
+              }
+            } else {
+              mergedSponsors.push(dbItem);
+            }
+          }
+        }
+      } else if (dbSps && dbSps.length > 0) {
+        mergedSponsors = dbSps;
+      }
+
+      if (mergedSponsors.length > 0) {
+        setSponsorsList(mergedSponsors);
+      }
     } catch (err) {
       console.error("Error fetching admin data:", err);
     } finally {
@@ -1949,33 +1974,45 @@ function decodeCategoryDescription(desc?: string) {
     }
     setIsSubmittingSponsor(true);
     try {
+      const dbTier = mapTierToDb(newSponsor.tier);
+
+      // 1. Insert to Supabase DB using Postgres constraint-compliant tier
+      const { data: insertedDb, error: insertErr } = await supabase
+        .from("sponsors")
+        .insert({
+          name: sanitizeText(newSponsor.name),
+          tier: dbTier,
+          logo_url: newSponsor.logo_url || null,
+          is_active: true,
+        })
+        .select()
+        .maybeSingle();
+
+      if (insertErr) {
+        console.warn("Supabase sponsor insert note:", insertErr.message);
+      }
+
       const sponsorItem = {
-        id: `sp-${Date.now()}`,
+        id: insertedDb?.id || `sp-${Date.now()}`,
         name: sanitizeText(newSponsor.name),
         tier: sanitizeText(newSponsor.tier),
+        db_tier: dbTier,
         logo_url: newSponsor.logo_url || null,
         website: (newSponsor as any).website ? sanitizeText((newSponsor as any).website) : null,
         is_active: true,
+        created_at: insertedDb?.created_at || new Date().toISOString(),
       };
 
-      // 1. Insert to Supabase DB
-      await supabase.from("sponsors").insert({
-        name: sponsorItem.name,
-        tier: sponsorItem.tier,
-        logo_url: sponsorItem.logo_url,
-        is_active: true,
-      });
-
       // 2. Sync to Cloud Config & Local Storage
-      const updatedSponsors = [sponsorItem, ...sponsorsList];
+      const updatedSponsors = [sponsorItem, ...sponsorsList.filter((s) => s.id !== sponsorItem.id)];
       setSponsorsList(updatedSponsors);
       localStorage.setItem("pbel_sponsors_list", JSON.stringify(updatedSponsors));
-      saveCloudConfig("sponsors", updatedSponsors);
+      await saveCloudConfig("sponsors", updatedSponsors);
       window.dispatchEvent(new Event("pbel_sponsors_updated"));
 
       alert("New corporate sponsor with brand logo published to homepage!");
-      setNewSponsor({ name: "", tier: "Gold", logo_url: "", website: "" } as any);
-      fetchData();
+      setNewSponsor({ name: "", tier: "Associate Partner", logo_url: "", website: "" } as any);
+      await fetchData();
     } catch (err) {
       console.error("Error adding sponsor:", err);
     } finally {
@@ -1985,13 +2022,17 @@ function decodeCategoryDescription(desc?: string) {
 
   const handleDeleteSponsor = async (id: string) => {
     if (!confirm("Are you sure you want to remove this sponsor?")) return;
-    await supabase.from("sponsors").delete().eq("id", id);
+    try {
+      await supabase.from("sponsors").delete().eq("id", id);
+    } catch (err) {
+      console.error("Error deleting sponsor from DB:", err);
+    }
     const updatedSponsors = sponsorsList.filter((s) => s.id !== id);
     setSponsorsList(updatedSponsors);
     localStorage.setItem("pbel_sponsors_list", JSON.stringify(updatedSponsors));
-    saveCloudConfig("sponsors", updatedSponsors);
+    await saveCloudConfig("sponsors", updatedSponsors);
     window.dispatchEvent(new Event("pbel_sponsors_updated"));
-    fetchData();
+    await fetchData();
   };
 
   // SPONSORSHIP TIER / PACKAGE CMS HANDLERS
@@ -4928,15 +4969,22 @@ function decodeCategoryDescription(desc?: string) {
                       onChange={(e) => setNewSponsor({ ...newSponsor, tier: e.target.value })}
                       className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                     >
-                      {sponsorshipTiers.map((t) => (
-                        <option key={t.id || t.title} value={t.title}>
-                          {t.title} ({t.amount})
-                        </option>
-                      ))}
-                      <option value="Food & Bhog Partner">Food &amp; Bhog Partner</option>
-                      <option value="Cultural Stage Partner">Cultural Stage Partner</option>
-                      <option value="Anandamela Stall Partner">Anandamela Stall Partner</option>
-                      <option value="General Corporate Partner">General Corporate Partner</option>
+                      <optgroup label="Official Festival Partnership Tiers">
+                        {STANDARD_SPONSOR_TIERS.map((st) => (
+                          <option key={st.id} value={st.title}>
+                            {st.title} ({st.badgeLabel})
+                          </option>
+                        ))}
+                      </optgroup>
+                      {sponsorshipTiers.length > 0 && (
+                        <optgroup label="Custom Sponsorship Packages">
+                          {sponsorshipTiers.map((t) => (
+                            <option key={t.id || t.title} value={t.title}>
+                              {t.title} ({t.amount})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
                     </select>
                   </div>
 

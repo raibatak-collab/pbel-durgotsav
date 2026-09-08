@@ -1,4 +1,4 @@
-﻿import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
+import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
 
 export interface SponsorshipTier {
   id: string;
@@ -127,3 +127,125 @@ export async function saveStoredSponsorshipTiers(tiers: SponsorshipTier[]): Prom
   }
   return await saveCloudConfig(CLOUD_KEY, tiers);
 }
+
+// ==========================================
+// SPONSOR PROMINENCE HIERARCHY & DB ADAPTER
+// ==========================================
+
+export type SponsorTierRank = "platinum" | "gold" | "silver" | "bronze" | "supported_by";
+
+export const TIER_RANK_ORDER: SponsorTierRank[] = [
+  "platinum",
+  "gold",
+  "silver",
+  "bronze",
+  "supported_by",
+];
+
+export const TIER_RANK_WEIGHT: Record<SponsorTierRank, number> = {
+  platinum: 1,
+  gold: 2,
+  silver: 3,
+  bronze: 4,
+  supported_by: 5,
+};
+
+export interface StandardTierOption {
+  id: SponsorTierRank;
+  title: string;
+  dbTier: "Platinum" | "Gold" | "Silver" | "Other";
+  badgeLabel: string;
+  description: string;
+}
+
+export const STANDARD_SPONSOR_TIERS: StandardTierOption[] = [
+  {
+    id: "platinum",
+    title: "Title / Platinum Sponsor",
+    dbTier: "Platinum",
+    badgeLabel: "Title Sponsor",
+    description: "Maximum prominence with featured prime showcase",
+  },
+  {
+    id: "gold",
+    title: "Associate Partner",
+    dbTier: "Gold",
+    badgeLabel: "Associate Partner",
+    description: "High prominence gold partner cards",
+  },
+  {
+    id: "silver",
+    title: "Cultural Stage Partner",
+    dbTier: "Silver",
+    badgeLabel: "Cultural Stage Partner",
+    description: "Cultural stage & Pratibimb evening partner",
+  },
+  {
+    id: "bronze",
+    title: "Stall & Banner Combo",
+    dbTier: "Other",
+    badgeLabel: "Stall & Banner",
+    description: "Stall and banner combo visibility",
+  },
+  {
+    id: "supported_by",
+    title: "Pure Banner Display",
+    dbTier: "Other",
+    badgeLabel: "Supported by",
+    description: "Clean minimalist logo banner display",
+  },
+];
+
+/**
+ * Resolves any raw tier string to its standard prominence hierarchy rank.
+ * Priority order:
+ * 1. Platinum (Title / Platinum Sponsor)
+ * 2. Gold (Associate Partner)
+ * 3. Silver (Cultural Stage Partner / Food & Bhog)
+ * 4. Bronze (Stall & Banner Combo / Anandamela Stall)
+ * 5. Supported by (Pure Banner Display / Other)
+ */
+export function getSponsorTierRank(tierStr: string): SponsorTierRank {
+  const t = (tierStr || "").toLowerCase().trim();
+  if (t.includes("platinum") || t.includes("title")) return "platinum";
+  if (t.includes("associate") || t.includes("gold")) return "gold";
+  if (
+    t.includes("cultural") ||
+    t.includes("stage") ||
+    t.includes("silver") ||
+    t.includes("bhog") ||
+    t.includes("food")
+  ) {
+    return "silver";
+  }
+  if (
+    t.includes("stall") ||
+    t.includes("combo") ||
+    t.includes("bronze") ||
+    t.includes("anandamela")
+  ) {
+    return "bronze";
+  }
+  return "supported_by";
+}
+
+/**
+ * Maps any user-selected or custom tier to a valid Postgres check constraint value:
+ * Postgres `sponsors_tier_check` strictly enforces: `tier IN ('Platinum', 'Gold', 'Silver', 'Other')`.
+ */
+export function mapTierToDb(tierStr: string): "Platinum" | "Gold" | "Silver" | "Other" {
+  const rank = getSponsorTierRank(tierStr);
+  switch (rank) {
+    case "platinum":
+      return "Platinum";
+    case "gold":
+      return "Gold";
+    case "silver":
+      return "Silver";
+    case "bronze":
+    case "supported_by":
+    default:
+      return "Other";
+  }
+}
+

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Sparkles, ExternalLink, Award, ArrowRight, Building2 } from "lucide-react";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 import { supabase } from "@/utils/supabase/client";
+import { getSponsorTierRank, TIER_RANK_WEIGHT } from "@/config/sponsors";
 
 export interface TopSponsorItem {
   id: string;
@@ -83,16 +84,29 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
     };
   }, []);
 
-  const activeSponsors = sponsors.filter((s) => s.is_active !== false);
+  const activeSponsors = sponsors
+    .filter((s) => s.is_active !== false)
+    .sort((a, b) => {
+      const weightA = TIER_RANK_WEIGHT[getSponsorTierRank(a.tier)] || 5;
+      const weightB = TIER_RANK_WEIGHT[getSponsorTierRank(b.tier)] || 5;
+      return weightA - weightB;
+    });
 
   const getTierBadgeColor = (tier: string) => {
-    const t = (tier || "").toLowerCase();
-    if (t.includes("platinum") || t.includes("title")) return "bg-amber-400 text-amber-950 border-amber-300 font-extrabold";
-    if (t.includes("gold")) return "bg-yellow-300 text-yellow-950 border-yellow-200 font-bold";
-    if (t.includes("silver")) return "bg-gray-200 text-gray-900 border-gray-300 font-semibold";
-    if (t.includes("food") || t.includes("bhog")) return "bg-orange-300 text-orange-950 border-orange-200 font-bold";
-    if (t.includes("stage") || t.includes("cultural")) return "bg-purple-300 text-purple-950 border-purple-200 font-bold";
-    return "bg-amber-200 text-amber-950 border-amber-300 font-medium";
+    const rank = getSponsorTierRank(tier);
+    switch (rank) {
+      case "platinum":
+        return "bg-amber-400 text-amber-950 border-amber-300 font-extrabold";
+      case "gold":
+        return "bg-yellow-300 text-yellow-950 border-yellow-200 font-bold";
+      case "silver":
+        return "bg-slate-200 text-slate-900 border-slate-300 font-semibold";
+      case "bronze":
+        return "bg-orange-200 text-orange-950 border-orange-300 font-bold";
+      case "supported_by":
+      default:
+        return "bg-gray-200 text-gray-800 border-gray-300 font-medium";
+    }
   };
 
   // GRACEFUL FALLBACK A: If no sponsors are signed up yet, show an elegant partnership teaser pill

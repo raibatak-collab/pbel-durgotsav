@@ -73,11 +73,35 @@ export default async function Home() {
     maximumFractionDigits: 0,
   }).format(combinedTotal);
 
-  // Fetch active sponsors
-  const { data: sponsors } = await supabase
+  // Fetch active sponsors (reconcile DB and Cloud Config)
+  const { data: dbSponsors } = await supabase
     .from("sponsors")
     .select("*")
     .eq("is_active", true);
+
+  const cloudSponsors = await fetchCloudConfig<any[]>("sponsors", []);
+
+  let sponsors: any[] = [];
+  if (cloudSponsors && Array.isArray(cloudSponsors) && cloudSponsors.length > 0) {
+    sponsors = [...cloudSponsors];
+    if (dbSponsors && dbSponsors.length > 0) {
+      for (const dbItem of dbSponsors) {
+        const idx = sponsors.findIndex(
+          (c) => c.id === dbItem.id || c.name?.trim().toLowerCase() === dbItem.name?.trim().toLowerCase()
+        );
+        if (idx >= 0) {
+          sponsors[idx].id = dbItem.id;
+          if (!sponsors[idx].logo_url && dbItem.logo_url) {
+            sponsors[idx].logo_url = dbItem.logo_url;
+          }
+        } else {
+          sponsors.push(dbItem);
+        }
+      }
+    }
+  } else if (dbSponsors && dbSponsors.length > 0) {
+    sponsors = dbSponsors;
+  }
 
   // 1. DYNAMIC 6-DAY PUJO SCHEDULE FROM CLOUD CONFIG (EDITABLE VIA ADMIN)
   const cloudSchedule = await fetchCloudConfig<DaySchedule[]>("schedule_days", DEFAULT_PUJO_SCHEDULE);

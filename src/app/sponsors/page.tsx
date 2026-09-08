@@ -20,7 +20,7 @@ import {
 import { supabase } from "@/utils/supabase/client";
 import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
 import { getStoredBranding, DEFAULT_BRANDING, SamitiBrandingConfig } from "@/config/branding";
-import { getStoredSponsorshipTiers, fetchStoredSponsorshipTiers, SponsorshipTier, DEFAULT_SPONSORSHIP_TIERS } from "@/config/sponsors";
+import { getStoredSponsorshipTiers, fetchStoredSponsorshipTiers, SponsorshipTier, DEFAULT_SPONSORSHIP_TIERS, mapTierToDb } from "@/config/sponsors";
 import { useEffect } from "react";
 
 export default function SponsorsPage() {
@@ -77,20 +77,7 @@ export default function SponsorsPage() {
         created_at: new Date().toISOString(),
       };
 
-      const tierMap: Record<string, string> = {
-        'Title / Platinum Partner': 'Platinum',
-        'Platinum': 'Platinum',
-        'Gold Partner': 'Gold', 
-        'Gold': 'Gold', 
-        'Silver Partner': 'Silver',
-        'Silver': 'Silver',
-        'Food & Bhog Partner': 'Food & Bhog',
-        'Food & Bhog': 'Food & Bhog',
-        'Cultural & Stage Partner': 'Cultural',
-        'Cultural Stage Partner': 'Cultural',
-        'Cultural': 'Cultural',
-      };
-      const dbTier = Object.entries(tierMap).find(([k]) => formData.tier.includes(k))?.[1] || 'Other';
+      const dbTier = mapTierToDb(formData.tier);
 
       try {
         await supabase.from("sponsors").insert({

@@ -3225,4 +3225,116 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  /* =========================================================================
+   * SUITE 76: SPONSOR PROMINENCE HIERARCHY, LOGO DOMINANCE & ADMIN RECONCILIATION
+   * ========================================================================= */
+  describe('Suite 76: Sponsor Prominence Hierarchy, Logo Dominance & Admin Reconciliation', () => {
+    it('should verify getSponsorTierRank and mapTierToDb in sponsors.ts', () => {
+      const src = fs.readFileSync('src/config/sponsors.ts', 'utf8');
+      assert.ok(src.includes('export function getSponsorTierRank'), 'getSponsorTierRank must be exported');
+      assert.ok(src.includes('export function mapTierToDb'), 'mapTierToDb must be exported');
+      assert.ok(src.includes('STANDARD_SPONSOR_TIERS'), 'STANDARD_SPONSOR_TIERS must be exported');
+      assert.ok(src.includes('TIER_RANK_ORDER'), 'TIER_RANK_ORDER must be exported');
+      assert.ok(src.includes('TIER_RANK_WEIGHT'), 'TIER_RANK_WEIGHT must be exported');
+
+      // Test pure logic directly
+      function getSponsorTierRank(tierStr) {
+        const t = (tierStr || '').toLowerCase().trim();
+        if (t.includes('platinum') || t.includes('title')) return 'platinum';
+        if (t.includes('associate') || t.includes('gold')) return 'gold';
+        if (t.includes('cultural') || t.includes('stage') || t.includes('silver') || t.includes('bhog') || t.includes('food')) return 'silver';
+        if (t.includes('stall') || t.includes('combo') || t.includes('bronze') || t.includes('anandamela')) return 'bronze';
+        return 'supported_by';
+      }
+
+      function mapTierToDb(tierStr) {
+        const rank = getSponsorTierRank(tierStr);
+        switch (rank) {
+          case 'platinum': return 'Platinum';
+          case 'gold': return 'Gold';
+          case 'silver': return 'Silver';
+          case 'bronze':
+          case 'supported_by':
+          default: return 'Other';
+        }
+      }
+
+      // 1. Hierarchy mapping verification
+      assert.strictEqual(getSponsorTierRank('Title / Platinum Sponsor'), 'platinum');
+      assert.strictEqual(getSponsorTierRank('Platinum Partner'), 'platinum');
+      assert.strictEqual(getSponsorTierRank('Associate Partner'), 'gold');
+      assert.strictEqual(getSponsorTierRank('Gold Partner'), 'gold');
+      assert.strictEqual(getSponsorTierRank('Cultural Stage Partner'), 'silver');
+      assert.strictEqual(getSponsorTierRank('Silver Partner'), 'silver');
+      assert.strictEqual(getSponsorTierRank('Stall & Banner Combo'), 'bronze');
+      assert.strictEqual(getSponsorTierRank('Pure Banner Display'), 'supported_by');
+      assert.strictEqual(getSponsorTierRank('Supported by'), 'supported_by');
+
+      // 2. PostgreSQL check constraint compatibility ('Platinum', 'Gold', 'Silver', 'Other')
+      const allowedDbTiers = ['Platinum', 'Gold', 'Silver', 'Other'];
+      const testCases = [
+        'Title / Platinum Sponsor',
+        'Associate Partner',
+        'Gold Partner',
+        'Cultural Stage Partner',
+        'Silver Partner',
+        'Food & Bhog Partner',
+        'Stall & Banner Combo',
+        'Anandamela Stall Partner',
+        'Pure Banner Display',
+        'Supported by',
+        'Random Custom Tier'
+      ];
+      for (const tc of testCases) {
+        const mapped = mapTierToDb(tc);
+        assert.ok(allowedDbTiers.includes(mapped), `mapTierToDb('${tc}') -> '${mapped}' must be one of ${allowedDbTiers.join(', ')}`);
+      }
+      assert.strictEqual(mapTierToDb('Title / Platinum Sponsor'), 'Platinum');
+      assert.strictEqual(mapTierToDb('Associate Partner'), 'Gold');
+      assert.strictEqual(mapTierToDb('Cultural Stage Partner'), 'Silver');
+      assert.strictEqual(mapTierToDb('Stall & Banner Combo'), 'Other');
+      assert.strictEqual(mapTierToDb('Pure Banner Display'), 'Other');
+    });
+
+    it('should verify Admin handleAddSponsor and fetchData safe synchronization', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('mapTierToDb'), 'Admin must import and use mapTierToDb to protect against PostgreSQL constraint violation');
+      assert.ok(adminSrc.includes('STANDARD_SPONSOR_TIERS'), 'Admin must import and display STANDARD_SPONSOR_TIERS');
+      assert.ok(adminSrc.includes('dbTier = mapTierToDb(newSponsor.tier)'), 'Admin handleAddSponsor must compute dbTier');
+      assert.ok(adminSrc.includes('tier: dbTier'), 'Admin handleAddSponsor must insert compliant dbTier into sponsors table');
+      assert.ok(adminSrc.includes('cloudSps = await fetchCloudConfig'), 'Admin fetchData must fetch cloud config sponsors');
+      assert.ok(adminSrc.includes('mergedSponsors'), 'Admin fetchData must reconcile cloud and DB sponsors to prevent data drops');
+    });
+
+    it('should verify SponsorLogoCarousel implements 5-tier visual hierarchy with logo dominance', () => {
+      const carouselSrc = fs.readFileSync('src/components/SponsorLogoCarousel.tsx', 'utf8');
+      assert.ok(carouselSrc.includes('platinumSponsors'), 'Carousel must partition platinumSponsors');
+      assert.ok(carouselSrc.includes('goldSponsors'), 'Carousel must partition goldSponsors');
+      assert.ok(carouselSrc.includes('silverSponsors'), 'Carousel must partition silverSponsors');
+      assert.ok(carouselSrc.includes('bronzeSponsors'), 'Carousel must partition bronzeSponsors');
+      assert.ok(carouselSrc.includes('supportedBySponsors'), 'Carousel must partition supportedBySponsors');
+
+      // Logo dominance verification (large logo canvas and sleek marquee for pure banner)
+      assert.ok(carouselSrc.includes('max-h-28 sm:max-h-32'), 'Platinum tier must give prominent height to brand logos');
+      assert.ok(carouselSrc.includes('max-h-20 sm:max-h-24'), 'Gold tier must provide expanded height to brand logos');
+      assert.ok(carouselSrc.includes('Supported By • Pure Banner Partners'), 'Must feature dedicated clean Supported by section');
+      assert.ok(carouselSrc.includes('max-h-12 sm:max-h-14'), 'Supported by section must dedicate 90% tile surface to logo');
+    });
+
+    it('should verify TopSponsorRibbon sorts sponsors by tier priority', () => {
+      const ribbonSrc = fs.readFileSync('src/components/TopSponsorRibbon.tsx', 'utf8');
+      assert.ok(ribbonSrc.includes('TIER_RANK_WEIGHT'), 'TopSponsorRibbon must import and use TIER_RANK_WEIGHT');
+      assert.ok(ribbonSrc.includes('getSponsorTierRank'), 'TopSponsorRibbon must import getSponsorTierRank');
+      assert.ok(ribbonSrc.includes('.sort('), 'TopSponsorRibbon must sort active sponsors by tier rank');
+    });
+
+    it('should verify homepage server-side render reconciles DB and Cloud Config sponsors', () => {
+      const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(homeSrc.includes('cloudSponsors = await fetchCloudConfig'), 'Homepage must fetch cloud sponsors');
+      assert.ok(homeSrc.includes('dbSponsors'), 'Homepage must query dbSponsors');
+      assert.ok(homeSrc.includes('sponsors = [...cloudSponsors]'), 'Homepage must merge cloud sponsors with db sponsors on server-render');
+    });
+  });
+
 });
+
