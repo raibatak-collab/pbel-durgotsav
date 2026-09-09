@@ -388,6 +388,37 @@ export default function ProgramsPage() {
           </a>
         </div>
 
+        {/* PSS Special Day Highlight Banner */}
+        {currentSchedule.pssHighlight && (
+          <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 rounded-3xl p-5 border-2 border-amber-400/80 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 relative overflow-hidden">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 via-[#D4AF37] to-primary text-white flex items-center justify-center text-xl shrink-0 shadow-sm">
+                ⭐
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider bg-amber-200 text-amber-950 px-2.5 py-0.5 rounded-full border border-amber-300">
+                    {currentSchedule.pssHighlight.badge || "PSS Day Highlight"}
+                  </span>
+                  {currentSchedule.pssHighlight.time && (
+                    <span className="text-xs font-mono font-bold text-amber-900 flex items-center gap-1">
+                      <Clock size={12} /> {currentSchedule.pssHighlight.time}
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-heading text-lg sm:text-xl font-bold text-gray-900 mt-1">
+                  {currentSchedule.pssHighlight.title}
+                </h3>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <span className="text-xs font-semibold text-amber-900 bg-white/90 px-3 py-1.5 rounded-xl border border-amber-200/80">
+                ✨ Featured Highlight for {currentSchedule.dayName}
+              </span>
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* COLUMN 1: SACRED PUJO NIRGHANTO (7 Cols or 12 Cols when filtered) */}

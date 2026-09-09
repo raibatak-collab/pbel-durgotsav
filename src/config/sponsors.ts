@@ -161,9 +161,9 @@ export interface StandardTierOption {
 export const STANDARD_SPONSOR_TIERS: StandardTierOption[] = [
   {
     id: "platinum",
-    title: "Title / Platinum Sponsor",
+    title: "Platinum",
     dbTier: "Platinum",
-    badgeLabel: "Title Sponsor",
+    badgeLabel: "Platinum",
     description: "Maximum prominence with featured prime showcase",
   },
   {
@@ -189,7 +189,7 @@ export const STANDARD_SPONSOR_TIERS: StandardTierOption[] = [
   },
   {
     id: "supported_by",
-    title: "Pure Banner Display",
+    title: "Supported by",
     dbTier: "Other",
     badgeLabel: "Supported by",
     description: "Clean minimalist logo banner display",
@@ -230,6 +230,27 @@ export function getSponsorTierRank(tierStr: string): SponsorTierRank {
 }
 
 /**
+ * Returns a clean, standardized tier label for display across ribbons, badges, and cards.
+ * Prevents raw phrases like 'Display banner only' or 'Title / Platinum Partner' from polluting UI.
+ */
+export function getSponsorBadgeLabel(tierStr: string): string {
+  const rank = getSponsorTierRank(tierStr);
+  switch (rank) {
+    case "platinum":
+      return "Platinum";
+    case "gold":
+      return "Associate Partner";
+    case "silver":
+      return "Cultural Stage Partner";
+    case "bronze":
+      return "Stall & Banner";
+    case "supported_by":
+    default:
+      return "Supported by";
+  }
+}
+
+/**
  * Maps any user-selected or custom tier to a valid Postgres check constraint value:
  * Postgres `sponsors_tier_check` strictly enforces: `tier IN ('Platinum', 'Gold', 'Silver', 'Other')`.
  */
@@ -248,4 +269,5 @@ export function mapTierToDb(tierStr: string): "Platinum" | "Gold" | "Silver" | "
       return "Other";
   }
 }
+
 

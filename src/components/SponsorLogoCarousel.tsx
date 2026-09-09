@@ -148,13 +148,13 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
   return (
     <div className="w-full space-y-8">
 
-      {/* 1. TIER 1: TITLE / PLATINUM SPONSOR (HIGHEST PROMINENCE) */}
+      {/* 1. TIER 1: PLATINUM SPONSOR (HIGHEST PROMINENCE) */}
       {platinumSponsors.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1 shadow-xs">
-              <Crown size={12} className="text-amber-200" />
-              <span>Title &amp; Platinum Festival Partner</span>
+            <span className="px-3 py-1 rounded-full bg-gradient-to-r from-[#D4AF37] via-[#F59E0B] to-[#D4AF37] text-white text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-md">
+              <Crown size={12} className="text-yellow-100" />
+              <span>Platinum</span>
             </span>
           </div>
 
@@ -163,16 +163,26 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
               const card = (
                 <div
                   key={sponsor.id}
-                  className="bg-gradient-to-b from-amber-50/60 via-white to-amber-50/20 rounded-3xl p-6 border-2 border-amber-400 shadow-md shadow-amber-500/10 hover:shadow-xl hover:border-amber-500 transition-all flex flex-col items-center justify-between text-center relative overflow-hidden group"
+                  className="bg-gradient-to-b from-[#FFFDF5] via-white to-[#FFF9EA] rounded-3xl p-6 transition-all flex flex-col items-center justify-between text-center relative overflow-hidden group hover:scale-[1.01]"
+                  style={{
+                    border: "2.5px solid #D4AF37",
+                    boxShadow: "0 0 28px rgba(212, 175, 55, 0.45), 0 8px 32px rgba(245, 158, 11, 0.22)",
+                  }}
                 >
                   {/* Luxury Corner Floating Badge */}
-                  <div className="absolute top-3.5 right-3.5 px-3 py-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-[10px] sm:text-[11px] font-extrabold rounded-full shadow-xs tracking-wide uppercase flex items-center gap-1 z-10">
+                  <div className="absolute top-3.5 right-3.5 px-3 py-1 bg-gradient-to-r from-[#D4AF37] via-[#F59E0B] to-[#D4AF37] text-white text-[10px] sm:text-[11px] font-extrabold rounded-full shadow-md tracking-wider uppercase flex items-center gap-1 z-10">
                     <Crown size={12} />
-                    <span>Title Partner</span>
+                    <span>Platinum</span>
                   </div>
 
-                  {/* Large Logo Canvas - Dedicated 85% visual dominance */}
-                  <div className="w-full h-32 sm:h-36 flex items-center justify-center p-3 bg-white/90 rounded-2xl border border-amber-200/80 shadow-2xs group-hover:bg-amber-50/40 transition-colors mt-2">
+                  {/* Large Logo Canvas - Dedicated 85% visual dominance with gold accent border & radiant inner glow */}
+                  <div
+                    className="w-full h-32 sm:h-36 flex items-center justify-center p-3 bg-white/95 rounded-2xl group-hover:bg-amber-50/40 transition-colors mt-2"
+                    style={{
+                      border: "2px solid rgba(212, 175, 55, 0.5)",
+                      boxShadow: "inset 0 0 16px rgba(245, 158, 11, 0.12)",
+                    }}
+                  >
                     {renderBrandLogo(sponsor, "max-h-28 sm:max-h-32")}
                   </div>
 
@@ -335,15 +345,14 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
         </div>
       )}
 
-      {/* 5. TIER 5: PURE BANNER DISPLAY (SUPPORTED BY) - SLEEK LOGO-DOMINANT STRIP */}
+      {/* 5. TIER 5: SUPPORTED BY - SLEEK LOGO-DOMINANT STRIP */}
       {supportedBySponsors.length > 0 && (
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between">
-            <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800 border border-gray-200 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-              <HeartHandshake size={12} className="text-gray-600" />
-              <span>Supported By • Pure Banner Partners</span>
+            <span className="px-3 py-1 rounded-full bg-gray-100 text-gray-800 border border-gray-200 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-2xs">
+              <HeartHandshake size={13} className="text-gray-600" />
+              <span>Supported by</span>
             </span>
-            <span className="text-[10px] text-gray-400">Brand Display</span>
           </div>
 
           {/* Clean Horizontal Brand Strip: 90% Logo Dominance without bulky text boxes */}
@@ -353,7 +362,7 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
                 <div
                   key={sponsor.id}
                   className="h-16 sm:h-20 min-w-[140px] sm:min-w-[170px] px-4 py-2 bg-white rounded-xl border border-gray-200 shadow-2xs hover:shadow-md hover:border-amber-400 transition-all flex items-center justify-center group relative cursor-pointer"
-                  title={`${sponsor.name} - Supported By`}
+                  title={`${sponsor.name} - Supported by`}
                 >
                   {/* Dedicated 90% Logo Display */}
                   {renderBrandLogo(sponsor, "max-h-12 sm:max-h-14")}

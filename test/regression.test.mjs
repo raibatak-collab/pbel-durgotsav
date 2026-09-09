@@ -3317,7 +3317,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       // Logo dominance verification (large logo canvas and sleek marquee for pure banner)
       assert.ok(carouselSrc.includes('max-h-28 sm:max-h-32'), 'Platinum tier must give prominent height to brand logos');
       assert.ok(carouselSrc.includes('max-h-20 sm:max-h-24'), 'Gold tier must provide expanded height to brand logos');
-      assert.ok(carouselSrc.includes('Supported By • Pure Banner Partners'), 'Must feature dedicated clean Supported by section');
+      assert.ok(carouselSrc.includes('Supported by'), 'Must feature dedicated clean Supported by section');
       assert.ok(carouselSrc.includes('max-h-12 sm:max-h-14'), 'Supported by section must dedicate 90% tile surface to logo');
     });
 
@@ -3333,6 +3333,54 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(homeSrc.includes('cloudSponsors = await fetchCloudConfig'), 'Homepage must fetch cloud sponsors');
       assert.ok(homeSrc.includes('dbSponsors'), 'Homepage must query dbSponsors');
       assert.ok(homeSrc.includes('sponsors = [...cloudSponsors]'), 'Homepage must merge cloud sponsors with db sponsors on server-render');
+    });
+  });
+
+  describe('Suite 77: Platinum Gold Styling, Supported by Normalization & PSS Day Highlights', () => {
+    it('should verify Platinum Sponsor card has metallic gold border (#D4AF37), radiant glow and text strictly says Platinum', () => {
+      const carouselSrc = fs.readFileSync('src/components/SponsorLogoCarousel.tsx', 'utf8');
+      assert.ok(carouselSrc.includes('#D4AF37'), 'Platinum card must use radiant metallic gold border #D4AF37');
+      assert.ok(carouselSrc.includes('rgba(212, 175, 55'), 'Platinum card must feature radiant golden glow box-shadow');
+      assert.ok(carouselSrc.includes('<span>Platinum</span>'), 'Corner floating badge and category badge must strictly say Platinum');
+      assert.ok(!carouselSrc.includes('Title &amp; Platinum Festival Partner'), 'Must not display verbose title partner string');
+    });
+
+    it('should verify Supported by tier normalization and removal of Display banner only', () => {
+      const sponsorsConfig = fs.readFileSync('src/config/sponsors.ts', 'utf8');
+      const ribbonSrc = fs.readFileSync('src/components/TopSponsorRibbon.tsx', 'utf8');
+      const carouselSrc = fs.readFileSync('src/components/SponsorLogoCarousel.tsx', 'utf8');
+
+      assert.ok(sponsorsConfig.includes('getSponsorBadgeLabel'), 'sponsors.ts must export getSponsorBadgeLabel');
+      assert.ok(sponsorsConfig.includes('title: "Supported by"'), 'STANDARD_SPONSOR_TIERS must name tier Supported by');
+      assert.ok(ribbonSrc.includes('getSponsorBadgeLabel(sponsor.tier)'), 'TopSponsorRibbon must use getSponsorBadgeLabel');
+      assert.ok(carouselSrc.includes('<span>Supported by</span>'), 'SponsorLogoCarousel must display Supported by header');
+      assert.ok(!carouselSrc.includes('Supported By • Pure Banner Partners'), 'Old header string must be removed');
+      assert.ok(!carouselSrc.includes('Brand Display'), 'Brand Display sub-tag must be removed');
+    });
+
+    it('should verify PssDayHighlight interface and DEFAULT_PUJO_SCHEDULE highlights across all 6 days', () => {
+      const schedSrc = fs.readFileSync('src/config/schedule.ts', 'utf8');
+      assert.ok(schedSrc.includes('export interface PssDayHighlight'), 'schedule.ts must define PssDayHighlight interface');
+      assert.ok(schedSrc.includes('pssHighlight?: PssDayHighlight'), 'DaySchedule must include optional pssHighlight');
+      assert.ok(schedSrc.includes('pssHighlight: {'), 'DEFAULT_PUJO_SCHEDULE must include pssHighlight defaults');
+    });
+
+    it('should verify Admin CMS has PSS Highlight quick editor and ritual feature checkbox', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('handleSaveDayHighlight'), 'Admin must define handleSaveDayHighlight function');
+      assert.ok(adminSrc.includes('dayHighlightForm'), 'Admin must manage dayHighlightForm state');
+      assert.ok(adminSrc.includes('PSS Highlight for {activeDay.dayName}'), 'Admin must render PSS Highlight quick CMS card');
+      assert.ok(adminSrc.includes('Feature as PSS Highlight for {activeDay.dayName}'), 'Ritual form must have PSS Highlight toggle');
+    });
+
+    it('should verify Homepage and Programs page display PSS Day Highlights', () => {
+      const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
+
+      assert.ok(homeSrc.includes('d.pssHighlight?.title'), 'Homepage must check d.pssHighlight in daysTimeline');
+      assert.ok(homeSrc.includes('⭐ PSS Highlight:'), 'Homepage timeline card must render ⭐ PSS Highlight pill');
+      assert.ok(progSrc.includes('currentSchedule.pssHighlight'), 'Programs page must check currentSchedule.pssHighlight');
+      assert.ok(progSrc.includes('PSS Day Highlight'), 'Programs page must render PSS Day Highlight banner');
     });
   });
 

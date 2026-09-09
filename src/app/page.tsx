@@ -110,6 +110,14 @@ export default async function Home() {
     const icon = d.id === "panchami" ? "🌟" : d.id === "sashti" ? "🌺" : d.id === "saptami" ? "🌿" : d.id === "ashtami" ? "🪔" : d.id === "nabami" ? "🔥" : "🔴";
     const ritualHighlights = d.rituals && d.rituals.length > 0 ? d.rituals.slice(0, 3).map((r) => r.event).join(", ") : "";
 
+    const pssHighlightText = d.pssHighlight?.title
+      ? `${d.pssHighlight.title}${d.pssHighlight.time ? ` (${d.pssHighlight.time})` : ""}`
+      : d.culturalEvening?.pssHeadliner?.title
+      ? `${d.culturalEvening.pssHeadliner.title}${d.culturalEvening.pssHeadliner.time ? ` (${d.culturalEvening.pssHeadliner.time})` : ""}`
+      : null;
+
+    const highlightBadge = d.pssHighlight?.badge || (d.culturalEvening?.pssHeadliner?.title ? "Headliner Night" : d.bengaliName || d.dayName || "Pujo Day");
+
     return {
       id: d.id,
       day: d.dayName || (d.id === "sashti" ? "Maha Sashti" : d.id === "saptami" ? "Maha Saptami" : d.id === "ashtami" ? "Maha Ashtami" : d.id === "nabami" ? "Maha Nabami" : d.id === "dashami" ? "Vijaya Dashami" : "Maha Panchami"),
@@ -117,10 +125,8 @@ export default async function Home() {
       theme: d.theme || d.culturalEvening?.title || "Devotion, Rituals & Aarti",
       highlights: d.culturalEvening?.description || ritualHighlights || "Vedic rituals, Pushpanjali, Aarti, and evening cultural performances.",
       icon: icon,
-      tag: d.culturalEvening?.pssHeadliner?.title ? "Headliner Night" : d.bengaliName || d.dayName || "Pujo Day",
-      pssHeadliner: d.culturalEvening?.pssHeadliner?.title
-        ? `${d.culturalEvening.pssHeadliner.title} (${d.culturalEvening.pssHeadliner.time || ""})`
-        : null,
+      tag: highlightBadge,
+      pssHeadliner: pssHighlightText,
     };
   });
 
@@ -298,11 +304,11 @@ export default async function Home() {
                 <div className="text-sm font-semibold text-primary mb-3">{item.theme}</div>
                 <p className="text-xs text-gray-600 leading-relaxed mb-4">{item.highlights}</p>
 
-                {/* Flagship Headliner Highlight Pill */}
+                {/* Flagship Headliner / PSS Highlight Pill */}
                 {item.pssHeadliner && (
                   <div className="bg-gradient-to-r from-amber-50 to-orange-50 p-2.5 rounded-xl border border-amber-300/80 text-[11px] font-bold text-amber-950 flex items-center gap-1.5 mb-2">
                     <Sparkles size={13} className="text-primary shrink-0" />
-                    <span>{item.pssHeadliner}</span>
+                    <span>⭐ PSS Highlight: {item.pssHeadliner}</span>
                   </div>
                 )}
               </div>

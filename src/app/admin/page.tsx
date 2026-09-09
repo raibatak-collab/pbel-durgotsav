@@ -234,9 +234,27 @@ export default function AdminDashboard() {
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
 
   // Form State: Add / Edit Schedule Ritual Event
-  const [newEvent, setNewEvent] = useState({ id: "", title: "", event_type: "Nirghanto", date: "2026-10-16", time: "08:30 AM", description: "" });
+  const [newEvent, setNewEvent] = useState<{
+    id: string;
+    title: string;
+    event_type: string;
+    date: string;
+    time: string;
+    description: string;
+    isPssHighlight?: boolean;
+  }>({
+    id: "",
+    title: "",
+    event_type: "Nirghanto",
+    date: "2026-10-16",
+    time: "08:30 AM",
+    description: "",
+    isPssHighlight: false,
+  });
   const [isEditingEvent, setIsEditingEvent] = useState(false);
   const [isSubmittingEvent, setIsSubmittingEvent] = useState(false);
+  const [dayHighlightForm, setDayHighlightForm] = useState<{ title: string; time: string; badge: string }>({ title: "", time: "", badge: "PSS Highlight" });
+  const [isSavingDayHighlight, setIsSavingDayHighlight] = useState(false);
 
   // Form State: Edit Evening Config
   const [editingEvening, setEditingEvening] = useState<any | null>(null);
@@ -601,6 +619,19 @@ export default function AdminDashboard() {
       console.error("Failed loading session:", e);
     }
   }, []);
+
+  useEffect(() => {
+    const cur = scheduleDays.find((d) => d.id === selectedNirghantoDayId);
+    if (cur?.pssHighlight) {
+      setDayHighlightForm({
+        title: cur.pssHighlight.title || "",
+        time: cur.pssHighlight.time || "",
+        badge: cur.pssHighlight.badge || "PSS Highlight",
+      });
+    } else {
+      setDayHighlightForm({ title: "", time: "", badge: "PSS Highlight" });
+    }
+  }, [selectedNirghantoDayId, scheduleDays]);
 
   const [isSyncingCloud, setIsSyncingCloud] = useState(false);
 
@@ -1810,6 +1841,13 @@ function decodeCategoryDescription(desc?: string) {
           return {
             ...d,
             rituals: sortRitualsByTime(updatedRituals),
+            pssHighlight: newEvent.isPssHighlight
+              ? {
+                  title: sanitizeText(newEvent.title.trim()),
+                  time: newEvent.time.trim(),
+                  badge: "PSS Highlight",
+                }
+              : d.pssHighlight,
           };
         }
         return d;
@@ -1821,7 +1859,7 @@ function decodeCategoryDescription(desc?: string) {
       const activeDay = updatedSchedule.find((d) => d.id === targetDayId);
       alert(`✓ "${newEvent.title}" (${newEvent.time}) saved to ${activeDay?.dayName} (${activeDay?.date}) and synced live to Cloud!`);
 
-      setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: activeDay?.isoDate || "2026-10-16", time: "08:30 AM", description: "" });
+      setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: activeDay?.isoDate || "2026-10-16", time: "08:30 AM", description: "", isPssHighlight: false });
       setIsEditingEvent(false);
     } catch (err) {
       console.error("Error saving schedule ritual:", err);
@@ -1831,7 +1869,42 @@ function decodeCategoryDescription(desc?: string) {
     }
   };
 
+  const handleSaveDayHighlight = async (dayId: string, highlight?: { title: string; time?: string; badge?: string }) => {
+    setIsSavingDayHighlight(true);
+    try {
+      const updatedSchedule = scheduleDays.map((d) => {
+        if (d.id === dayId) {
+          return {
+            ...d,
+            pssHighlight: highlight && highlight.title.trim() ? {
+              title: sanitizeText(highlight.title.trim()),
+              time: highlight.time?.trim() || undefined,
+              badge: highlight.badge?.trim() || "PSS Highlight",
+            } : undefined,
+          };
+        }
+        return d;
+      });
+
+      setScheduleDays(updatedSchedule);
+      await saveStoredSchedule(updatedSchedule);
+
+      const targetDay = updatedSchedule.find((d) => d.id === dayId);
+      if (highlight && highlight.title.trim()) {
+        alert(`⭐ PSS Highlight "${highlight.title}" saved for ${targetDay?.dayName} and synced live to Cloud!`);
+      } else {
+        alert(`✓ PSS Highlight removed for ${targetDay?.dayName}.`);
+      }
+    } catch (err) {
+      console.error("Error saving day highlight:", err);
+      alert("Failed to save day highlight. Please check your connection.");
+    } finally {
+      setIsSavingDayHighlight(false);
+    }
+  };
+
   const handleEditEvent = (ritual: RitualEvent, dayIsoDate: string) => {
+    const activeDay = scheduleDays.find((d) => d.id === selectedNirghantoDayId);
     setNewEvent({
       id: ritual.event,
       title: ritual.event,
@@ -1839,6 +1912,7 @@ function decodeCategoryDescription(desc?: string) {
       date: dayIsoDate,
       time: ritual.time,
       description: ritual.description || "",
+      isPssHighlight: activeDay?.pssHighlight?.title === ritual.event,
     });
     setIsEditingEvent(true);
   };
@@ -1954,6 +2028,13 @@ function decodeCategoryDescription(desc?: string) {
               genre: updatedItem.pssGenre || "PBEL Sanskritik Samiti Flagship Show",
             } : undefined,
           },
+          pssHighlight: updatedItem.hasPssFlagship && updatedItem.pssEventTitle?.trim()
+            ? {
+                title: updatedItem.pssEventTitle,
+                time: updatedItem.pssEventTime || "08:00 PM",
+                badge: "Flagship Show",
+              }
+            : d.pssHighlight,
         };
       }
       return d;
@@ -1961,7 +2042,7 @@ function decodeCategoryDescription(desc?: string) {
     setScheduleDays(updatedSched);
     await saveStoredSchedule(updatedSched);
 
-    alert(`Stage line-up & Featured Acts updated for ${editingEvening.day} and synced to Cloud!`);
+    alert(`Stage line-up, PSS Highlight & Featured Acts updated for ${editingEvening.day} and synced to Cloud!`);
     setEditingEvening(null);
   };
 
@@ -3860,6 +3941,7 @@ function decodeCategoryDescription(desc?: string) {
                               date: d.isoDate,
                               time: "08:30 AM",
                               description: "",
+                              isPssHighlight: false,
                             });
                           }}
                           className={`p-3 rounded-2xl text-xs font-bold transition flex flex-col items-center justify-center gap-1 border text-center ${
@@ -3900,7 +3982,7 @@ function decodeCategoryDescription(desc?: string) {
                         <button
                           onClick={() => {
                             setIsEditingEvent(false);
-                            setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: activeDay.isoDate, time: "08:30 AM", description: "" });
+                            setNewEvent({ id: "", title: "", event_type: "Nirghanto", date: activeDay.isoDate, time: "08:30 AM", description: "", isPssHighlight: false });
                           }}
                           className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1 bg-gray-100 px-2 py-1 rounded-lg"
                         >
@@ -3992,6 +4074,20 @@ function decodeCategoryDescription(desc?: string) {
                         />
                       </div>
 
+                      {/* Checkbox: Feature as PSS Highlight for this day */}
+                      <div className="flex items-center gap-2 p-2.5 bg-amber-50/70 border border-amber-200/80 rounded-xl">
+                        <input
+                          type="checkbox"
+                          id="isPssHighlight"
+                          checked={Boolean(newEvent.isPssHighlight)}
+                          onChange={(e) => setNewEvent({ ...newEvent, isPssHighlight: e.target.checked })}
+                          className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary cursor-pointer"
+                        />
+                        <label htmlFor="isPssHighlight" className="font-semibold text-amber-950 text-xs cursor-pointer select-none">
+                          ⭐ Feature as PSS Highlight for {activeDay.dayName}
+                        </label>
+                      </div>
+
                       <button
                         type="submit"
                         disabled={isSubmittingEvent}
@@ -4017,6 +4113,74 @@ function decodeCategoryDescription(desc?: string) {
                           <p className="text-xs text-gray-500 mt-0.5">
                             Theme: <strong className="text-amber-900">{activeDay.theme}</strong> ({activeRituals.length} ritual events sorted chronologically)
                           </p>
+                        </div>
+                      </div>
+
+                      {/* ⭐ PSS DAY HIGHLIGHT QUICK CMS CARD */}
+                      <div className="p-4 bg-gradient-to-r from-amber-50/90 via-orange-50/60 to-amber-50/90 border-b border-amber-200/90">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">⭐</span>
+                            <div>
+                              <h4 className="font-bold text-xs text-amber-950 uppercase tracking-wide">
+                                PSS Highlight for {activeDay.dayName}
+                              </h4>
+                              <p className="text-[11px] text-amber-900/80">
+                                Displayed prominently on the homepage timeline card and on /programs for {activeDay.dayName}.
+                              </p>
+                            </div>
+                          </div>
+                          {activeDay.pssHighlight?.title && (
+                            <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full border border-amber-300 w-fit">
+                              Active: {activeDay.pssHighlight.title} {activeDay.pssHighlight.time ? `(${activeDay.pssHighlight.time})` : ""}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Quick Edit Form for Day Highlight */}
+                        <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
+                          <div className="sm:col-span-6">
+                            <input
+                              type="text"
+                              value={dayHighlightForm.title}
+                              onChange={(e) => setDayHighlightForm({ ...dayHighlightForm, title: e.target.value })}
+                              placeholder={`e.g. ${activeDay.id === "ashtami" ? "Sandhi Pujo (108 Lotuses)" : activeDay.id === "dashami" ? "Sindoor Khela & Visarjan" : activeDay.id === "sashti" ? "Bodhon & Retro Rock" : "Special Day Highlight"}`}
+                              className="w-full p-2 border border-amber-200 rounded-xl bg-white font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-primary text-xs"
+                            />
+                          </div>
+                          <div className="sm:col-span-3">
+                            <input
+                              type="text"
+                              value={dayHighlightForm.time}
+                              onChange={(e) => setDayHighlightForm({ ...dayHighlightForm, time: e.target.value })}
+                              placeholder="Time (e.g. 07:45 PM)"
+                              className="w-full p-2 border border-amber-200 rounded-xl bg-white font-mono text-gray-800 outline-none focus:ring-2 focus:ring-primary text-xs"
+                            />
+                          </div>
+                          <div className="sm:col-span-3 flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveDayHighlight(activeDay.id, dayHighlightForm)}
+                              disabled={isSavingDayHighlight || !dayHighlightForm.title.trim()}
+                              className="w-full bg-primary hover:bg-primary-hover text-white py-2 px-3 rounded-xl font-bold transition text-xs flex items-center justify-center gap-1 disabled:opacity-50 cursor-pointer shadow-2xs"
+                            >
+                              <Save size={12} />
+                              <span>{isSavingDayHighlight ? "Saving..." : "Save Highlight"}</span>
+                            </button>
+                            {activeDay.pssHighlight?.title && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setDayHighlightForm({ title: "", time: "", badge: "PSS Highlight" });
+                                  handleSaveDayHighlight(activeDay.id, undefined);
+                                }}
+                                className="text-[11px] text-red-600 hover:bg-red-100 p-2 rounded-xl transition border border-red-200 shrink-0"
+                                title="Remove PSS Highlight from this day"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
 
@@ -4375,7 +4539,7 @@ function decodeCategoryDescription(desc?: string) {
                           onChange={(e) => setEditingEvening({ ...editingEvening, hasPssFlagship: e.target.checked })}
                           className="w-4 h-4 text-primary rounded"
                         />
-                        <span>Enable PSS Flagship Headliner Show</span>
+                        <span>⭐ Add to PSS Highlights / Flagship Show for this Day</span>
                       </label>
                       {editingEvening.hasPssFlagship && (
                         <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2.5 py-0.5 rounded-full border border-amber-300 flex items-center gap-1">

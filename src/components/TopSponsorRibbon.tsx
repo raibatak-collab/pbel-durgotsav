@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Sparkles, ExternalLink, Award, ArrowRight, Building2 } from "lucide-react";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 import { supabase } from "@/utils/supabase/client";
-import { getSponsorTierRank, TIER_RANK_WEIGHT } from "@/config/sponsors";
+import { getSponsorTierRank, TIER_RANK_WEIGHT, getSponsorBadgeLabel } from "@/config/sponsors";
 
 export interface TopSponsorItem {
   id: string;
@@ -166,11 +166,22 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
           <div className="flex items-center gap-2.5 sm:gap-3 w-max sm:w-auto sm:justify-center mx-auto px-1">
             {activeSponsors.map((sponsor) => {
               const hasLogo = sponsor.logo_url && !imageErrors.has(sponsor.id);
+              const isPlatinum = getSponsorTierRank(sponsor.tier) === "platinum";
               const cardContent = (
-                <div className="flex items-center gap-2 bg-white/95 hover:bg-white text-gray-900 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl border border-amber-300/80 shadow-md hover:shadow-xl transition-all max-w-[200px] sm:max-w-[240px] shrink-0 group">
+                <div
+                  className={`flex items-center gap-2 bg-white/95 hover:bg-white text-gray-900 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl transition-all max-w-[200px] sm:max-w-[240px] shrink-0 group ${
+                    isPlatinum
+                      ? "border-2 border-[#D4AF37] shadow-[0_0_16px_rgba(212,175,55,0.45)] hover:shadow-[0_0_22px_rgba(212,175,55,0.6)]"
+                      : "border border-amber-300/80 shadow-md hover:shadow-xl"
+                  }`}
+                >
                   
                   {/* Logo or Monogram Fallback */}
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-50 border border-gray-200 p-0.5 flex items-center justify-center shrink-0 overflow-hidden">
+                  <div
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gray-50 p-0.5 flex items-center justify-center shrink-0 overflow-hidden ${
+                      isPlatinum ? "border border-[#D4AF37]/50" : "border border-gray-200"
+                    }`}
+                  >
                     {hasLogo ? (
                       <img
                         src={sponsor.logo_url}
@@ -199,7 +210,7 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
                         sponsor.tier
                       )}`}
                     >
-                      {sponsor.tier || "Corporate Partner"}
+                      {getSponsorBadgeLabel(sponsor.tier)}
                     </span>
                   </div>
 

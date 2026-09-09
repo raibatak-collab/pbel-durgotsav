@@ -30,6 +30,12 @@ export interface CulturalEvening {
   residentSlotsAvailable: number;
 }
 
+export interface PssDayHighlight {
+  title: string;
+  time?: string;
+  badge?: string;
+}
+
 export interface DaySchedule {
   id: string;
   dayName: string;
@@ -39,6 +45,7 @@ export interface DaySchedule {
   theme: string;
   rituals: RitualEvent[];
   culturalEvening: CulturalEvening;
+  pssHighlight?: PssDayHighlight;
 }
 
 export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
@@ -60,6 +67,11 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
       description: "Welcoming Maa Durga with heartfelt Agomoni songs, traditional Rabindra Sangeet, and resident food fiesta.",
       acts: ["Agomoni Choral Melodies", "Kids Anandamela Performance", "Opening Classical Dance Recital"],
       residentSlotsAvailable: 10,
+    },
+    pssHighlight: {
+      title: "Grand Anandamela Food Fiesta & Agomoni Gala",
+      time: "06:00 PM",
+      badge: "Opening Highlight",
     },
   },
   {
@@ -88,6 +100,11 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
       acts: ["Resident Opening Dance Medley (06:30 PM)", "Kids Dance & Vocals (07:15 PM)", "⭐ Retro Rock by Fushmontor (08:15 PM)"],
       residentSlotsAvailable: 8,
     },
+    pssHighlight: {
+      title: "Devi Bodhon & Retro Rock by Fushmontor",
+      time: "08:15 PM",
+      badge: "Flagship Show",
+    },
   },
   {
     id: "saptami",
@@ -114,6 +131,11 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
       },
       acts: ["Resident Classical Vocals (06:30 PM)", "⭐ Dance Drama Production by PSS (07:45 PM)", "Township Acoustic Band Set (09:00 PM)"],
       residentSlotsAvailable: 8,
+    },
+    pssHighlight: {
+      title: "Nabapatrika Snan & PSS Dance Drama Production",
+      time: "07:45 PM",
+      badge: "Cultural Highlight",
     },
   },
   {
@@ -143,6 +165,11 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
       acts: ["Township Dhunuchi Dance Face-off (06:45 PM)", "⭐ Grand Bangla Drama by PSS (07:45 PM)", "Dhaak Jugalbandi Battle (09:15 PM)"],
       residentSlotsAvailable: 8,
     },
+    pssHighlight: {
+      title: "Sandhi Pujo (108 Lotuses) & Grand Bangla Natok",
+      time: "04:15 PM",
+      badge: "Sacred Highlight",
+    },
   },
   {
     id: "nabami",
@@ -164,6 +191,11 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
       acts: ["Anandamela & Sports Prize Distribution", "Resident Talent Champions Encore", "Festive Garba & Dandiya Beats"],
       residentSlotsAvailable: 12,
     },
+    pssHighlight: {
+      title: "Maha Navami Havan & Dhunuchi Dance Competition",
+      time: "07:30 PM",
+      badge: "Festival Highlight",
+    },
   },
   {
     id: "dashami",
@@ -184,6 +216,11 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
       description: "Traditional blessings, sweet distribution, and celebrating the triumph of good over evil.",
       acts: ["Dhunuchi Master Showcase", "Subho Bijoya Choral Melodies", "Sweet & Mishti Sharing Gathering"],
       residentSlotsAvailable: 6,
+    },
+    pssHighlight: {
+      title: "Sindoor Khela & Grand Visarjan Shobha Yatra",
+      time: "04:30 PM",
+      badge: "Grand Finale",
     },
   },
 ];
