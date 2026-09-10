@@ -1,18 +1,21 @@
 ﻿import { NextResponse } from 'next/server';
-import { ICICI_CONFIG, generateIciciHashV2 } from '@/utils/icici-pg';
+import { ICICI_CONFIG, generateIciciHashV1 } from '@/utils/icici-pg';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
     const { amount, customerName, email, mobileNo, paymentId, isUAT } = body;
 
-    // Use test credentials if explicitly testing, else check env
-    const merchantId = isUAT ? 'T_S00067' : ICICI_CONFIG.merchantId;
+    const merchantId = isUAT ? '100000000007164' : ICICI_CONFIG.merchantId;
+    const aggregatorID = isUAT ? 'A100000000007164' : ICICI_CONFIG.aggregatorID;
     
-    // As per ICICI Docs for Standard Integration (payType: "0")
+    // Clean payment ID to be strictly alphanumeric
+    const cleanPaymentId = paymentId.replace(/[^a-zA-Z0-9]/g, '');
+
     const payload = {
       merchantId: merchantId,
-      merchantTxnNo: paymentId.replace(/[^a-zA-Z0-9]/g, ''),
+      aggregatorID: aggregatorID,
+      merchantTxnNo: cleanPaymentId,
       amount: parseFloat(amount).toFixed(2), // 9,2 decimal format
       currencyCode: "356",
       payType: "0", // 0 = Standard (Redirection)
@@ -23,16 +26,14 @@ export async function POST(request: Request) {
       customerMobileNo: mobileNo || "9999999999"
     };
 
-    // Generate Hash
-    const secureHash = generateIciciHashV2(payload);
+    // IMPORTANT: Even for v2 endpoints, ICICI requires the V1 (Concatenation) hash logic
+    const secureHash = generateIciciHashV1(payload);
     
-    // Add hash to payload
     const finalPayload = {
       ...payload,
       secureHash
     };
 
-    // Make request to ICICI
     const response = await fetch(ICICI_CONFIG.initiateSaleUrl, {
       method: 'POST',
       headers: {
@@ -44,7 +45,6 @@ export async function POST(request: Request) {
     const data = await response.json();
 
     if (data.responseCode === 'R1000') {
-      // Request initiated successfully
       return NextResponse.json({
         success: true,
         redirectURI: data.redirectURI,
@@ -53,7 +53,8 @@ export async function POST(request: Request) {
     } else {
       return NextResponse.json({
         success: false,
-        error: data.respDescription || 'Failed to initiate payment with ICICI'
+        error: data.respDescription || data.responseDescription || 'Failed to initiate payment with ICICI',
+        details: data
       }, { status: 400 });
     }
 
