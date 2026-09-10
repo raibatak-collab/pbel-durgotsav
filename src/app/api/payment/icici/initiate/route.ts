@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     // As per ICICI Docs for Standard Integration (payType: "0")
     const payload = {
       merchantId: merchantId,
-      merchantTxnNo: paymentId,
+      merchantTxnNo: paymentId.replace(/[^a-zA-Z0-9]/g, ''),
       amount: parseFloat(amount).toFixed(2), // 9,2 decimal format
       currencyCode: "356",
       payType: "0", // 0 = Standard (Redirection)
