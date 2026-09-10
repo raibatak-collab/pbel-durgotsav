@@ -594,6 +594,42 @@ function decodeCategoryDescription(desc?: string) {
       const generatedPaymentId = `WEB${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
       const formData = isGeneral ? customFormData : modalFormData;
       
+      const activeTower = isGeneral ? customTower : modalTower;
+      const activeFlat = isGeneral ? customFlatUnit : modalFlatUnit;
+      const formattedFlat = activeTower === "Other"
+        ? activeFlat.trim() || "Guest Devotee"
+        : `${activeTower} - ${activeFlat.trim()}`;
+
+      const catName = isGeneral ? "General Pujo Fund" : modalSeva?.title;
+      let catId = undefined;
+      if (catName) {
+        try {
+          const { data: catData } = await supabase.from("contribution_categories").select("id").eq("name", catName).maybeSingle();
+          if (catData) catId = catData.id;
+        } catch (e) {}
+      }
+
+      // 1. Insert Pending Record
+      const { error } = await supabase.from("contributions").insert({
+        contributor_name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        flat_number: formattedFlat,
+        amount: amount,
+        category_id: catId,
+        status: "Pending",
+        is_name_visible: formData.isNameVisible,
+        payment_id: generatedPaymentId,
+      });
+
+      if (error) {
+        console.error("DB Error:", error);
+        alert("Error registering transaction.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 2. Initiate ICICI Session
       const payload = {
         amount,
         customerName: formData.name.trim(),
@@ -611,7 +647,6 @@ function decodeCategoryDescription(desc?: string) {
       const data = await res.json();
       
       if (data.success && data.redirectURI) {
-        // Redirect to ICICI
         window.location.href = `${data.redirectURI}?tranCtx=${data.tranCtx}`;
       } else {
         alert("ICICI Initiate Failed: " + (data.error || JSON.stringify(data.details || "Unknown error")));
@@ -619,7 +654,7 @@ function decodeCategoryDescription(desc?: string) {
       }
     } catch (err) {
       console.error(err);
-      alert("Error initiating ICICI payment");
+      alert("Error initiating ICICI payment.");
       setIsSubmitting(false);
     }
   };
@@ -1668,7 +1703,7 @@ function decodeCategoryDescription(desc?: string) {
                   >
                     <CreditCard size={20} className={isSubmitting ? "animate-pulse" : ""} />
                     <span>
-                      {isSubmitting ? "Securely Connecting to ICICI..." : `Pay ?${modalSeva.amount.toLocaleString("en-IN")} via ICICI Gateway`}
+                      {isSubmitting ? "Securely Connecting to ICICI..." : `Pay ₹${modalSeva.amount.toLocaleString("en-IN")} via ICICI Gateway`}
                     </span>
                   </button>
                 ) : (
@@ -1681,7 +1716,7 @@ function decodeCategoryDescription(desc?: string) {
                     <span>
                       {isSubmitting
                         ? "Recording Offering..."
-                        : `I Have Paid ?${modalSeva.amount.toLocaleString("en-IN")} � Confirm & Get Receipt`}
+                        : `I Have Paid ₹${modalSeva.amount.toLocaleString("en-IN")} �• Confirm & Get Receipt`}
                     </span>
                   </button>
                 )}
