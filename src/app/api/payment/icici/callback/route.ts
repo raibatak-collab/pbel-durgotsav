@@ -21,12 +21,12 @@ export async function POST(request: Request) {
     const { responseCode, merchantTxnNo } = payload;
     if (responseCode === '0000' || responseCode === '000') {
       await supabaseAdmin.from('contributions').update({ 
-        status: 'Approved',
+        status: 'Success',
         pg_bank_ref_no: payload['txnID'] || null
       }).eq('payment_id', merchantTxnNo);
       return NextResponse.redirect(new URL(`/receipt?id=${merchantTxnNo}`, request.url), 303);
     } else {
-      await supabaseAdmin.from('contributions').update({ status: 'Rejected' }).eq('payment_id', merchantTxnNo);
+      await supabaseAdmin.from('contributions').update({ status: 'Failed' }).eq('payment_id', merchantTxnNo);
       return NextResponse.redirect(new URL('/contribute?error=payment_failed', request.url), 303);
     }
   } catch (error) {
