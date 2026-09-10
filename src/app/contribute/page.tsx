@@ -1473,7 +1473,8 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
 
-            {/* UPI & QR Scanner Section (Zero Friction: 1-Tap Copy UPI + QR Scanner) */}
+            {!isUatTest && (
+<div className="test-wrapper">{/* UPI & QR Scanner Section (Zero Friction: 1-Tap Copy UPI + QR Scanner) */}
             <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-300/90 mb-5 text-center space-y-3">
               
               {/* QR Code & Scanner */}
@@ -1525,6 +1526,8 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
 
+            </div>
+            )}
             {/* Direct Seva Devotee Details Form */}
             <form onSubmit={handleModalCheckout} className="space-y-4 text-xs sm:text-sm">
               {modalFormError && (

@@ -15,18 +15,18 @@ export async function POST(request: Request) {
       payload[key] = value.toString();
     });
     const receivedHash = payload['secureHash'];
-    if (!receivedHash) return NextResponse.redirect(new URL('/contribute?error=missing_hash', request.url));
+    if (!receivedHash) return NextResponse.redirect(new URL('/contribute?error=missing_hash', request.url), 303);
     const isValid = verifyIciciHash(payload, receivedHash);
-    if (!isValid) return NextResponse.redirect(new URL('/contribute?error=tampered_payment', request.url));
+    if (!isValid) return NextResponse.redirect(new URL('/contribute?error=tampered_payment', request.url), 303);
     const { responseCode, merchantTxnNo } = payload;
     if (responseCode === '0000' || responseCode === '000') {
       await supabaseAdmin.from('contributions').update({ status: 'Approved' }).eq('payment_id', merchantTxnNo);
-      return NextResponse.redirect(new URL(`/receipt?pid=${merchantTxnNo}`, request.url));
+      return NextResponse.redirect(new URL(`/receipt?pid=${merchantTxnNo}`, request.url), 303);
     } else {
       await supabaseAdmin.from('contributions').update({ status: 'Rejected' }).eq('payment_id', merchantTxnNo);
-      return NextResponse.redirect(new URL('/contribute?error=payment_failed', request.url));
+      return NextResponse.redirect(new URL('/contribute?error=payment_failed', request.url), 303);
     }
   } catch (error) {
-    return NextResponse.redirect(new URL('/contribute?error=internal_error', request.url));
+    return NextResponse.redirect(new URL('/contribute?error=internal_error', request.url), 303);
   }
 }
