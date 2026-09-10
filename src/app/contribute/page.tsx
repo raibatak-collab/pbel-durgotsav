@@ -1055,7 +1055,7 @@ function decodeCategoryDescription(desc?: string) {
 
               {/* Dynamic QR Scanner & 1-Tap Mobile Payment Widget */}
               {customAmount && Number(customAmount) > 0 ? (
-                <div className="bg-gradient-to-br from-amber-50/95 via-orange-50/80 to-amber-100/50 p-5 sm:p-6 rounded-3xl border border-amber-300/90 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className={`bg-gradient-to-br from-amber-50/95 via-orange-50/80 to-amber-100/50 p-5 sm:p-6 rounded-3xl border border-amber-300/90 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 ${isUatTest ? "hidden" : ""}`}>
                   <div className="text-center md:text-left space-y-3 flex-1">
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-200/80 text-amber-950 text-xs font-bold">
                       <Sparkles size={13} className="text-primary" />
@@ -1669,7 +1669,7 @@ function decodeCategoryDescription(desc?: string) {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">UPI UTR / Ref No. (Optional)</label>
+                  <label className={`block font-semibold text-gray-700 mb-1 ${isUatTest ? "hidden" : ""}`}>UPI UTR / Ref No. (Optional)</label>
                   <input
                     type="text"
                     value={modalFormData.upiRef}
