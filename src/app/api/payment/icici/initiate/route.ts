@@ -20,9 +20,10 @@ export async function POST(request: Request) {
       currencyCode: "356",
       payType: "0", // 0 = Standard (Redirection)
       customerEmailID: email || "guest@icicibank.com",
+      customerName: customerName || "Guest Devotee",
       transactionType: "SALE",
       returnURL: ICICI_CONFIG.returnUrl,
-      txnDate: new Date().toISOString().replace(/[-:T.]/g, '').substring(0, 14), // YYYYMMDDHHMISS
+      txnDate: new Date().toISOString().split('T')[0].replace(/-/g, '') + '235959', // Must end in 235959 as per ICICI docs
       customerMobileNo: mobileNo || "9999999999"
     };
 
