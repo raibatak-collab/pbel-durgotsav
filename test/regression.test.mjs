@@ -3384,5 +3384,65 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 78: Committee Multi-User Authentication, Passcode Persistence & Reset Tool', () => {
+    it('should verify defaultAdminUsers includes admin, anamika, romita, katha, and finance with PBEL@2026', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('username: "admin"'), 'Must include admin in defaultAdminUsers');
+      assert.ok(adminSrc.includes('username: "anamika"'), 'Must include anamika in defaultAdminUsers');
+      assert.ok(adminSrc.includes('username: "romita"'), 'Must include romita in defaultAdminUsers');
+      assert.ok(adminSrc.includes('username: "katha"'), 'Must include katha in defaultAdminUsers');
+      assert.ok(adminSrc.includes('username: "finance"'), 'Must include finance in defaultAdminUsers');
+    });
+
+    it('should verify handleLogin supports PBEL@2026 for all registered committee users', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(
+        adminSrc.includes('enteredPass === "PBEL@2026"') &&
+        adminSrc.includes('(u.passwordHash && u.passwordHash === enteredPass) ||') &&
+        adminSrc.includes('enteredPass === "PBEL@2026" ||'),
+        'handleLogin must allow login with PBEL@2026 for any registered user'
+      );
+    });
+
+    it('should verify handleLogin has fallback recognition for all committee accounts', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('enteredUser === "anamika"'), 'Fallback must recognize anamika');
+      assert.ok(adminSrc.includes('enteredUser === "romita"'), 'Fallback must recognize romita');
+      assert.ok(adminSrc.includes('enteredUser === "katha"'), 'Fallback must recognize katha');
+      assert.ok(adminSrc.includes('enteredUser === "finance"'), 'Fallback must recognize finance');
+      assert.ok(adminSrc.includes('enteredUser === "admin"'), 'Fallback must recognize admin');
+      assert.ok(adminSrc.includes('enteredUser === "committee"'), 'Fallback must recognize committee alias');
+    });
+
+    it('should verify cloudConfig and localStorage loading normalizes empty passwordHash to PBEL@2026', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(
+        adminSrc.includes('u.passwordHash && u.passwordHash.trim() !== "" ? u.passwordHash : "PBEL@2026"'),
+        'Must normalize passwordHash to PBEL@2026 if blank or empty'
+      );
+    });
+
+    it('should verify user management does not strip passwordHash on cloud sync', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.strictEqual(
+        adminSrc.includes('cloudSyncList = updatedList.map(u => ({ ...u, passwordHash: "" }))'),
+        false,
+        'Must NOT strip passwordHash to empty string when syncing to cloud'
+      );
+      assert.ok(
+        adminSrc.includes('saveCloudConfig("admin_users", updatedList)'),
+        'Must save updatedList with passwords intact to cloud'
+      );
+    });
+
+    it('should verify handleResetPassword and Reset Pass button in UI table', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('handleResetPassword'), 'Admin must define handleResetPassword');
+      assert.ok(adminSrc.includes('Reset Pass'), 'Admin users table must have Reset Pass button');
+      assert.ok(adminSrc.includes('title="Reset / Update Passcode"'), 'Reset Pass button must have descriptive title');
+    });
+  });
+
 });
+
 

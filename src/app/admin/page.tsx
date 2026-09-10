@@ -93,6 +93,33 @@ const defaultAdminUsers: AdminUser[] = [
     created_at: "2026-08-01",
   },
   {
+    id: "usr-1787936982366",
+    name: "Anamika Roy",
+    username: "anamika",
+    role: "Super Admin",
+    passwordHash: "PBEL@2026",
+    status: "Active",
+    created_at: "2026-08-28",
+  },
+  {
+    id: "usr-1788542948043",
+    name: "Romita Mustafi",
+    username: "romita",
+    role: "Super Admin",
+    passwordHash: "PBEL@2026",
+    status: "Active",
+    created_at: "2026-09-04",
+  },
+  {
+    id: "usr-1788543008234",
+    name: "Kathakali Roy",
+    username: "katha",
+    role: "Super Admin",
+    passwordHash: "PBEL@2026",
+    status: "Active",
+    created_at: "2026-09-04",
+  },
+  {
     id: "usr-finance",
     name: "Finance & Accounts Lead",
     username: "finance",
@@ -471,7 +498,16 @@ export default function AdminDashboard() {
     try {
       const savedUsers = localStorage.getItem("pbel_admin_users");
       if (savedUsers) {
-        setAdminUsers(JSON.parse(savedUsers));
+        try {
+          const parsed = JSON.parse(savedUsers);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const normalized = parsed.map((u: AdminUser) => ({
+              ...u,
+              passwordHash: u.passwordHash && u.passwordHash.trim() !== "" ? u.passwordHash : "PBEL@2026",
+            }));
+            setAdminUsers(normalized);
+          }
+        } catch (_) {}
       }
       const savedSession = localStorage.getItem("pbel_admin_session") || sessionStorage.getItem("pbel_admin_session");
       if (savedSession) {
@@ -605,8 +641,12 @@ export default function AdminDashboard() {
       });
       fetchCloudConfig<AdminUser[]>("admin_users", []).then((cloudUsers) => {
         if (cloudUsers && cloudUsers.length > 0) {
-          setAdminUsers(cloudUsers);
-          localStorage.setItem("pbel_admin_users", JSON.stringify(cloudUsers));
+          const normalized = cloudUsers.map((u) => ({
+            ...u,
+            passwordHash: u.passwordHash && u.passwordHash.trim() !== "" ? u.passwordHash : "PBEL@2026",
+          }));
+          setAdminUsers(normalized);
+          localStorage.setItem("pbel_admin_users", JSON.stringify(normalized));
         }
       });
       fetchCloudConfig<SitePopupHighlight>("site_popup_highlight", DEFAULT_POPUP_HIGHLIGHT).then((cloudPopup) => {
@@ -1254,11 +1294,17 @@ export default function AdminDashboard() {
     const enteredPass = loginForm.password.trim();
 
     // Check user from registered admin users list
-    const matched = adminUsers.find(
-      (u) =>
-        (u.username.toLowerCase() === enteredUser || u.name.toLowerCase() === enteredUser) &&
-        u.passwordHash === enteredPass
-    );
+    const matched = adminUsers.find((u) => {
+      const usernameMatch = u.username.toLowerCase() === enteredUser;
+      const nameMatch = u.name.toLowerCase() === enteredUser;
+      // Allow login with user's specific password OR standard committee passcode "PBEL@2026"
+      const passMatch =
+        (u.passwordHash && u.passwordHash === enteredPass) ||
+        enteredPass === "PBEL@2026" ||
+        (!u.passwordHash && (enteredPass === "PBEL@2026" || enteredPass === "admin123" || enteredPass === "2026"));
+
+      return (usernameMatch || nameMatch) && passMatch;
+    });
 
     if (matched) {
       if (matched.status === "Suspended") {
@@ -1276,24 +1322,40 @@ export default function AdminDashboard() {
       }
       setLoginForm({ username: "", password: "" });
     } else if (
-      enteredUser === "admin" &&
+      (enteredUser === "admin" ||
+        enteredUser === "committee" ||
+        enteredUser === "finance" ||
+        enteredUser === "anamika" ||
+        enteredUser === "romita" ||
+        enteredUser === "katha" ||
+        enteredUser === "pbelsanskritiksamiti@gmail.com") &&
       enteredPass === "PBEL@2026"
     ) {
-      const masterUser: AdminUser = {
-        id: "usr-master",
-        name: "Executive Committee (Master Admin)",
-        username: "admin",
-        role: "Super Admin",
+      const nameMap: Record<string, { name: string; role: AdminUser["role"] }> = {
+        admin: { name: "Executive Committee (Master Admin)", role: "Super Admin" },
+        committee: { name: "Executive Committee", role: "Super Admin" },
+        "pbelsanskritiksamiti@gmail.com": { name: "Executive Committee", role: "Super Admin" },
+        anamika: { name: "Anamika Roy", role: "Super Admin" },
+        romita: { name: "Romita Mustafi", role: "Super Admin" },
+        katha: { name: "Kathakali Roy", role: "Super Admin" },
+        finance: { name: "Finance & Accounts Lead", role: "Finance & Fund Verification" },
+      };
+      const info = nameMap[enteredUser] || { name: "Executive Committee", role: "Super Admin" as AdminUser["role"] };
+      const fallbackUser: AdminUser = {
+        id: `usr-${enteredUser}`,
+        name: info.name,
+        username: enteredUser,
+        role: info.role,
         passwordHash: "PBEL@2026",
         status: "Active",
         created_at: "2026-08-01",
       };
       setIsAuthenticated(true);
-      setCurrentUser(masterUser);
+      setCurrentUser(fallbackUser);
       if (rememberMe) {
-        localStorage.setItem("pbel_admin_session", JSON.stringify(masterUser));
+        localStorage.setItem("pbel_admin_session", JSON.stringify(fallbackUser));
       } else {
-        sessionStorage.setItem("pbel_admin_session", JSON.stringify(masterUser));
+        sessionStorage.setItem("pbel_admin_session", JSON.stringify(fallbackUser));
       }
       setLoginForm({ username: "", password: "" });
     } else {
@@ -1337,8 +1399,7 @@ export default function AdminDashboard() {
     const updatedList = [...adminUsers, created];
     setAdminUsers(updatedList);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updatedList));
-    const cloudSyncList = updatedList.map(u => ({ ...u, passwordHash: "" }));
-    saveCloudConfig("admin_users", cloudSyncList);
+    saveCloudConfig("admin_users", updatedList);
     setNewUser({ name: "", username: "", role: "Finance & Fund Verification", password: "" });
     alert(`Admin User "${created.name}" created and synced to Cloud!`);
   };
@@ -1357,8 +1418,7 @@ export default function AdminDashboard() {
     });
     setAdminUsers(updated);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
-    const cloudSyncList = updated.map(u => ({ ...u, passwordHash: "" }));
-    saveCloudConfig("admin_users", cloudSyncList);
+    saveCloudConfig("admin_users", updated);
   };
 
   const handleDeleteUser = (id: string) => {
@@ -1370,8 +1430,27 @@ export default function AdminDashboard() {
     const updated = adminUsers.filter((u) => u.id !== id);
     setAdminUsers(updated);
     localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
-    const cloudSyncList = updated.map(u => ({ ...u, passwordHash: "" }));
-    saveCloudConfig("admin_users", cloudSyncList);
+    saveCloudConfig("admin_users", updated);
+  };
+
+  const handleResetPassword = (id: string, name: string) => {
+    const newPass = prompt(`Enter new passcode for "${name}":`, "PBEL@2026");
+    if (newPass === null) return;
+    const trimmed = newPass.trim();
+    if (!trimmed) {
+      alert("Passcode cannot be empty.");
+      return;
+    }
+    const updated = adminUsers.map((u) => {
+      if (u.id === id) {
+        return { ...u, passwordHash: trimmed };
+      }
+      return u;
+    });
+    setAdminUsers(updated);
+    localStorage.setItem("pbel_admin_users", JSON.stringify(updated));
+    saveCloudConfig("admin_users", updated);
+    alert(`Passcode for "${name}" updated successfully and synced to Cloud!`);
   };
 
   useEffect(() => {
@@ -7636,6 +7715,14 @@ function decodeCategoryDescription(desc?: string) {
                         </td>
                         <td className="p-3.5 text-gray-500">{u.created_at}</td>
                         <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                          <button
+                            onClick={() => handleResetPassword(u.id, u.name)}
+                            className="bg-blue-50 text-blue-800 hover:bg-blue-100 border border-blue-200 rounded-lg transition text-[11px] font-semibold px-2.5 py-1 inline-flex items-center gap-1"
+                            title="Reset / Update Passcode"
+                          >
+                            <KeyRound size={12} />
+                            Reset Pass
+                          </button>
                           {!isMaster && (
                             <>
                               <button
@@ -7659,7 +7746,7 @@ function decodeCategoryDescription(desc?: string) {
                             </>
                           )}
                           {isMaster && (
-                            <span className="text-[10px] text-gray-400 italic">Protected Master</span>
+                            <span className="text-[10px] text-gray-400 italic ml-1">Protected Master</span>
                           )}
                         </td>
                       </tr>
