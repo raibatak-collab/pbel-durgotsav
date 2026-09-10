@@ -7,6 +7,9 @@ export async function POST(request: Request) {
     const { amount, customerName, email, mobileNo, paymentId, isUAT } = body;
 
     const merchantId = isUAT ? '100000000007164' : ICICI_CONFIG.merchantId;
+    const protocol = request.headers.get('x-forwarded-proto') || 'https';
+    const host = request.headers.get('host') || 'www.pbelcitydurgotsav.com';
+    const dynamicReturnUrl = `${protocol}://${host}/api/payment/icici/callback`;
     const aggregatorID = isUAT ? 'A100000000007164' : ICICI_CONFIG.aggregatorID;
     
     // Clean payment ID to be strictly alphanumeric
@@ -22,7 +25,7 @@ export async function POST(request: Request) {
       customerEmailID: email || "guest@icicibank.com",
       customerName: customerName || "Guest Devotee",
       transactionType: "SALE",
-      returnURL: ICICI_CONFIG.returnUrl,
+      returnURL: dynamicReturnUrl,
       txnDate: new Date().toISOString().split('T')[0].replace(/-/g, '') + '235959', // Must end in 235959 as per ICICI docs
       customerMobileNo: mobileNo || "9999999999"
     };
