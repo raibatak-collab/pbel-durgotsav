@@ -20,8 +20,11 @@ export async function POST(request: Request) {
     if (!isValid) return NextResponse.redirect(new URL('/contribute?error=tampered_payment', request.url), 303);
     const { responseCode, merchantTxnNo } = payload;
     if (responseCode === '0000' || responseCode === '000') {
-      await supabaseAdmin.from('contributions').update({ status: 'Approved' }).eq('payment_id', merchantTxnNo);
-      return NextResponse.redirect(new URL(`/receipt?pid=${merchantTxnNo}`, request.url), 303);
+      await supabaseAdmin.from('contributions').update({ 
+        status: 'Approved',
+        pg_bank_ref_no: payload['txnID'] || null
+      }).eq('payment_id', merchantTxnNo);
+      return NextResponse.redirect(new URL(`/receipt?id=${merchantTxnNo}`, request.url), 303);
     } else {
       await supabaseAdmin.from('contributions').update({ status: 'Rejected' }).eq('payment_id', merchantTxnNo);
       return NextResponse.redirect(new URL('/contribute?error=payment_failed', request.url), 303);
