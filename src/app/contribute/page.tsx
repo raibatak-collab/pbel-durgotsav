@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { 
@@ -52,7 +52,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "15 Oct 2026",
     amount: 2501,
     category: "rituals",
-    icon: "🥁",
+    icon: "ðŸ¥",
     description: "Welcome Maa Durga with the vibrant beats of traditional Dhaak and opening music.",
     badge: "Opening Day",
     maxLimit: 5,
@@ -64,7 +64,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "15 Oct 2026",
     amount: 1501,
     category: "bhog",
-    icon: "🍲",
+    icon: "ðŸ²",
     description: "Sponsor community prasad distribution during the grand Anandamela food festival.",
     maxLimit: 10,
   },
@@ -77,7 +77,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "16 Oct 2026",
     amount: 2100,
     category: "rituals",
-    icon: "🌿",
+    icon: "ðŸŒ¿",
     description: "Awakening of the Goddess under the sacred Bel tree with sacred Vedic chants.",
     badge: "Pratima Bodhon",
     maxLimit: 5,
@@ -89,7 +89,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "16 Oct 2026",
     amount: 1501,
     category: "rituals",
-    icon: "🪔",
+    icon: "ðŸª”",
     description: "Sacred invitation rituals with 28 holy mangal items, sandalwood & brass deepam.",
     maxLimit: 8,
   },
@@ -102,7 +102,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "17 Oct 2026",
     amount: 2501,
     category: "rituals",
-    icon: "🌾",
+    icon: "ðŸŒ¾",
     description: "Bathing of Nabapatrika with holy waters from 8 sacred rivers and forest essences.",
     badge: "Sacred Ritual",
     maxLimit: 5,
@@ -114,7 +114,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "17 Oct 2026",
     amount: 2501,
     category: "bhog",
-    icon: "🍚",
+    icon: "ðŸš",
     description: "Sponsor piping hot Gobindobhog rice, labra, chutney, and payesh for the pandal.",
     badge: "Community Bhog",
     maxLimit: 10,
@@ -126,7 +126,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "17 Oct 2026",
     amount: 1501,
     category: "sweets",
-    icon: "🍬",
+    icon: "ðŸ¬",
     description: "Evening prasad boxes for Pratibimb cultural stage attendees.",
     maxLimit: 15,
   },
@@ -139,7 +139,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "18 Oct 2026",
     amount: 3100,
     category: "flowers",
-    icon: "🪷",
+    icon: "ðŸª·",
     description: "108 pristine red lotuses offered at the feet of Devi Durga during Sandhi Pujo.",
     badge: "Most Auspicious",
     maxLimit: 5,
@@ -151,7 +151,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "18 Oct 2026",
     amount: 2501,
     category: "rituals",
-    icon: "🪔",
+    icon: "ðŸª”",
     description: "108 sacred oil lamps lit during the divine conjunction of Ashtami and Navami.",
     badge: "Sandhi Pujo",
     maxLimit: 5,
@@ -163,7 +163,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "18 Oct 2026",
     amount: 2100,
     category: "rituals",
-    icon: "👧",
+    icon: "ðŸ‘§",
     description: "Sponsorship of gifts, new clothes, and prasad for the revered young girls.",
     maxLimit: 5,
   },
@@ -174,7 +174,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "18 Oct 2026",
     amount: 3501,
     category: "bhog",
-    icon: "👑",
+    icon: "ðŸ‘‘",
     description: "Grand royal feast: Polao, Chhanar Dalna, Beguni, Chanar Payesh & Rosogolla.",
     badge: "Grand Feast",
     maxLimit: 10,
@@ -188,7 +188,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "19 Oct 2026",
     amount: 2501,
     category: "rituals",
-    icon: "🔥",
+    icon: "ðŸ”¥",
     description: "Sacred sacrificial fire with pure cow ghee, 108 wood twigs, and bilva leaves.",
     badge: "Maha Yajna",
     maxLimit: 5,
@@ -200,7 +200,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "19 Oct 2026",
     amount: 1501,
     category: "rituals",
-    icon: "🥥",
+    icon: "ðŸ¥¥",
     description: "Coconut husk, camphor, frankincense (dhuna) and honorarium for traditional Dhaakis.",
     maxLimit: 10,
   },
@@ -211,7 +211,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "19 Oct 2026",
     amount: 2501,
     category: "bhog",
-    icon: "🍛",
+    icon: "ðŸ›",
     description: "Festive community lunch for PBEL residents, guests, and visiting devotees.",
     maxLimit: 10,
   },
@@ -224,7 +224,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "20 Oct 2026",
     amount: 1501,
     category: "rituals",
-    icon: "🔴",
+    icon: "ðŸ”´",
     description: "Traditional vermilion, betel leaves, sweets & decorative plates for Baran.",
     badge: "Bijoya Tradition",
     maxLimit: 15,
@@ -236,7 +236,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "20 Oct 2026",
     amount: 2100,
     category: "sweets",
-    icon: "🥮",
+    icon: "ðŸ¥®",
     description: "Sandesh and Laddu boxes shared with all families after Maa's holy immersion.",
     badge: "Bijoya Milan",
     maxLimit: 10,
@@ -248,7 +248,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "20 Oct 2026",
     amount: 5001,
     category: "rituals",
-    icon: "🌊",
+    icon: "ðŸŒŠ",
     description: "Royal procession logistics, flowers, safe transport & eco-friendly immersion seva.",
     badge: "Grand Immersion",
     maxLimit: 5,
@@ -262,7 +262,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "15 - 20 Oct 2026",
     amount: 11000,
     category: "grand",
-    icon: "🥈",
+    icon: "ðŸ¥ˆ",
     description: "Includes special family sankalp during Sandhi Pujo, VIP front seating, & Wall honor.",
     badge: "Grand Patron",
     maxLimit: 3,
@@ -274,7 +274,7 @@ const defaultSevaCatalog: SevaItem[] = [
     date: "15 - 20 Oct 2026",
     amount: 25000,
     category: "grand",
-    icon: "👑",
+    icon: "ðŸ‘‘",
     description: "Principal sankalp for daily puja, prime stage acknowledgment & special Bhog delivery.",
     badge: "Maha Yajman",
     maxLimit: 3,
@@ -312,7 +312,7 @@ export default function ContributePage() {
   });
   const [modalFormError, setModalFormError] = useState<string | null>(null);
 
-  // State for General / Open-ended Donation Form (starts empty so non-tech savvy users are not forced into ₹1001)
+  // State for General / Open-ended Donation Form (starts empty so non-tech savvy users are not forced into â‚¹1001)
   const [customAmount, setCustomAmount] = useState<number | "">("");
   const [customPurpose, setCustomPurpose] = useState<string>("General Pujo Fund");
   const [customFormData, setCustomFormData] = useState({
@@ -331,6 +331,13 @@ export default function ContributePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
+  const [isUatTest, setIsUatTest] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsUatTest(window.location.search.includes('test_pg=icici'));
+    }
+  }, []);
   const [branding, setBranding] = useState<SamitiBrandingConfig>(getStoredBranding());
 
 // Category metadata decoder
@@ -578,6 +585,43 @@ function decodeCategoryDescription(desc?: string) {
       tn: note,
       appScheme: appScheme || "generic",
     });
+  };
+
+  const handleIciciCheckout = async (e: React.FormEvent, amount: number, isGeneral: boolean) => {
+    e.preventDefault();
+    try {
+      setIsSubmitting(true);
+      const generatedPaymentId = `WEB_${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+      const formData = isGeneral ? customFormData : modalFormData;
+      
+      const payload = {
+        amount,
+        customerName: formData.name.trim(),
+        email: formData.email.trim(),
+        mobileNo: formData.phone.trim(),
+        paymentId: generatedPaymentId,
+        isUAT: true
+      };
+
+      const res = await fetch('/api/payment/icici/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      
+      if (data.success && data.redirectURI) {
+        // Redirect to ICICI
+        window.location.href = `${data.redirectURI}?tranCtx=${data.tranCtx}`;
+      } else {
+        alert("ICICI Initiate Failed: " + (data.error || "Unknown error"));
+        setIsSubmitting(false);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error initiating ICICI payment");
+      setIsSubmitting(false);
+    }
   };
 
   // Handle Direct Card Fixed-Seva Payment
@@ -927,7 +971,7 @@ function decodeCategoryDescription(desc?: string) {
             <form onSubmit={handleCustomDonate} className="space-y-6">
               {customFormError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2">
-                  <span>⚠️</span>
+                  <span>âš ï¸</span>
                   <span>{customFormError}</span>
                 </div>
               )}
@@ -936,7 +980,7 @@ function decodeCategoryDescription(desc?: string) {
               <div className="bg-amber-50/50 p-4 sm:p-6 rounded-2xl border border-amber-200/80">
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-xs font-bold text-gray-800 uppercase tracking-wider">
-                    Contribution Amount (₹ INR) *
+                    Contribution Amount (â‚¹ INR) *
                   </label>
                   <span className="text-[11px] text-amber-900 font-bold">
                     {customPurpose}
@@ -955,13 +999,13 @@ function decodeCategoryDescription(desc?: string) {
                           : "bg-gray-50 border-gray-200 text-gray-700 hover:bg-amber-50 hover:border-amber-300"
                       }`}
                     >
-                      ₹{amt.toLocaleString("en-IN")}
+                      â‚¹{amt.toLocaleString("en-IN")}
                     </button>
                   ))}
                 </div>
 
                 <div className="relative">
-                  <span className="absolute left-4 top-3.5 text-gray-500 font-bold text-base">₹</span>
+                  <span className="absolute left-4 top-3.5 text-gray-500 font-bold text-base">â‚¹</span>
                   <input
                     type="number"
                     min="1"
@@ -984,7 +1028,7 @@ function decodeCategoryDescription(desc?: string) {
                     </div>
 
                     <p className="text-base font-bold text-gray-900 leading-snug">
-                      Offering Amount: <span className="text-primary font-mono text-xl">₹{Number(customAmount).toLocaleString("en-IN")}</span>
+                      Offering Amount: <span className="text-primary font-mono text-xl">â‚¹{Number(customAmount).toLocaleString("en-IN")}</span>
                     </p>
 
                     <div className="space-y-2">
@@ -995,24 +1039,24 @@ function decodeCategoryDescription(desc?: string) {
                           className="bg-primary hover:bg-primary-hover text-white text-xs sm:text-sm font-bold px-5 py-3 rounded-2xl transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 active:scale-98 golden-glow"
                         >
                           {copiedUpi ? <Check size={16} className="text-white" /> : <Copy size={16} />}
-                          <span>{copiedUpi ? "✓ UPI ID Copied to Clipboard!" : "📋 1-Tap Copy UPI ID"}</span>
+                          <span>{copiedUpi ? "âœ“ UPI ID Copied to Clipboard!" : "ðŸ“‹ 1-Tap Copy UPI ID"}</span>
                         </button>
                       </div>
 
                       <div className="bg-white/80 border border-amber-200/80 rounded-xl p-2.5 text-left text-[11px] text-gray-700 space-y-1">
-                        <span className="font-bold text-gray-900 block">📱 How to Pay via Google Pay / PhonePe / Paytm:</span>
+                        <span className="font-bold text-gray-900 block">ðŸ“± How to Pay via Google Pay / PhonePe / Paytm:</span>
                         <ol className="list-decimal list-inside space-y-0.5 text-gray-600">
                           <li>Tap <strong className="text-amber-900">"1-Tap Copy UPI ID"</strong> above</li>
-                          <li>Open <strong>GPay / PhonePe / Paytm</strong> ➔ Tap <strong>"Pay UPI ID / To UPI ID"</strong></li>
-                          <li>Paste <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> &amp; Pay ₹{Number(customAmount).toLocaleString("en-IN")}</li>
+                          <li>Open <strong>GPay / PhonePe / Paytm</strong> âž” Tap <strong>"Pay UPI ID / To UPI ID"</strong></li>
+                          <li>Paste <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong> &amp; Pay â‚¹{Number(customAmount).toLocaleString("en-IN")}</li>
                         </ol>
                       </div>
 
                       {Number(customAmount) > 2000 && (
                         <div className="bg-amber-100/90 border border-amber-300 p-3 rounded-2xl text-[11.5px] text-amber-950 flex items-start gap-2 shadow-2xs">
-                          <span className="text-base shrink-0">💡</span>
+                          <span className="text-base shrink-0">ðŸ’¡</span>
                           <div className="leading-snug">
-                            <strong>Note for Google Pay (&gt; ₹2,000):</strong> Google Pay restricts remote gallery photo uploads to ₹2,000. For your contribution of <strong className="text-primary font-bold">₹{Number(customAmount).toLocaleString("en-IN")}</strong>, please use <strong className="text-amber-900">"📋 1-Tap Copy UPI ID"</strong> and pay via <em>"Pay to UPI ID"</em> in GPay for instant approval without limits, or scan this QR directly with another device.
+                            <strong>Note for Google Pay (&gt; â‚¹2,000):</strong> Google Pay restricts remote gallery photo uploads to â‚¹2,000. For your contribution of <strong className="text-primary font-bold">â‚¹{Number(customAmount).toLocaleString("en-IN")}</strong>, please use <strong className="text-amber-900">"ðŸ“‹ 1-Tap Copy UPI ID"</strong> and pay via <em>"Pay to UPI ID"</em> in GPay for instant approval without limits, or scan this QR directly with another device.
                           </div>
                         </div>
                       )}
@@ -1035,7 +1079,7 @@ function decodeCategoryDescription(desc?: string) {
                       className="mt-2 text-[10px] font-bold text-amber-950 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-lg transition flex items-center justify-center gap-1 w-full shadow-2xs"
                     >
                       <Download size={12} />
-                      <span>{Number(customAmount) > 2000 ? "Save QR (PhonePe / Paytm / <₹2k)" : "Save QR to Gallery / Photos"}</span>
+                      <span>{Number(customAmount) > 2000 ? "Save QR (PhonePe / Paytm / <â‚¹2k)" : "Save QR to Gallery / Photos"}</span>
                     </button>
                   </div>
                 </div>
@@ -1142,7 +1186,7 @@ function decodeCategoryDescription(desc?: string) {
                     className="w-4 h-4 text-green-700 rounded border-gray-300 focus:ring-green-600 cursor-pointer"
                   />
                   <label htmlFor="custom-whatsapp-alerts" className="font-semibold cursor-pointer select-none">
-                    📲 Receive official Pujo WhatsApp schedule, aarti timings &amp; broadcast updates
+                    ðŸ“² Receive official Pujo WhatsApp schedule, aarti timings &amp; broadcast updates
                   </label>
                 </div>
 
@@ -1177,7 +1221,7 @@ function decodeCategoryDescription(desc?: string) {
                   <span>
                     {isSubmitting
                       ? "Recording Offering..."
-                      : `Confirm & Record ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Offering`}
+                      : `Confirm & Record â‚¹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Offering`}
                   </span>
                 </button>
                 <p className="text-[11px] text-gray-400 text-center mt-2.5 flex items-center justify-center gap-1">
@@ -1215,14 +1259,14 @@ function decodeCategoryDescription(desc?: string) {
 
             <div className="flex flex-wrap items-center justify-center sm:justify-start gap-1.5 sm:gap-2">
               {[
-                { id: "all", label: "🌟 All Days" },
-                { id: "panchami", label: "15 Oct • Panchami" },
-                { id: "shashthi", label: "16 Oct • Maha Sashti" },
-                { id: "saptami", label: "17 Oct • Maha Saptami" },
-                { id: "ashtami", label: "18 Oct • Maha Ashtami" },
-                { id: "nabami", label: "19 Oct • Maha Nabami" },
-                { id: "dashami", label: "20 Oct • Bijoya Dashami" },
-                { id: "grand", label: "👑 All 6 Days (Grand Patrons)" },
+                { id: "all", label: "ðŸŒŸ All Days" },
+                { id: "panchami", label: "15 Oct â€¢ Panchami" },
+                { id: "shashthi", label: "16 Oct â€¢ Maha Sashti" },
+                { id: "saptami", label: "17 Oct â€¢ Maha Saptami" },
+                { id: "ashtami", label: "18 Oct â€¢ Maha Ashtami" },
+                { id: "nabami", label: "19 Oct â€¢ Maha Nabami" },
+                { id: "dashami", label: "20 Oct â€¢ Bijoya Dashami" },
+                { id: "grand", label: "ðŸ‘‘ All 6 Days (Grand Patrons)" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1244,11 +1288,11 @@ function decodeCategoryDescription(desc?: string) {
           <div className="flex flex-wrap items-center justify-center gap-2">
             {[
               { id: "all", label: "All Seva Categories" },
-              { id: "flowers", label: "🌺 Flowers & Mala" },
-              { id: "bhog", label: "🍚 Maha Bhog" },
-              { id: "sweets", label: "🍬 Sweets & Prasad" },
-              { id: "rituals", label: "🪔 Sandhi Pujo & Havan" },
-              { id: "grand", label: "👑 Grand Patrons" },
+              { id: "flowers", label: "ðŸŒº Flowers & Mala" },
+              { id: "bhog", label: "ðŸš Maha Bhog" },
+              { id: "sweets", label: "ðŸ¬ Sweets & Prasad" },
+              { id: "rituals", label: "ðŸª” Sandhi Pujo & Havan" },
+              { id: "grand", label: "ðŸ‘‘ Grand Patrons" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -1285,7 +1329,7 @@ function decodeCategoryDescription(desc?: string) {
                   <div className="absolute top-4 right-4 flex flex-col items-end gap-1">
                     {isSoldOut ? (
                       <span className="text-[10px] font-bold bg-red-100 text-red-800 border border-red-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
-                        🔒 Seva Full / Booked
+                        ðŸ”’ Seva Full / Booked
                       </span>
                     ) : item.badge ? (
                       <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full uppercase">
@@ -1317,7 +1361,7 @@ function decodeCategoryDescription(desc?: string) {
                         <Lock size={12} className="text-amber-600" /> Fixed Amount
                       </span>
                       <span className={`text-2xl font-bold font-mono ${isSoldOut ? "text-gray-500" : "text-primary"}`}>
-                        ₹{item.amount.toLocaleString("en-IN")}
+                        â‚¹{item.amount.toLocaleString("en-IN")}
                       </span>
                     </div>
 
@@ -1351,7 +1395,7 @@ function decodeCategoryDescription(desc?: string) {
                         className="w-full bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 py-3 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-1.5"
                       >
                         <HeartHandshake size={14} className="text-primary" />
-                        <span>Seva Full • Offer ₹{item.amount.toLocaleString("en-IN")} to General Fund →</span>
+                        <span>Seva Full â€¢ Offer â‚¹{item.amount.toLocaleString("en-IN")} to General Fund â†’</span>
                       </button>
                     ) : (
                       <button
@@ -1360,7 +1404,7 @@ function decodeCategoryDescription(desc?: string) {
                         className="w-full bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 rounded-2xl font-bold text-xs transition shadow-md golden-glow flex items-center justify-center gap-2"
                       >
                         <QrCode size={16} />
-                        <span>Sponsor Seva • Pay ₹{item.amount.toLocaleString("en-IN")} (UPI / QR)</span>
+                        <span>Sponsor Seva â€¢ Pay â‚¹{item.amount.toLocaleString("en-IN")} (UPI / QR)</span>
                       </button>
                     )}
 
@@ -1372,7 +1416,7 @@ function decodeCategoryDescription(desc?: string) {
 
           {filteredSevas.length === 0 && (
             <div className="text-center py-12 bg-white rounded-3xl border border-gray-100 p-8 shadow-xs">
-              <span className="text-3xl mb-2 block">🌺</span>
+              <span className="text-3xl mb-2 block">ðŸŒº</span>
               <p className="text-gray-700 font-bold text-sm">No seva offerings found for this filter.</p>
               <p className="text-gray-500 text-xs mt-1">Please select another day or view all offerings.</p>
               <button
@@ -1424,7 +1468,7 @@ function decodeCategoryDescription(desc?: string) {
                   <Lock size={13} className="text-amber-700" /> Locked Seva Amount
                 </span>
                 <span className="text-2xl font-bold text-primary font-mono">
-                  ₹{modalSeva.amount.toLocaleString("en-IN")}
+                  â‚¹{modalSeva.amount.toLocaleString("en-IN")}
                 </span>
               </div>
             </div>
@@ -1441,7 +1485,7 @@ function decodeCategoryDescription(desc?: string) {
                   alt="PBEL Sanskritik Samiti UPI QR"
                   className="w-32 h-32 sm:w-36 sm:h-36 mx-auto rounded-lg"
                 />
-                <span className="text-[11px] text-gray-800 font-bold block mt-1">Scan with Any UPI App • ₹{modalSeva.amount.toLocaleString("en-IN")}</span>
+                <span className="text-[11px] text-gray-800 font-bold block mt-1">Scan with Any UPI App â€¢ â‚¹{modalSeva.amount.toLocaleString("en-IN")}</span>
                 <button
                   type="button"
                   onClick={() => saveQrCodeToGallery(generateUpiString(modalSeva.amount, `${modalSeva.day} - ${modalSeva.title}`), modalSeva.amount, modalSeva.title)}
@@ -1460,21 +1504,21 @@ function decodeCategoryDescription(desc?: string) {
                     className="w-full sm:w-auto bg-primary hover:bg-primary-hover text-white text-xs font-bold px-6 py-2.5 rounded-xl transition flex items-center justify-center gap-1.5 shadow-sm"
                   >
                     {copiedUpi ? <Check size={14} className="text-white" /> : <Copy size={14} />}
-                    <span>{copiedUpi ? "✓ UPI ID Copied!" : "📋 1-Tap Copy UPI ID"}</span>
+                    <span>{copiedUpi ? "âœ“ UPI ID Copied!" : "ðŸ“‹ 1-Tap Copy UPI ID"}</span>
                   </button>
                 </div>
 
                 <div className="bg-white/80 border border-amber-200/80 rounded-xl p-2 text-left text-[10px] text-gray-600 space-y-0.5">
-                  <span className="font-bold text-gray-900 block">📱 To pay via Google Pay / PhonePe / Paytm:</span>
-                  <span>1. Tap <strong>"1-Tap Copy UPI ID"</strong> ➔ 2. Open GPay/PhonePe ➔ 3. Select <strong>"Pay UPI ID"</strong> &amp; paste <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong></span>
+                  <span className="font-bold text-gray-900 block">ðŸ“± To pay via Google Pay / PhonePe / Paytm:</span>
+                  <span>1. Tap <strong>"1-Tap Copy UPI ID"</strong> âž” 2. Open GPay/PhonePe âž” 3. Select <strong>"Pay UPI ID"</strong> &amp; paste <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong></span>
                 </div>
 
                 {/* Adaptive Pro-Tip for Google Pay / UPI amounts above Rs 2,000 */}
                 {Number(modalSeva.amount) > 2000 && (
                   <div className="bg-amber-100/90 border border-amber-300 p-2.5 rounded-xl text-[11px] text-amber-950 text-left flex items-start gap-1.5 shadow-2xs">
-                    <span className="text-sm shrink-0">💡</span>
+                    <span className="text-sm shrink-0">ðŸ’¡</span>
                     <div className="leading-tight">
-                      <strong>Google Pay Note (&gt; ₹2,000):</strong> GPay limits gallery photo uploads to ₹2,000. For ₹{Number(modalSeva.amount).toLocaleString("en-IN")}, please use <strong>"📋 1-Tap Copy UPI ID"</strong> and pay via <em>"Pay to UPI ID"</em> in GPay for instant approval without limits.
+                      <strong>Google Pay Note (&gt; â‚¹2,000):</strong> GPay limits gallery photo uploads to â‚¹2,000. For â‚¹{Number(modalSeva.amount).toLocaleString("en-IN")}, please use <strong>"ðŸ“‹ 1-Tap Copy UPI ID"</strong> and pay via <em>"Pay to UPI ID"</em> in GPay for instant approval without limits.
                     </div>
                   </div>
                 )}
@@ -1485,7 +1529,7 @@ function decodeCategoryDescription(desc?: string) {
             <form onSubmit={handleModalCheckout} className="space-y-4 text-xs sm:text-sm">
               {modalFormError && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2.5 rounded-2xl text-xs font-medium flex items-center gap-2">
-                  <span>⚠️</span>
+                  <span>âš ï¸</span>
                   <span>{modalFormError}</span>
                 </div>
               )}
@@ -1592,7 +1636,7 @@ function decodeCategoryDescription(desc?: string) {
                   className="w-4 h-4 text-green-700 rounded border-gray-300 focus:ring-green-600 cursor-pointer"
                 />
                 <label htmlFor="modal-whatsapp-alerts" className="font-semibold cursor-pointer select-none">
-                  📲 Receive official Pujo WhatsApp schedule &amp; broadcast updates
+                  ðŸ“² Receive official Pujo WhatsApp schedule &amp; broadcast updates
                 </label>
               </div>
 
@@ -1611,7 +1655,17 @@ function decodeCategoryDescription(desc?: string) {
                 </label>
               </div>
 
-              <div className="pt-3">
+              <div className="pt-3 space-y-2">
+                {isUatTest && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleIciciCheckout(e, Number(modalSeva.amount), false)}
+                    disabled={isSubmitting}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+                  >
+                    <span>🧪 TEST: Pay via ICICI (UAT)</span>
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={isSubmitting}
@@ -1621,7 +1675,7 @@ function decodeCategoryDescription(desc?: string) {
                   <span>
                     {isSubmitting
                       ? "Recording Offering..."
-                      : `I Have Paid ₹${modalSeva.amount.toLocaleString("en-IN")} • Confirm & Get Receipt`}
+                      : `I Have Paid â‚¹${modalSeva.amount.toLocaleString("en-IN")} â€¢ Confirm & Get Receipt`}
                   </span>
                 </button>
               </div>
@@ -1634,3 +1688,7 @@ function decodeCategoryDescription(desc?: string) {
     </div>
   );
 }
+
+
+
+
