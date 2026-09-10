@@ -1655,7 +1655,17 @@ function decodeCategoryDescription(desc?: string) {
                 </label>
               </div>
 
-              <div className="pt-3">
+              <div className="pt-3 space-y-2" >
+                {isUatTest && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleIciciCheckout(e, Number(modalSeva.amount), false)}
+                    disabled={isSubmitting}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition flex items-center justify-center gap-2 text-sm"
+                  >
+                    <span>🧪 TEST: Pay via ICICI (UAT)</span>
+                  </button>
+                )}
                 <button
                   type="submit"
                   disabled={isSubmitting}
