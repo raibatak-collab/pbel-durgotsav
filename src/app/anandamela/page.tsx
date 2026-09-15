@@ -5,24 +5,24 @@ import Link from "next/link";
 import {
   Utensils,
   Sparkles,
-  ShoppingBag,
-  PlusCircle,
   Search,
-  Filter,
-  Phone,
   CheckCircle2,
   Clock,
-  MapPin,
-  ChevronRight,
   X,
   Send,
   ChefHat,
   Flame,
-  Award
+  QrCode,
+  Copy,
+  Check,
+  Info,
+  ShieldCheck,
+  AlertCircle
 } from "lucide-react";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
-import { sanitizeText, validatePhoneNumber } from "@/utils/security";
+import { sanitizeText, validatePhoneNumber, buildUpiPayUri, OFFICIAL_BANK_UPI } from "@/utils/security";
 import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
+import SevaDonationNudgeModal from "@/components/SevaDonationNudgeModal";
 
 export interface FoodDish {
   name: string;
@@ -44,8 +44,16 @@ export interface FoodStall {
   dishes: FoodDish[];
   emoji: string;
   status: "Approved" | "Pending";
+  tablesCount?: number; // 1 or 2
+  totalAmount?: number; // 1000 or 2000
+  paymentRef?: string; // UPI UTR or Reference Number
+  paymentStatus?: "Pending Verification" | "Payment Verified";
+  createdAt?: string;
 }
 
+const MAX_STALLS = 15;
+const PRICE_PER_TABLE = 1000;
+const SOCIETY_UPI_ID = OFFICIAL_BANK_UPI.pa;
 const INITIAL_STALLS: FoodStall[] = [];
 
 export default function AnandamelaPage() {
@@ -55,6 +63,7 @@ export default function AnandamelaPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dietaryFilter, setDietaryFilter] = useState<"all" | "veg" | "non-veg">("all");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [copiedUpi, setCopiedUpi] = useState(false);
 
   // Form State for Stall Registration
   const [regForm, setRegForm] = useState({
@@ -65,6 +74,8 @@ export default function AnandamelaPage() {
     phone: "",
     category: "Rolls & Mughlai" as FoodStall["category"],
     description: "",
+    tablesCount: 1 as 1 | 2,
+    paymentRef: "",
     dish1Name: "",
     dish1Price: "",
     dish1Veg: false,
@@ -72,7 +83,10 @@ export default function AnandamelaPage() {
     dish2Price: "",
     dish2Veg: true,
   });
-  const [regSuccess, setRegSuccess] = useState(false);
+
+  // Seva Nudge Modal State
+  const [nudgeModalOpen, setNudgeModalOpen] = useState(false);
+  const [submittedStallInfo, setSubmittedStallInfo] = useState<{ stallName: string; chefName: string } | null>(null);
 
   useEffect(() => {
     try {
@@ -117,14 +131,32 @@ export default function AnandamelaPage() {
     };
   }, []);
 
+  const approvedStalls = stalls.filter((s) => s.status === "Approved");
+  const isCapacityFull = approvedStalls.length >= MAX_STALLS;
+  const remainingSlots = Math.max(0, MAX_STALLS - approvedStalls.length);
+
+  // Progressive disclosure check: Has the resident completed all stall details?
+  const isDetailsFilled = Boolean(
+    regForm.stallName.trim() &&
+    regForm.chefName.trim() &&
+    regForm.flatNumber.trim() &&
+    validatePhoneNumber(regForm.phone) &&
+    regForm.dish1Name.trim() &&
+    Number(regForm.dish1Price) > 0 &&
+    (regForm.tablesCount === 1 || regForm.tablesCount === 2)
+  );
+
+  const totalFeeToPay = regForm.tablesCount * PRICE_PER_TABLE;
+
   const handleRegisterStall = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regForm.stallName.trim() || !regForm.chefName.trim() || !regForm.flatNumber.trim()) {
-      alert("Please fill in Stall Name, Chef Name, and Flat Number.");
+    if (!isDetailsFilled) {
+      alert("Please fill in Stall Name, Chef Name, Flat Number, WhatsApp Phone, and Primary Signature Dish.");
       return;
     }
-    if (!validatePhoneNumber(regForm.phone)) {
-      alert("Please provide a valid 10-digit WhatsApp phone number.");
+
+    if (!regForm.paymentRef.trim()) {
+      alert("Please provide the UPI Transaction Reference / UTR Number from your payment receipt.");
       return;
     }
 
@@ -158,32 +190,48 @@ export default function AnandamelaPage() {
       emoji: regForm.category === "Sweets & Pithe" ? "🍯" : regForm.category === "Rolls & Mughlai" ? "🌯" : "🍲",
       dishes: dishes.length > 0 ? dishes : [{ name: "Festive Specialty", price: 150, isVeg: false }],
       status: "Pending",
+      tablesCount: regForm.tablesCount,
+      totalAmount: totalFeeToPay,
+      paymentRef: sanitizeText(regForm.paymentRef.trim()),
+      paymentStatus: "Pending Verification",
+      createdAt: new Date().toISOString(),
     };
 
     const updated = [newStall, ...stalls];
     setStalls(updated);
     localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(updated));
     saveCloudConfig("anandamela_stalls", updated);
-    setRegSuccess(true);
-    setTimeout(() => {
-      setRegSuccess(false);
-      setIsRegisterOpen(false);
-      setRegForm({
-        stallName: "",
-        chefName: "",
-        tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
-        flatNumber: "",
-        phone: "",
-        category: "Rolls & Mughlai",
-        description: "",
-        dish1Name: "",
-        dish1Price: "",
-        dish1Veg: false,
-        dish2Name: "",
-        dish2Price: "",
-        dish2Veg: true,
-      });
-    }, 2000);
+
+    // Close registration drawer
+    setIsRegisterOpen(false);
+
+    // Save info for nudge modal
+    setSubmittedStallInfo({
+      stallName: newStall.stallName,
+      chefName: newStall.chefName,
+    });
+
+    // Open Seva Donation Nudge Modal
+    setNudgeModalOpen(true);
+
+    // Reset Form
+    setRegForm({
+      stallName: "",
+      chefName: "",
+      tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
+      flatNumber: "",
+      phone: "",
+      category: "Rolls & Mughlai",
+      description: "",
+      tablesCount: 1,
+      paymentRef: "",
+      dish1Name: "",
+      dish1Price: "",
+      dish1Veg: false,
+      dish2Name: "",
+      dish2Price: "",
+      dish2Veg: true,
+    });
   };
 
   const categories = ["All", "Rolls & Mughlai", "Bengali Delicacies", "Street Food & Chaat", "Sweets & Pithe", "Snacks & Quick Bites"];
@@ -220,7 +268,7 @@ export default function AnandamelaPage() {
         <div className="max-w-6xl mx-auto relative z-10 text-center">
           <div className="inline-flex items-center gap-2 bg-amber-300/20 border border-amber-300/40 text-amber-200 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-4 shadow-sm">
             <Sparkles size={14} className="text-amber-300" />
-            <span>Maha Panchami Evening Food Fiesta • 15th October</span>
+            <span>Maha Panchami Evening Food Fiesta • 15th October • 05:00 PM Onwards</span>
           </div>
 
           <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-4 drop-shadow-md">
@@ -235,37 +283,46 @@ export default function AnandamelaPage() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-3xl mx-auto mb-8 text-left">
             <div className="bg-black/30 backdrop-blur-xs border border-white/10 rounded-2xl p-4">
               <span className="text-[11px] text-amber-200 uppercase font-bold block">Event Timing</span>
-              <span className="text-lg font-bold font-heading text-white">06:30 PM Onwards</span>
+              <span className="text-lg font-bold font-heading text-white">05:00 PM Onwards</span>
             </div>
             <div className="bg-black/30 backdrop-blur-xs border border-white/10 rounded-2xl p-4">
               <span className="text-[11px] text-amber-200 uppercase font-bold block">Venue</span>
               <span className="text-lg font-bold font-heading text-white">Community Arena</span>
             </div>
             <div className="bg-black/30 backdrop-blur-xs border border-white/10 rounded-2xl p-4">
-              <span className="text-[11px] text-amber-200 uppercase font-bold block">Resident Stalls</span>
-              <span className="text-lg font-bold font-heading text-amber-300">{stalls.length} Home Stalls</span>
+              <span className="text-[11px] text-amber-200 uppercase font-bold block">Stall Capacity</span>
+              <span className="text-lg font-bold font-heading text-amber-300">
+                {approvedStalls.length} / {MAX_STALLS} Stalls
+              </span>
             </div>
             <div className="bg-black/30 backdrop-blur-xs border border-white/10 rounded-2xl p-4">
-              <span className="text-[11px] text-amber-200 uppercase font-bold block">Pre-Orders</span>
-              <span className="text-lg font-bold font-heading text-green-300">Live WhatsApp</span>
+              <span className="text-[11px] text-amber-200 uppercase font-bold block">Table Setup</span>
+              <span className="text-lg font-bold font-heading text-green-300">₹1,000 / Table</span>
             </div>
           </div>
 
           {/* CTA Actions */}
           <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={() => setIsRegisterOpen(true)}
-              className="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 px-6 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-lg flex items-center gap-2 golden-glow"
-            >
-              <ChefHat size={18} />
-              <span>Register Your Home Chef Stall →</span>
-            </button>
+            {isCapacityFull ? (
+              <div className="bg-red-500/20 border border-red-300/40 text-red-200 px-6 py-3 rounded-2xl font-bold text-xs sm:text-sm flex items-center gap-2">
+                <AlertCircle size={18} className="text-red-300" />
+                <span>All {MAX_STALLS} Stalls Full • Registrations Closed</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsRegisterOpen(true)}
+                className="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 px-6 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-lg flex items-center gap-2 golden-glow"
+              >
+                <ChefHat size={18} />
+                <span>Register Your Home Chef Stall ({remainingSlots} Slots Left) →</span>
+              </button>
+            )}
             <a
               href="#stalls-directory"
               className="bg-white/10 hover:bg-white/20 text-white border border-white/25 px-5 py-3 rounded-2xl font-semibold text-xs sm:text-sm transition flex items-center gap-2"
             >
               <Utensils size={16} />
-              <span>Explore Food Menu ({stalls.reduce((acc, s) => acc + s.dishes.length, 0)} Dishes)</span>
+              <span>Explore Food Menu ({approvedStalls.reduce((acc, s) => acc + s.dishes.length, 0)} Dishes)</span>
             </a>
           </div>
         </div>
@@ -368,6 +425,7 @@ export default function AnandamelaPage() {
                       </p>
                       <span className="text-[11px] text-gray-500">
                         {stall.tower} • Flat {stall.flatNumber}
+                        {stall.tablesCount ? ` • ${stall.tablesCount} ${stall.tablesCount === 1 ? 'Table' : 'Tables'}` : ""}
                       </span>
                     </div>
                   </div>
@@ -380,7 +438,7 @@ export default function AnandamelaPage() {
                 {/* Signature Dishes List */}
                 <div className="p-5 space-y-2.5">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                    Signature Menu & Pricing:
+                    Signature Menu &amp; Pricing:
                   </span>
                   <div className="divide-y divide-gray-100 text-xs">
                     {stall.dishes.map((dish, idx) => (
@@ -441,10 +499,11 @@ export default function AnandamelaPage() {
       {/* 4. REGISTER YOUR STALL MODAL / DRAWER */}
       {isRegisterOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-amber-400/40 shadow-2xl relative max-h-[92vh] overflow-y-auto">
             <button
               onClick={() => setIsRegisterOpen(false)}
               className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+              aria-label="Close form"
             >
               <X size={18} />
             </button>
@@ -455,24 +514,19 @@ export default function AnandamelaPage() {
                 Register Your Anandamela Stall
               </h2>
             </div>
-            <p className="text-xs text-gray-500 mb-6">
-              Showcase your signature homemade culinary delicacies to over 1,500+ PBEL City resident families on Panchami evening (15th Oct).
-              <br /><br />
-              <strong>Notice:</strong> Your stall registration will be reviewed and approved by the Anandamela committee.
+            <p className="text-xs text-gray-600 mb-5 leading-relaxed">
+              Showcase your signature homemade culinary delicacies on <strong>Maha Panchami Evening (5:00 PM Onwards)</strong>.
+              <br />
+              <strong>Notice:</strong> Strictly 15 stalls capacity. Table setup charge is <strong>₹1,000 per table</strong> (1 or 2 tables).
             </p>
 
-            {regSuccess ? (
-              <div className="p-6 bg-green-50 border border-green-200 rounded-2xl text-center space-y-2">
-                <CheckCircle2 size={32} className="mx-auto text-green-600" />
-                <h4 className="font-heading text-lg font-bold text-green-900">
-                  Stall Registered Successfully!
-                </h4>
-                <p className="text-xs text-green-700">
-                  Your food stall has been published to the Anandamela directory. The PSS food committee will connect with you for stall allotment.
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handleRegisterStall} className="space-y-4 text-xs">
+            <form onSubmit={handleRegisterStall} className="space-y-4 text-xs">
+              {/* SECTION A: STALL & CHEF DETAILS */}
+              <div className="space-y-3">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">
+                  1. Stall &amp; Chef Information
+                </span>
+
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Stall / Food Brand Name *</label>
                   <input
@@ -485,7 +539,7 @@ export default function AnandamelaPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-gray-700 mb-1">Home Chef Name *</label>
                     <input
@@ -516,9 +570,9 @@ export default function AnandamelaPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Select Tower</label>
+                    <label className="block font-semibold text-gray-700 mb-1">Select Tower *</label>
                     <select
                       value={regForm.tower}
                       onChange={(e) => setRegForm({ ...regForm, tower: e.target.value })}
@@ -557,17 +611,68 @@ export default function AnandamelaPage() {
                     onChange={(e) => setRegForm({ ...regForm, category: e.target.value as any })}
                     className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                   >
-                    <option value="Rolls & Mughlai">Rolls & Mughlai Delicacies</option>
+                    <option value="Rolls & Mughlai">Rolls &amp; Mughlai Delicacies</option>
                     <option value="Bengali Delicacies">Bengali Heritage Cuisine (Fish Fry, Biryani)</option>
-                    <option value="Street Food & Chaat">Kolkata Street Food & Phuchka</option>
-                    <option value="Sweets & Pithe">Sweets, Pithe Puli & Desserts</option>
-                    <option value="Snacks & Quick Bites">Snacks & Beverages</option>
+                    <option value="Street Food & Chaat">Kolkata Street Food &amp; Phuchka</option>
+                    <option value="Sweets & Pithe">Sweets, Pithe Puli &amp; Desserts</option>
+                    <option value="Snacks & Quick Bites">Snacks &amp; Beverages</option>
                   </select>
                 </div>
+              </div>
+
+              {/* SECTION B: NUMBER OF TABLES SELECTION */}
+              <div className="bg-amber-50/80 p-3.5 rounded-2xl border border-amber-200/90 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block font-bold text-amber-950 text-xs">
+                    Number of Tables Needed *
+                  </label>
+                  <span className="text-[11px] font-bold text-primary">
+                    ₹{PRICE_PER_TABLE.toLocaleString("en-IN")} / Table
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setRegForm({ ...regForm, tablesCount: 1 })}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      regForm.tablesCount === 1
+                        ? "bg-white border-primary shadow-sm ring-2 ring-primary/20"
+                        : "bg-white/60 border-gray-200 hover:border-amber-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-gray-900">1 Table</span>
+                      <span className="font-bold font-mono text-xs text-primary">₹1,000</span>
+                    </div>
+                    <span className="text-[10px] text-gray-500 block">Standard Single Table Space</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRegForm({ ...regForm, tablesCount: 2 })}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      regForm.tablesCount === 2
+                        ? "bg-white border-primary shadow-sm ring-2 ring-primary/20"
+                        : "bg-white/60 border-gray-200 hover:border-amber-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs text-gray-900">2 Tables</span>
+                      <span className="font-bold font-mono text-xs text-primary">₹2,000</span>
+                    </div>
+                    <span className="text-[10px] text-gray-500 block">Double Table Space (Recommended for large menus)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION C: SIGNATURE DISHES */}
+              <div className="space-y-3">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">
+                  2. Dishes &amp; Pricing
+                </span>
 
                 {/* Dish 1 */}
                 <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
-                  <span className="font-bold text-gray-900 block text-[11px] uppercase">Primary Signature Dish:</span>
+                  <span className="font-bold text-gray-900 block text-[11px] uppercase">Primary Signature Dish: *</span>
                   <div className="grid grid-cols-3 gap-2">
                     <input
                       type="text"
@@ -575,15 +680,16 @@ export default function AnandamelaPage() {
                       value={regForm.dish1Name}
                       onChange={(e) => setRegForm({ ...regForm, dish1Name: e.target.value })}
                       placeholder="Dish Name (e.g. Kolkata Fish Fry)"
-                      className="col-span-2 p-2 border border-gray-200 rounded-xl outline-none text-xs"
+                      className="col-span-2 p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs"
                     />
                     <input
                       type="number"
                       required
+                      min="10"
                       value={regForm.dish1Price}
                       onChange={(e) => setRegForm({ ...regForm, dish1Price: e.target.value })}
                       placeholder="₹ Price"
-                      className="p-2 border border-gray-200 rounded-xl outline-none text-xs font-bold font-mono"
+                      className="p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs font-bold font-mono"
                     />
                   </div>
                   <label className="inline-flex items-center gap-1.5 cursor-pointer text-gray-700">
@@ -606,14 +712,15 @@ export default function AnandamelaPage() {
                       value={regForm.dish2Name}
                       onChange={(e) => setRegForm({ ...regForm, dish2Name: e.target.value })}
                       placeholder="Dish Name (e.g. Postor Bora)"
-                      className="col-span-2 p-2 border border-gray-200 rounded-xl outline-none text-xs"
+                      className="col-span-2 p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs"
                     />
                     <input
                       type="number"
+                      min="10"
                       value={regForm.dish2Price}
                       onChange={(e) => setRegForm({ ...regForm, dish2Price: e.target.value })}
                       placeholder="₹ Price"
-                      className="p-2 border border-gray-200 rounded-xl outline-none text-xs font-bold font-mono"
+                      className="p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs font-bold font-mono"
                     />
                   </div>
                   <label className="inline-flex items-center gap-1.5 cursor-pointer text-gray-700">
@@ -626,19 +733,116 @@ export default function AnandamelaPage() {
                     <span>Is this item Pure Vegetarian?</span>
                   </label>
                 </div>
+              </div>
 
-                <button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2 golden-glow"
-                >
-                  <Send size={15} />
-                  <span>Submit Food Stall Application</span>
-                </button>
-              </form>
-            )}
+              {/* SECTION D: PAYMENT & QR CODE SECTION (LOCKED UNTIL DETAILS ARE COMPLETED) */}
+              <div className="pt-2">
+                {!isDetailsFilled ? (
+                  <div className="p-4 bg-gray-50 border border-dashed border-gray-300 rounded-2xl text-center space-y-1.5">
+                    <div className="inline-flex items-center gap-1.5 text-gray-600 text-xs font-semibold">
+                      <Info size={15} className="text-amber-600" />
+                      <span>Step 3: Payment &amp; QR Code (Locked)</span>
+                    </div>
+                    <p className="text-[11px] text-gray-500">
+                      Please fill in your Stall Name, Chef Name, WhatsApp Phone, Flat, and Signature Dish above to unlock your UPI payment QR code.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gradient-to-br from-amber-50 via-orange-50/60 to-amber-100/40 rounded-2xl border border-amber-300 shadow-xs space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950 uppercase">
+                        <QrCode size={16} className="text-primary" />
+                        <span>Step 3: Stall Setup Fee Payment</span>
+                      </div>
+                      <span className="text-sm font-bold font-mono text-primary">
+                        ₹{totalFeeToPay.toLocaleString("en-IN")} ({regForm.tablesCount} {regForm.tablesCount === 1 ? "Table" : "Tables"})
+                      </span>
+                    </div>
+
+                    {/* QR Code and 1-tap copy */}
+                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3 rounded-xl border border-amber-200">
+                      <img
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                          buildUpiPayUri({
+                            am: totalFeeToPay,
+                            tn: `Anandamela Stall - ${regForm.stallName.slice(0, 20)}`,
+                          })
+                        )}`}
+                        alt="Anandamela Stall Fee UPI QR"
+                        className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg border border-gray-200 shadow-2xs"
+                      />
+                      <div className="space-y-2 flex-1 text-center sm:text-left">
+                        <span className="text-xs font-bold text-gray-800 block">
+                          Scan &amp; Pay ₹{totalFeeToPay.toLocaleString("en-IN")} via Any UPI App
+                        </span>
+                        <p className="text-[11px] text-gray-500">
+                          Official Society VPA: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong>
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(SOCIETY_UPI_ID);
+                            setCopiedUpi(true);
+                            setTimeout(() => setCopiedUpi(false), 2000);
+                          }}
+                          className="text-[11px] font-bold text-primary bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5"
+                        >
+                          {copiedUpi ? <Check size={13} /> : <Copy size={13} />}
+                          <span>{copiedUpi ? "UPI ID Copied!" : "1-Tap Copy UPI ID"}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* UTR Input */}
+                    <div>
+                      <label className="block font-bold text-gray-800 text-xs mb-1">
+                        UPI UTR / Transaction Reference Number *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={regForm.paymentRef}
+                        onChange={(e) => setRegForm({ ...regForm, paymentRef: e.target.value.trim() })}
+                        placeholder="e.g. 12-digit UPI UTR from GPay / PhonePe / Paytm"
+                        className="w-full p-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono text-xs"
+                      />
+                      <span className="text-[10px] text-gray-500 block mt-1">
+                        Required for PSS Finance Committee to verify your table fee before confirming the stall.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* SUBMIT BUTTON */}
+              <button
+                type="submit"
+                disabled={!isDetailsFilled || !regForm.paymentRef.trim()}
+                className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2 golden-glow disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+              >
+                <Send size={15} />
+                <span>
+                  {!isDetailsFilled
+                    ? "Fill Details Above to Unlock Payment"
+                    : !regForm.paymentRef.trim()
+                    ? "Enter UPI Reference / UTR Number to Submit"
+                    : `Submit Application & Complete Payment (₹${totalFeeToPay.toLocaleString("en-IN")})`}
+                </span>
+              </button>
+            </form>
           </div>
         </div>
       )}
+
+      {/* 5. POST-REGISTRATION SEVA DONATION NUDGE POPUP */}
+      <SevaDonationNudgeModal
+        isOpen={nudgeModalOpen}
+        onClose={() => setNudgeModalOpen(false)}
+        activityName="Anandamela Food Stall Registration"
+        residentName={submittedStallInfo?.chefName}
+        stallOrEventName={submittedStallInfo?.stallName}
+        note="The Anandamela Committee and Finance Team will verify your table payment and confirm your stall allocation in the festival directory."
+      />
 
     </div>
   );

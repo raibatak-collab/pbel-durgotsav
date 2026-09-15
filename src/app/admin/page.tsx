@@ -4805,13 +4805,13 @@ function decodeCategoryDescription(desc?: string) {
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/80 text-amber-900 text-xs font-bold mb-2">
                 <Utensils size={13} className="text-primary" />
-                <span>Anandamela Food Fiesta • Home Chef Stalls</span>
+                <span>Anandamela Food Fiesta • Home Chef Stalls (Max 15)</span>
               </div>
               <h2 className="font-heading text-2xl font-bold text-gray-900">
                 Food Stall Registrations &amp; Moderation
               </h2>
               <p className="text-xs text-gray-500 mt-1">
-                Approve or reject resident home chef stall registrations before they go live on the public festival website.
+                Verify table charges (₹1,000/table), check UPI UTR references, and approve resident stalls before they appear in the public directory.
               </p>
             </div>
 
@@ -4829,11 +4829,48 @@ function decodeCategoryDescription(desc?: string) {
             </div>
           </div>
 
+          {/* KPI Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-gray-400 uppercase block">Total Stalls</span>
+              <span className="text-lg font-bold font-heading text-gray-900">
+                {anandamelaStalls.length} <span className="text-xs font-normal text-gray-500">/ 15</span>
+              </span>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-green-200 bg-green-50/20 shadow-2xs">
+              <span className="text-[10px] font-bold text-green-700 uppercase block">Approved &amp; Live</span>
+              <span className="text-lg font-bold font-heading text-green-800">
+                {anandamelaStalls.filter((s: any) => s.status === "Approved").length} <span className="text-xs font-normal text-green-600">/ 15</span>
+              </span>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-amber-200 bg-amber-50/20 shadow-2xs">
+              <span className="text-[10px] font-bold text-amber-800 uppercase block">Pending Approval</span>
+              <span className="text-lg font-bold font-heading text-amber-900">
+                {anandamelaStalls.filter((s: any) => s.status === "Pending").length}
+              </span>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs">
+              <span className="text-[10px] font-bold text-gray-400 uppercase block">Tables Allocated</span>
+              <span className="text-lg font-bold font-heading text-primary">
+                {anandamelaStalls.reduce((acc: number, s: any) => acc + (Number(s.tablesCount) || 1), 0)} Tables
+              </span>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-2xs col-span-2 sm:col-span-1">
+              <span className="text-[10px] font-bold text-gray-400 uppercase block">Stall Fee Total</span>
+              <span className="text-lg font-bold font-mono text-green-700">
+                ₹{anandamelaStalls.reduce((acc: number, s: any) => acc + (Number(s.totalAmount) || (Number(s.tablesCount) || 1) * 1000), 0).toLocaleString("en-IN")}
+              </span>
+            </div>
+          </div>
+
           {/* Stalls Table */}
           <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
               <span className="font-bold text-xs text-gray-700">
                 Registered Stalls ({anandamelaStalls.length}) • {anandamelaStalls.filter((s: any) => s.status === "Pending").length} Pending Approval
+              </span>
+              <span className="text-xs text-amber-900 font-semibold bg-amber-100 px-3 py-1 rounded-full">
+                Maha Panchami • 05:00 PM Onwards
               </span>
             </div>
 
@@ -4842,8 +4879,10 @@ function decodeCategoryDescription(desc?: string) {
                 <thead className="bg-gray-50/50 text-gray-500 uppercase text-[10px] font-bold border-b border-gray-100">
                   <tr>
                     <th className="p-3.5">Stall &amp; Category</th>
-                    <th className="p-3.5">Chef &amp; Tower</th>
+                    <th className="p-3.5">Chef, Tower &amp; Flat</th>
                     <th className="p-3.5">WhatsApp</th>
+                    <th className="p-3.5">Tables &amp; Fee</th>
+                    <th className="p-3.5">Payment / UTR</th>
                     <th className="p-3.5">Dishes / Menu</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5 text-right">Moderation Actions</th>
@@ -4851,79 +4890,159 @@ function decodeCategoryDescription(desc?: string) {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {anandamelaStalls.length > 0 ? (
-                    anandamelaStalls.map((stall: any, idx: number) => (
-                      <tr key={stall.id || idx} className="hover:bg-amber-50/30 transition">
-                        <td className="p-3.5">
-                          <span className="font-bold text-gray-900 block">{stall.stallName}</span>
-                          <span className="text-[10px] text-gray-500">{stall.category || "General"}</span>
-                        </td>
-                        <td className="p-3.5">
-                          <span className="font-semibold text-gray-800 block">{stall.chefName}</span>
-                          <span className="text-[11px] text-gray-500">{stall.flatNumber}</span>
-                        </td>
-                        <td className="p-3.5 font-mono text-gray-700">
-                          {stall.phone}
-                        </td>
-                        <td className="p-3.5 max-w-xs">
-                          {stall.dishes && stall.dishes.length > 0 ? (
+                    anandamelaStalls.map((stall: any, idx: number) => {
+                      const tables = Number(stall.tablesCount) || 1;
+                      const fee = Number(stall.totalAmount) || tables * 1000;
+                      const isFeeVerified = stall.paymentStatus === "Payment Verified";
+                      const isApproved = stall.status === "Approved";
+
+                      return (
+                        <tr key={stall.id || idx} className="hover:bg-amber-50/30 transition">
+                          <td className="p-3.5">
+                            <span className="font-bold text-gray-900 block">{stall.stallName}</span>
+                            <span className="text-[10px] text-gray-500">{stall.category || "General"}</span>
+                          </td>
+                          <td className="p-3.5">
+                            <span className="font-semibold text-gray-800 block">{stall.chefName}</span>
+                            <span className="text-[11px] text-gray-500">{stall.tower} • Flat {stall.flatNumber}</span>
+                          </td>
+                          <td className="p-3.5 font-mono text-gray-700">
+                            <a
+                              href={`https://api.whatsapp.com/send?phone=91${String(stall.phone).replace(/[^0-9]/g, "")}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-primary hover:underline font-bold"
+                            >
+                              {stall.phone}
+                            </a>
+                          </td>
+                          <td className="p-3.5">
                             <div className="space-y-0.5">
-                              {stall.dishes.map((d: any, dIdx: number) => (
-                                <div key={dIdx} className="text-[11px] text-gray-700">
-                                  • {d.name} <span className="font-bold text-green-700">(₹{d.price})</span>
-                                </div>
-                              ))}
+                              <span className="inline-block px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-900">
+                                {tables} {tables === 1 ? "Table" : "Tables"}
+                              </span>
+                              <span className="block font-mono font-bold text-xs text-gray-900">
+                                ₹{fee.toLocaleString("en-IN")}
+                              </span>
                             </div>
-                          ) : (
-                            <span className="text-gray-400 italic">Specialties</span>
-                          )}
-                        </td>
-                        <td className="p-3.5">
-                          <span
-                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
-                              stall.status === "Approved"
-                                ? "bg-green-100 text-green-800 border border-green-200"
-                                : "bg-amber-100 text-amber-800 border border-amber-200"
-                            }`}
-                          >
-                            {stall.status || "Pending"}
-                          </span>
-                        </td>
-                        <td className="p-3.5 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {stall.status !== "Approved" && (
+                          </td>
+                          <td className="p-3.5">
+                            <div className="space-y-1">
+                              {stall.paymentRef ? (
+                                <span className="font-mono text-[11px] bg-gray-100 text-gray-800 px-2 py-0.5 rounded block max-w-[130px] truncate" title={stall.paymentRef}>
+                                  UTR: {stall.paymentRef}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-red-500 italic block">No UTR Provided</span>
+                              )}
+                              <span
+                                className={`inline-block px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
+                                  isFeeVerified
+                                    ? "bg-green-100 text-green-800 border border-green-200"
+                                    : "bg-amber-100 text-amber-800 border border-amber-200"
+                                }`}
+                              >
+                                {isFeeVerified ? "✓ Fee Verified" : "Fee Unverified"}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="p-3.5 max-w-xs">
+                            {stall.dishes && stall.dishes.length > 0 ? (
+                              <div className="space-y-0.5">
+                                {stall.dishes.map((d: any, dIdx: number) => (
+                                  <div key={dIdx} className="text-[11px] text-gray-700 truncate">
+                                    • {d.name} <span className="font-bold text-green-700">(₹{d.price})</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-400 italic">Specialties</span>
+                            )}
+                          </td>
+                          <td className="p-3.5">
+                            <span
+                              className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${
+                                isApproved
+                                  ? "bg-green-100 text-green-800 border border-green-200"
+                                  : "bg-amber-100 text-amber-800 border border-amber-200"
+                              }`}
+                            >
+                              {stall.status || "Pending"}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              {!isFeeVerified && (
+                                <button
+                                  onClick={async () => {
+                                    const updated = anandamelaStalls.map((s: any) =>
+                                      (s.id === stall.id || s.stallName === stall.stallName)
+                                        ? { ...s, paymentStatus: "Payment Verified" }
+                                        : s
+                                    );
+                                    setAnandamelaStalls(updated);
+                                    await saveCloudConfig("anandamela_stalls", updated);
+                                  }}
+                                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] transition shadow-2xs"
+                                  title="Confirm table payment received"
+                                >
+                                  Verify Fee ✓
+                                </button>
+                              )}
+
+                              {!isApproved ? (
+                                <button
+                                  onClick={async () => {
+                                    const updated = anandamelaStalls.map((s: any) =>
+                                      (s.id === stall.id || s.stallName === stall.stallName)
+                                        ? { ...s, status: "Approved", paymentStatus: "Payment Verified" }
+                                        : s
+                                    );
+                                    setAnandamelaStalls(updated);
+                                    await saveCloudConfig("anandamela_stalls", updated);
+                                  }}
+                                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-[11px] transition shadow-2xs"
+                                >
+                                  Approve &amp; Publish ✓
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={async () => {
+                                    const updated = anandamelaStalls.map((s: any) =>
+                                      (s.id === stall.id || s.stallName === stall.stallName)
+                                        ? { ...s, status: "Pending" }
+                                        : s
+                                    );
+                                    setAnandamelaStalls(updated);
+                                    await saveCloudConfig("anandamela_stalls", updated);
+                                  }}
+                                  className="px-2.5 py-1 bg-gray-100 hover:bg-amber-50 hover:text-amber-800 text-gray-700 rounded-lg font-bold text-[11px] transition"
+                                >
+                                  Unpublish
+                                </button>
+                              )}
+
                               <button
                                 onClick={async () => {
-                                  const updated = anandamelaStalls.map((s: any) =>
-                                    (s.id === stall.id || s.stallName === stall.stallName) ? { ...s, status: "Approved" } : s
+                                  if (!confirm(`Delete stall "${stall.stallName}"?`)) return;
+                                  const updated = anandamelaStalls.filter((s: any) =>
+                                    s.id ? s.id !== stall.id : s.stallName !== stall.stallName
                                   );
                                   setAnandamelaStalls(updated);
                                   await saveCloudConfig("anandamela_stalls", updated);
                                 }}
-                                className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-[11px] transition shadow-2xs"
+                                className="px-2.5 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-600 rounded-lg font-bold text-[11px] transition"
                               >
-                                Approve ✓
+                                Delete
                               </button>
-                            )}
-                            <button
-                              onClick={async () => {
-                                if (!confirm(`Delete stall "${stall.stallName}"?`)) return;
-                                const updated = anandamelaStalls.filter((s: any) =>
-                                  s.id ? s.id !== stall.id : s.stallName !== stall.stallName
-                                );
-                                setAnandamelaStalls(updated);
-                                await saveCloudConfig("anandamela_stalls", updated);
-                              }}
-                              className="px-2.5 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-600 rounded-lg font-bold text-[11px] transition"
-                            >
-                              Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={6} className="p-8 text-center text-gray-500">
+                      <td colSpan={8} className="p-8 text-center text-gray-500">
                         No food stalls registered yet. New resident registrations will appear here for admin approval.
                       </td>
                     </tr>
