@@ -207,6 +207,13 @@ export function FestiveHero({ sponsors }: { sponsors?: TopSponsorItem[] | null }
         <div className="w-full max-w-full overflow-x-auto no-scrollbar pt-2 px-1">
           <div className="flex items-center justify-start sm:justify-center gap-1.5 sm:gap-2 w-max sm:w-auto mx-auto pb-1">
             <Link
+              href="/anandamela"
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500/30 to-orange-500/30 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/60 text-amber-200 hover:text-white px-3.5 py-1.5 rounded-full text-xs font-bold transition backdrop-blur-md shrink-0 whitespace-nowrap shadow-xs"
+            >
+              <Utensils size={12} className="text-amber-300 shrink-0" />
+              <span>Anandamela Stalls (Open)</span>
+            </Link>
+            <Link
               href="/programs"
               className="inline-flex items-center gap-1.5 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-200 hover:text-white px-3 py-1.5 rounded-full text-xs font-semibold transition backdrop-blur-md shrink-0 whitespace-nowrap"
             >

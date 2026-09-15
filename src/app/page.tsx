@@ -419,6 +419,44 @@ export default async function Home() {
         </div>
       </section>
 
+      {/* 5.5. ANANDAMELA FOOD FIESTA SPOTLIGHT */}
+      <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-6">
+        <div className="bg-gradient-to-br from-amber-600 via-orange-600 to-amber-700 rounded-3xl p-8 sm:p-12 text-white shadow-2xl relative overflow-hidden golden-border">
+          <div className="absolute -top-12 -right-12 w-64 h-64 bg-yellow-300/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="max-w-2xl relative z-10">
+            <div className="inline-flex items-center gap-2 bg-black/25 text-yellow-200 border border-yellow-300/30 text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider mb-4 backdrop-blur-xs">
+              <Utensils size={14} />
+              <span>Maha Panchami Evening Food Fiesta • 05:00 PM Onwards</span>
+            </div>
+            <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-md">
+              Anandamela Home Chef Stalls 🍲
+            </h2>
+            <p className="text-amber-100 text-sm sm:text-base leading-relaxed mb-6">
+              Taste authentic homemade Bengali heritage cuisine, Kolkata rolls, fish fry, street chaat, and artisanal sweets prepared by PBEL City resident home chefs!
+              <br />
+              <strong className="text-white">Resident Stall Registrations are now OPEN</strong> — strictly 15 stalls limit (₹1,000 / table).
+            </p>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/anandamela"
+                className="bg-white hover:bg-amber-50 text-amber-950 font-bold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-lg flex items-center gap-2"
+              >
+                <Utensils size={16} className="text-amber-700" />
+                <span>Register Your Food Stall (15 Stalls Limit) →</span>
+              </Link>
+              <Link
+                href="/anandamela#stalls-directory"
+                className="bg-black/20 hover:bg-black/30 text-white border border-white/30 font-semibold px-6 py-3 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 backdrop-blur-xs"
+              >
+                <span>Explore Stalls &amp; Menu</span>
+                <ArrowRight size={15} />
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* 6. CORPORATE SPONSORSHIP & PARTNER DECK */}
       <section className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-12">
         <div className="bg-white rounded-3xl p-8 sm:p-10 border border-amber-900/15 shadow-md">

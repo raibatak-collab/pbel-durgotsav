@@ -2875,6 +2875,54 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
 
+            {/* Quick 1-Click Pop-up Push Presets */}
+            <div className="mb-4 p-3 bg-amber-50/70 border border-amber-200 rounded-xl space-y-1.5">
+              <span className="text-[11px] font-bold text-amber-950 block">⚡ 1-Click Splash Screen Presets:</span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const anandamelaPreset: SitePopupHighlight = {
+                      enabled: true,
+                      id: `anandamela-open-${Date.now()}`,
+                      badge: "🍲 Maha Panchami Food Fiesta",
+                      title: "Anandamela Food Stall Registrations Open!",
+                      subtitle: "05:00 PM Onwards on 15th October • Strictly 15 Stalls Limit",
+                      snippet: "Calling all PBEL City resident home chefs! Showcase your signature homemade culinary delicacies on Panchami evening. Table setup charges are ₹1,000 per table (1 or 2 tables). Apply now before all 15 slots are booked!",
+                      actionText: "Register Your Food Stall →",
+                      actionUrl: "/anandamela",
+                      imageUrl: "/images/wallpapers/durga_festive_mandala.svg",
+                    };
+                    handleSavePopupHighlight(anandamelaPreset);
+                  }}
+                  className="bg-primary hover:bg-primary-hover text-white text-[11px] font-bold px-3 py-1.5 rounded-lg transition shadow-2xs flex items-center gap-1"
+                >
+                  <Utensils size={12} />
+                  <span>Push "Anandamela Open" Splash Screen</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const alponaPreset: SitePopupHighlight = {
+                      enabled: true,
+                      id: "highlight-path-alpona-2026",
+                      badge: "🎨 Major Festival Attraction",
+                      title: "Grand 500m Sacred Path Alpona by Bengal Folk Artists",
+                      subtitle: "Complete by Panchami Morning • Major Attraction Throughout Pujo",
+                      snippet: "We are bringing renowned traditional Alpona folk artisans from Bengal to create a majestic 500-meter sacred street floor art across the PBEL City central boulevard. The masterpiece will be completed by Panchami morning and will remain a prime festival centerpiece throughout all 6 days of Durgotsav!",
+                      imageUrl: "/images/wallpapers/durga_festive_mandala.svg",
+                      actionText: "Explore Schedule & Cultural Acts →",
+                      actionUrl: "/programs",
+                    };
+                    handleSavePopupHighlight(alponaPreset);
+                  }}
+                  className="bg-white hover:bg-gray-100 text-gray-700 border border-gray-300 text-[11px] font-semibold px-2.5 py-1.5 rounded-lg transition"
+                >
+                  Restore Alpona Highlight
+                </button>
+              </div>
+            </div>
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();

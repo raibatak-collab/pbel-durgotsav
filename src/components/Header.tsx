@@ -88,6 +88,7 @@ export function Header() {
   const primaryLinks = [
     { name: "Home", href: "/", icon: Sparkles },
     { name: "Schedule & Pratibimb", href: "/programs", icon: Calendar },
+    { name: "Anandamela", href: "/anandamela", icon: Utensils },
     { name: "Gallery", href: "/gallery", icon: ImageIcon },
     { name: "Volunteer Seva", href: "/volunteer", icon: HeartHandshake },
     { name: "Corporate Sponsors", href: "/sponsors", icon: Award },
@@ -95,6 +96,7 @@ export function Header() {
 
   // Secondary Links for Accessible "More ▾" Dropdown
   const moreLinks = [
+    { name: "Anandamela Food Stalls", href: "/anandamela", icon: Utensils, desc: "Home chef stalls & resident delicacies (Panchami)" },
     { name: "Organizing Committee", href: "/committee", icon: Users, desc: "Executive wings, leads & volunteer teams" },
     { name: "Devotee Wall of Honor", href: "/wall-of-honor", icon: Sparkles, desc: "Community contributor recognition & solidarity" },
   ];
@@ -103,15 +105,30 @@ export function Header() {
     <>
       {/* Top Notification Announcement Bar with Dynamic Content */}
       <div className="bg-gradient-to-r from-[#5E0A16] via-[#850E1F] to-[#5E0A16] text-[#FDE68A] text-xs font-medium py-1.5 px-4 text-center border-b border-amber-500/20 shadow-inner flex items-center justify-between sm:justify-center gap-2 print:hidden">
-        <div className="flex items-center gap-1.5 mx-auto">
-          <Sparkles size={13} className="text-amber-400 animate-pulse" />
-          <span className="truncate max-w-[280px] sm:max-w-none">
-            {customAnnouncement || "PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)"}
-          </span>
-          <span className="hidden sm:inline bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
-            Hyderabad
-          </span>
-        </div>
+        {customAnnouncement && customAnnouncement.toLowerCase().includes("anandamela") ? (
+          <Link
+            href="/anandamela"
+            className="flex items-center gap-1.5 mx-auto hover:text-white transition group"
+          >
+            <Sparkles size={13} className="text-amber-400 animate-pulse" />
+            <span className="truncate max-w-[280px] sm:max-w-none font-semibold group-hover:underline">
+              {customAnnouncement}
+            </span>
+            <span className="hidden sm:inline bg-amber-400/30 text-amber-200 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+              Register Now →
+            </span>
+          </Link>
+        ) : (
+          <div className="flex items-center gap-1.5 mx-auto">
+            <Sparkles size={13} className="text-amber-400 animate-pulse" />
+            <span className="truncate max-w-[280px] sm:max-w-none">
+              {customAnnouncement || "PBEL City Durgotsav 2026 • 15th to 20th October (Panchami to Dashami)"}
+            </span>
+            <span className="hidden sm:inline bg-amber-400/20 text-amber-300 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">
+              Hyderabad
+            </span>
+          </div>
+        )}
 
         {/* Quick Admin Return Link if Authenticated */}
         {loggedInAdmin && pathname !== "/admin" && (

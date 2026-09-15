@@ -3443,6 +3443,47 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 79: Anandamela Food Stall Registrations, Table Pricing, QR Payment, 15 Stalls Limit & Seva Nudge Modal', () => {
+    it('should verify Anandamela page has table selection (1 or 2 tables @ 1000/table) and 15 stalls limit', () => {
+      const anandamelaSrc = fs.readFileSync('src/app/anandamela/page.tsx', 'utf8');
+      assert.ok(anandamelaSrc.includes('MAX_STALLS = 15'), 'Must enforce strictly 15 stalls limit');
+      assert.ok(anandamelaSrc.includes('PRICE_PER_TABLE = 1000'), 'Must define ₹1,000 per table price');
+      assert.ok(anandamelaSrc.includes('05:00 PM Onwards'), 'Must display 5:00 PM Onwards timing');
+      assert.ok(anandamelaSrc.includes('tablesCount'), 'Must support tablesCount state');
+      assert.ok(anandamelaSrc.includes('paymentRef'), 'Must support paymentRef UTR state');
+    });
+
+    it('should verify Anandamela locks payment QR until details are filled and renders SevaDonationNudgeModal', () => {
+      const anandamelaSrc = fs.readFileSync('src/app/anandamela/page.tsx', 'utf8');
+      assert.ok(anandamelaSrc.includes('isDetailsFilled'), 'Must implement progressive disclosure for payment QR');
+      assert.ok(anandamelaSrc.includes('Step 3: Payment &amp; QR Code (Locked)'), 'Must show locked notice when details incomplete');
+      assert.ok(anandamelaSrc.includes('SevaDonationNudgeModal'), 'Must render SevaDonationNudgeModal on submission');
+      assert.ok(fs.existsSync('src/components/SevaDonationNudgeModal.tsx'), 'SevaDonationNudgeModal component must exist');
+    });
+
+    it('should verify Admin Console supports table count, UTR tracking, fee verification, and approve actions', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('Tables &amp; Fee'), 'Admin table must have Tables & Fee column');
+      assert.ok(adminSrc.includes('Payment / UTR'), 'Admin table must have Payment / UTR column');
+      assert.ok(adminSrc.includes('Verify Fee ✓'), 'Admin must have 1-click Verify Fee button');
+      assert.ok(adminSrc.includes('Approve &amp; Publish ✓'), 'Admin must have Approve & Publish button');
+      assert.ok(adminSrc.includes('Push "Anandamela Open" Splash Screen'), 'Admin must have 1-click Anandamela popup push');
+    });
+
+    it('should verify Header, Hero, and Homepage showcase Anandamela with direct links', () => {
+      const headerSrc = fs.readFileSync('src/components/Header.tsx', 'utf8');
+      assert.ok(headerSrc.includes('href="/anandamela"'), 'Header must have direct link to /anandamela');
+      assert.ok(headerSrc.includes('primaryLinks'), 'Header primaryLinks must include Anandamela');
+
+      const heroSrc = fs.readFileSync('src/components/FestiveHero.tsx', 'utf8');
+      assert.ok(heroSrc.includes('href="/anandamela"'), 'FestiveHero must have Anandamela secondary pill');
+
+      const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(homeSrc.includes('Anandamela Home Chef Stalls'), 'Homepage must feature Anandamela spotlight card');
+      assert.ok(homeSrc.includes('href="/anandamela"'), 'Homepage must link to /anandamela');
+    });
+  });
+
 });
 
 
