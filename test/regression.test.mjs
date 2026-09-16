@@ -3513,6 +3513,36 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 80: Admin Payment Timestamps & Comprehensive CSV Export', () => {
+    it('should verify payment timestamps in Contributions and Anandamela tables', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('formatTimestamp'), 'Must define formatTimestamp utility');
+      assert.ok(adminSrc.includes('Payment Date &amp; Time'), 'Must have Payment Date & Time column headers in tables');
+      assert.ok(adminSrc.includes('formatTimestamp(c.created_at)'), 'Must render contribution payment timestamp in row');
+      assert.ok(adminSrc.includes('formatTimestamp(stall.createdAt)'), 'Must render Anandamela payment/registration timestamp in row');
+    });
+
+    it('should verify CSV export handlers and buttons across all lists', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('downloadCsv'), 'Must define downloadCsv utility');
+      assert.ok(adminSrc.includes('\\uFEFF'), 'Must include UTF-8 BOM for Microsoft Excel compatibility');
+      
+      // Handlers
+      assert.ok(adminSrc.includes('handleExportContributionsCsv'), 'Must define contributions CSV export handler');
+      assert.ok(adminSrc.includes('handleExportCategoriesCsv'), 'Must define categories CSV export handler');
+      assert.ok(adminSrc.includes('handleExportAnandamelaCsv'), 'Must define Anandamela CSV export handler');
+      assert.ok(adminSrc.includes('handleExportMembersCsv'), 'Must define members CSV export handler');
+      assert.ok(adminSrc.includes('handleExportVolunteersCsv'), 'Must define volunteers CSV export handler');
+      assert.ok(adminSrc.includes('handleExportAllCsvs'), 'Must define master all-lists CSV export handler');
+
+      // UI Download buttons
+      assert.ok(adminSrc.includes('Download Stalls CSV'), 'Anandamela tab must have Download Stalls CSV button');
+      assert.ok(adminSrc.includes('Download Categories CSV'), 'Categories tab must have Download Categories CSV button');
+      assert.ok(adminSrc.includes('Administrative Data Export Center (CSV)'), 'Overview must have Administrative Data Export Center');
+      assert.ok(adminSrc.includes('Download ALL Lists (Bundle)'), 'Overview must have 1-click Download All Lists button');
+    });
+  });
+
 });
 
 

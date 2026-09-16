@@ -1030,6 +1030,284 @@ export default function AdminDashboard() {
     handleSaveTowers(updated);
   };
 
+  // ==========================================
+  // PAYMENT TIMESTAMP & CSV EXPORT UTILITIES
+  // ==========================================
+  const formatTimestamp = (isoOrDateStr?: string | null): string => {
+    if (!isoOrDateStr) return "N/A";
+    try {
+      const d = new Date(isoOrDateStr);
+      if (isNaN(d.getTime())) return String(isoOrDateStr);
+      return d.toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
+    } catch {
+      return String(isoOrDateStr);
+    }
+  };
+
+  const downloadCsv = (filename: string, headers: string[], rows: (string | number | boolean | null | undefined)[][]) => {
+    const escapeCell = (val: any): string => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/"/g, '""');
+      return `"${str}"`;
+    };
+
+    const csvContent = [
+      headers.map(escapeCell).join(","),
+      ...rows.map((row) => row.map(escapeCell).join(",")),
+    ].join("\r\n");
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportContributionsCsv = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const headers = [
+      "Contributor Name",
+      "Flat Number",
+      "Phone",
+      "Seva Offering",
+      "Amount (INR)",
+      "Payment / UTR ID",
+      "Payment Mode",
+      "Status",
+      "Wall Visibility",
+      "Payment Date & Time (Formatted)",
+      "Payment Date & Time (ISO)",
+      "Receipt Reference",
+    ];
+
+    const rows = contributions.map((c) => {
+      const catName = getContributionCategoryName(c);
+      const receiptRef = c.id ? `PSS-2026-${c.id.substring(0, 6).toUpperCase()}` : "N/A";
+      return [
+        c.contributor_name || "Anonymous",
+        c.flat_number || "N/A",
+        c.phone || "N/A",
+        catName,
+        c.amount || 0,
+        c.payment_id || "N/A",
+        c.payment_mode || "UPI",
+        c.status || "Pending",
+        c.is_name_visible ? "Public" : "Anonymous",
+        formatTimestamp(c.created_at),
+        c.created_at || "N/A",
+        receiptRef,
+      ];
+    });
+
+    downloadCsv(`PBEL_Durgotsav_2026_Contributions_${dateStr}.csv`, headers, rows);
+  };
+
+  const handleExportCategoriesCsv = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const headers = [
+      "Category ID",
+      "Seva Title",
+      "Pujo Day",
+      "Pujo Date",
+      "Fixed Price (INR)",
+      "Max Slot Limit",
+      "Slots Booked",
+      "Slots Remaining",
+      "Homepage Featured",
+      "Active Status",
+      "Description",
+    ];
+
+    const rows = categoriesList.map((cat) => {
+      const decoded = decodeCategoryDescription(cat.description);
+      const dayInfo = inferSevaDayAndDate(cat.name, decoded.cleanDescription, decoded.parsedDay, decoded.parsedDate);
+      const booked = contributions.filter(
+        (c) => (c.category_id === cat.id || c.contribution_categories?.name?.toLowerCase() === cat.name?.toLowerCase()) && c.status !== "Rejected"
+      ).length;
+      const max = cat.max_limit !== undefined && cat.max_limit !== null
+        ? Number(cat.max_limit)
+        : (decoded.parsedLimit !== undefined ? decoded.parsedLimit : 5);
+      const remaining = Math.max(0, max - booked);
+      const isActive = cat.is_active !== undefined
+        ? (cat.is_active !== false)
+        : (decoded.parsedActive !== undefined ? decoded.parsedActive : true);
+
+      return [
+        cat.id,
+        cat.name,
+        dayInfo.dayName,
+        dayInfo.dateStr,
+        cat.fixed_amount || "Custom",
+        max,
+        booked,
+        remaining,
+        decoded.parsedFeatured ? "Yes" : "No",
+        isActive ? "Active" : "Disabled",
+        decoded.cleanDescription || cat.description || "",
+      ];
+    });
+
+    downloadCsv(`PBEL_Durgotsav_2026_Seva_Categories_${dateStr}.csv`, headers, rows);
+  };
+
+  const handleExportAnandamelaCsv = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const headers = [
+      "Stall Number",
+      "Stall Name",
+      "Stall Type",
+      "Host / Chef Name",
+      "Phone",
+      "Tower",
+      "Flat Number",
+      "Category",
+      "Tables Count",
+      "Total Setup Fee (INR)",
+      "Payment Status",
+      "Payment UTR / Reference",
+      "Moderation Status",
+      "Dishes / Offerings Summary",
+      "Price Range",
+      "Payment / Registered Timestamp (Formatted)",
+      "Payment / Registered Timestamp (ISO)",
+    ];
+
+    const rows = anandamelaStalls.map((s: any) => {
+      const tables = Number(s.tablesCount) || 1;
+      const fee = Number(s.totalAmount) || tables * 1000;
+      const dishesStr = s.dishes && s.dishes.length > 0
+        ? s.dishes.map((d: any) => `${d.name} (₹${d.price}${d.isVeg ? ", Veg" : ""})`).join("; ")
+        : (s.itemsDescription || s.description || "N/A");
+
+      return [
+        s.stallNumber || "N/A",
+        s.stallName || "N/A",
+        s.stallType || "Food",
+        s.chefName || "N/A",
+        s.phone || "N/A",
+        s.tower || "N/A",
+        s.flatNumber || "N/A",
+        s.category || "General",
+        tables,
+        fee,
+        s.paymentStatus || "Pending Verification",
+        s.paymentRef || "N/A",
+        s.status || "Pending",
+        dishesStr,
+        s.priceRange || "N/A",
+        formatTimestamp(s.createdAt),
+        s.createdAt || "N/A",
+      ];
+    });
+
+    downloadCsv(`PBEL_Durgotsav_2026_Anandamela_Stalls_${dateStr}.csv`, headers, rows);
+  };
+
+  const handleExportMembersCsv = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const headers = [
+      "Member ID",
+      "Member Name",
+      "Tower",
+      "Flat Number",
+      "Phone",
+      "Headcount",
+      "Membership Status",
+      "Joined Year",
+    ];
+
+    const rows = pssMembers.map((m: any) => [
+      m.id || "N/A",
+      m.name || "N/A",
+      m.tower || "N/A",
+      m.flatNumber || "N/A",
+      m.phone || "N/A",
+      m.headcount || 4,
+      m.status || "Active",
+      m.joinedYear || "2026",
+    ]);
+
+    downloadCsv(`PBEL_Durgotsav_2026_PSS_Members_${dateStr}.csv`, headers, rows);
+  };
+
+  const handleExportVolunteersCsv = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const headers = [
+      "Volunteer ID",
+      "Volunteer Name",
+      "Tower",
+      "Flat Number",
+      "Phone",
+      "Department / Role",
+      "Shift / Timing",
+      "Pujo Day",
+    ];
+
+    const rows = volunteers.map((v: any) => [
+      v.id || "N/A",
+      v.full_name || v.volunteer_name || "N/A",
+      v.tower || "N/A",
+      v.flat_number || "N/A",
+      v.phone || "N/A",
+      v.volunteer_slots?.volunteer_categories?.name || "General",
+      v.volunteer_slots?.shift_time || "Full Day",
+      v.volunteer_slots?.slot_date || "N/A",
+    ]);
+
+    downloadCsv(`PBEL_Durgotsav_2026_Volunteers_${dateStr}.csv`, headers, rows);
+  };
+
+  const handleExportSponsorsCsv = () => {
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const headers = [
+      "Sponsor ID",
+      "Company / Brand Name",
+      "Contact Person",
+      "Phone",
+      "Email",
+      "Tier",
+      "Committed Amount (INR)",
+      "Status",
+      "Description / Notes",
+    ];
+
+    const rows = sponsorsList.map((s: any) => [
+      s.id || "N/A",
+      s.name || s.company || "N/A",
+      s.contactPerson || s.contact_person || "N/A",
+      s.phone || "N/A",
+      s.email || "N/A",
+      s.tier || "Associate",
+      s.amount || s.committed_amount || 0,
+      s.status || "Active",
+      s.description || s.notes || "",
+    ]);
+
+    downloadCsv(`PBEL_Durgotsav_2026_Sponsors_${dateStr}.csv`, headers, rows);
+  };
+
+  const handleExportAllCsvs = () => {
+    handleExportContributionsCsv();
+    setTimeout(() => handleExportAnandamelaCsv(), 250);
+    setTimeout(() => handleExportCategoriesCsv(), 500);
+    setTimeout(() => handleExportMembersCsv(), 750);
+    setTimeout(() => handleExportVolunteersCsv(), 1000);
+    setTimeout(() => handleExportSponsorsCsv(), 1250);
+  };
+
+
   // WhatsApp Volunteer Dispatcher Handler
   const handleCopyWhatsAppRoster = (deptName: string, shiftDate: string) => {
     const deptVols = volunteers.filter((v) => {
@@ -2691,6 +2969,61 @@ function decodeCategoryDescription(desc?: string) {
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
+          {/* Administrative Data Export Center (CSV) */}
+          <div className="lg:col-span-2 bg-gradient-to-r from-blue-50 via-indigo-50/50 to-blue-50/80 p-5 rounded-2xl border border-blue-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-xl bg-blue-600 text-white shadow-sm shrink-0">
+                <Download size={22} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="font-heading text-base font-bold text-gray-900">
+                    Administrative Data Export Center (CSV)
+                  </h4>
+                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-300">
+                    Excel Ready • UTF-8 BOM
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                  Download real-time registry lists as formatted CSV spreadsheets for accounting, festival auditing, stall allocations, and communication.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap self-end md:self-center">
+              <button
+                type="button"
+                onClick={handleExportAllCsvs}
+                className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer golden-glow"
+                title="Download all 6 database lists in CSV format"
+              >
+                <Download size={14} />
+                <span>⚡ Download ALL Lists (Bundle)</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleExportContributionsCsv}
+                className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer"
+              >
+                🌺 Contributions
+              </button>
+              <button
+                type="button"
+                onClick={handleExportAnandamelaCsv}
+                className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer"
+              >
+                🍲 Anandamela Stalls
+              </button>
+              <button
+                type="button"
+                onClick={handleExportCategoriesCsv}
+                className="bg-white hover:bg-gray-50 text-gray-800 border border-gray-300 text-xs font-semibold px-3 py-2 rounded-xl transition cursor-pointer"
+              >
+                🪔 Seva Packages
+              </button>
+            </div>
+          </div>
+
           {/* Executive Member Contribution Visibility Switcher */}
           <div className="lg:col-span-2 bg-gradient-to-r from-amber-50 via-white to-amber-50/80 p-5 rounded-2xl border border-amber-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">
@@ -2745,6 +3078,12 @@ function decodeCategoryDescription(desc?: string) {
                   <div>
                     <span className="font-bold text-gray-900 block">{c.contributor_name}</span>
                     <span className="text-gray-500">{c.flat_number || "PBEL Resident"} • {c.phone}</span>
+                    {c.created_at && (
+                      <span className="text-[10px] text-gray-400 flex items-center gap-1 font-mono mt-0.5" title={c.created_at}>
+                        <Clock size={10} className="text-gray-400 shrink-0" />
+                        <span>{formatTimestamp(c.created_at)}</span>
+                      </span>
+                    )}
                   </div>
                   <span className="font-bold text-green-700 text-sm">₹{c.amount}</span>
                 </div>
@@ -3089,6 +3428,14 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
                 <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
                   <button
+                    onClick={handleExportContributionsCsv}
+                    className="bg-green-700 hover:bg-green-800 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                    title="Export all devotee contributions as CSV for Microsoft Excel"
+                  >
+                    <Download size={14} />
+                    <span>Download CSV</span>
+                  </button>
+                  <button
                     onClick={() => setShowSponsorCopyModal(true)}
                     className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
                     title="Generate and copy sponsor announcement for WhatsApp / Notice Board"
@@ -3231,6 +3578,7 @@ function decodeCategoryDescription(desc?: string) {
                     <th className="p-3.5">Seva / Offering</th>
                     <th className="p-3.5">Amount</th>
                     <th className="p-3.5">UTR / Payment ID</th>
+                    <th className="p-3.5">Payment Date &amp; Time</th>
                     <th className="p-3.5">Wall Visibility</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5 text-right">Actions</th>
@@ -3239,7 +3587,7 @@ function decodeCategoryDescription(desc?: string) {
                 <tbody className="divide-y divide-gray-100">
                   {displayedContributions.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="p-8 text-center text-gray-400">
+                      <td colSpan={10} className="p-8 text-center text-gray-400">
                         No contributions match the selected filters.
                       </td>
                     </tr>
@@ -3263,7 +3611,21 @@ function decodeCategoryDescription(desc?: string) {
                             </span>
                           </td>
                           <td className="p-3.5 font-bold text-green-700 text-sm font-mono">₹{Number(c.amount).toLocaleString("en-IN")}</td>
-                          <td className="p-3.5 font-mono text-[11px] text-gray-700 font-semibold">{c.payment_id}</td>
+                          <td className="p-3.5">
+                            <span className="font-mono text-[11px] text-gray-700 font-semibold block">{c.payment_id}</span>
+                            {c.created_at && (
+                              <span className="text-[10px] text-gray-400 flex items-center gap-1 font-mono mt-0.5" title={c.created_at}>
+                                <Clock size={10} className="text-gray-400 shrink-0" />
+                                <span>{formatTimestamp(c.created_at)}</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className="p-3.5 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 font-mono text-[11px] text-gray-700">
+                              <Clock size={12} className="text-gray-400 shrink-0" />
+                              <span>{formatTimestamp(c.created_at)}</span>
+                            </div>
+                          </td>
                           <td className="p-3.5">
                             <button
                               onClick={() => handleToggleWallVisibility(c)}
@@ -3795,9 +4157,20 @@ function decodeCategoryDescription(desc?: string) {
                 <h3 className="font-heading text-lg font-bold text-gray-900">Live Seva Packages & Slot Counters</h3>
                 <span className="text-xs text-gray-500">Categories auto-greyout on `/contribute` when limit is reached.</span>
               </div>
-              <span className="text-xs bg-amber-100 text-amber-900 font-bold px-3 py-1 rounded-full">
-                {categoriesList.length} Packages
-              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportCategoriesCsv}
+                  className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                  title="Download all Seva Categories and slots as CSV"
+                >
+                  <Download size={13} />
+                  <span>Download Categories CSV</span>
+                </button>
+                <span className="text-xs bg-amber-100 text-amber-900 font-bold px-3 py-1 rounded-full">
+                  {categoriesList.length} Packages
+                </span>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -4797,9 +5170,19 @@ function decodeCategoryDescription(desc?: string) {
               <h3 className="font-heading text-lg font-bold text-gray-900">
                 Registered Volunteer Sevaks ({volunteers.length})
               </h3>
-              <button onClick={() => window.print()} className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1">
-                <Download size={13} /> Print Roster
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleExportVolunteersCsv}
+                  className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1 shadow-2xs transition cursor-pointer"
+                  title="Download Volunteer Roster as CSV"
+                >
+                  <Download size={13} /> Download CSV
+                </button>
+                <button onClick={() => window.print()} className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-3 py-1.5 rounded-xl flex items-center gap-1 cursor-pointer">
+                  <Printer size={13} /> Print Roster
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -4864,6 +5247,14 @@ function decodeCategoryDescription(desc?: string) {
             </div>
 
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleExportAnandamelaCsv}
+                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title="Download Anandamela Stalls registry as CSV"
+              >
+                <Download size={14} /> Download Stalls CSV
+              </button>
               <button
                 onClick={async () => {
                   if (!confirm("Are you sure you want to clear ALL registered food stalls?")) return;
@@ -4931,6 +5322,7 @@ function decodeCategoryDescription(desc?: string) {
                     <th className="p-3.5">WhatsApp</th>
                     <th className="p-3.5">Tables &amp; Fee</th>
                     <th className="p-3.5">Payment / UTR</th>
+                    <th className="p-3.5">Payment Date &amp; Time</th>
                     <th className="p-3.5">Dishes / Offerings</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5 text-right">Moderation Actions</th>
@@ -5007,6 +5399,18 @@ function decodeCategoryDescription(desc?: string) {
                               >
                                 {isFeeVerified ? "✓ Fee Verified" : "Fee Unverified"}
                               </span>
+                              {stall.createdAt && (
+                                <span className="text-[10px] text-gray-500 flex items-center gap-1 font-mono pt-0.5" title={stall.createdAt}>
+                                  <Clock size={10} className="text-gray-400 shrink-0" />
+                                  <span>{formatTimestamp(stall.createdAt)}</span>
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="p-3.5 whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 font-mono text-[11px] text-gray-700">
+                              <Clock size={12} className="text-gray-400 shrink-0" />
+                              <span>{formatTimestamp(stall.createdAt)}</span>
                             </div>
                           </td>
                           <td className="p-3.5 max-w-xs">
@@ -8246,6 +8650,15 @@ function decodeCategoryDescription(desc?: string) {
                     <span className="text-xs bg-green-100 text-green-800 font-bold px-2.5 py-0.5 rounded-full">
                       ₹7,500 Paid Roster
                     </span>
+                    <button
+                      type="button"
+                      onClick={handleExportMembersCsv}
+                      className="bg-green-700 hover:bg-green-800 text-white text-xs font-semibold px-3 py-1 rounded-xl flex items-center gap-1.5 shadow-2xs transition cursor-pointer"
+                      title="Download PSS Member Families Roster as CSV"
+                    >
+                      <Download size={13} />
+                      <span>Download CSV</span>
+                    </button>
                   </div>
 
                   <div className="relative w-full sm:w-72">
