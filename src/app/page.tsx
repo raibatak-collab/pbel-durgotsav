@@ -426,13 +426,13 @@ export default async function Home() {
           <div className="max-w-2xl relative z-10">
             <div className="inline-flex items-center gap-2 bg-black/25 text-yellow-200 border border-yellow-300/30 text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider mb-4 backdrop-blur-xs">
               <Utensils size={14} />
-              <span>Maha Panchami Evening Food Fiesta • 05:00 PM Onwards</span>
+              <span>Maha Panchami Evening Food &amp; Artisan Fiesta • 05:00 PM Onwards</span>
             </div>
             <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-3 leading-tight drop-shadow-md">
-              Anandamela Home Chef Stalls 🍲
+              Anandamela Home Chef Stalls &amp; Artisan Kiosks 🍲🛍️
             </h2>
             <p className="text-amber-100 text-sm sm:text-base leading-relaxed mb-6">
-              Taste authentic homemade Bengali heritage cuisine, Kolkata rolls, fish fry, street chaat, and artisanal sweets prepared by PBEL City resident home chefs!
+              Taste authentic homemade Bengali heritage cuisine, rolls &amp; sweets, or explore handmade jewellery, handicrafts, festive apparel, and games hosted by PBEL City residents!
               <br />
               <strong className="text-white">Resident Stall Registrations are now OPEN</strong> — strictly 15 stalls limit (₹1,000 / table).
             </p>
@@ -443,13 +443,13 @@ export default async function Home() {
                 className="bg-white hover:bg-amber-50 text-amber-950 font-bold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-lg flex items-center gap-2"
               >
                 <Utensils size={16} className="text-amber-700" />
-                <span>Register Your Food Stall (15 Stalls Limit) →</span>
+                <span>Register Your Stall (15 Stalls Limit) →</span>
               </Link>
               <Link
                 href="/anandamela#stalls-directory"
                 className="bg-black/20 hover:bg-black/30 text-white border border-white/30 font-semibold px-6 py-3 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 backdrop-blur-xs"
               >
-                <span>Explore Stalls &amp; Menu</span>
+                <span>Explore Stalls &amp; Offerings</span>
                 <ArrowRight size={15} />
               </Link>
             </div>

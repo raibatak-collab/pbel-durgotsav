@@ -2638,7 +2638,7 @@ function decodeCategoryDescription(desc?: string) {
                     { id: "categories", label: "🌺 Seva Catalog" },
                     { id: "schedule", label: "📅 Pujo Nirghanto" },
                     { id: "volunteers", label: "🤝 Volunteer Roster" },
-                    { id: "anandamela", label: "🍲 Food Stalls" },
+                    { id: "anandamela", label: "🍲 Anandamela Stalls" },
                   ].map((tab) => (
                     <button
                       key={tab.id}
@@ -2885,11 +2885,11 @@ function decodeCategoryDescription(desc?: string) {
                     const anandamelaPreset: SitePopupHighlight = {
                       enabled: true,
                       id: `anandamela-open-${Date.now()}`,
-                      badge: "🍲 Maha Panchami Food Fiesta",
-                      title: "Anandamela Food Stall Registrations Open!",
+                      badge: "🍲🛍️ Maha Panchami Food & Artisan Fiesta",
+                      title: "Anandamela Stall Registrations Open!",
                       subtitle: "05:00 PM Onwards on 15th October • Strictly 15 Stalls Limit",
-                      snippet: "Calling all PBEL City resident home chefs! Showcase your signature homemade culinary delicacies on Panchami evening. Table setup charges are ₹1,000 per table (1 or 2 tables). Apply now before all 15 slots are booked!",
-                      actionText: "Register Your Food Stall →",
+                      snippet: "Calling all PBEL City residents! Showcase your homemade culinary specialties, handicrafts, jewellery, fashion, games or services on Panchami evening. Table setup charges are ₹1,000 per table (1 or 2 tables). Apply now before all 15 slots are booked!",
+                      actionText: "Register Your Stall →",
                       actionUrl: "/anandamela",
                       imageUrl: "/images/wallpapers/durga_festive_mandala.svg",
                     };
@@ -4853,10 +4853,10 @@ function decodeCategoryDescription(desc?: string) {
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100/80 text-amber-900 text-xs font-bold mb-2">
                 <Utensils size={13} className="text-primary" />
-                <span>Anandamela Food Fiesta • Home Chef Stalls (Max 15)</span>
+                <span>Anandamela Fiesta • Food &amp; Non-Food Stalls (Max 15)</span>
               </div>
               <h2 className="font-heading text-2xl font-bold text-gray-900">
-                Food Stall Registrations &amp; Moderation
+                Stall Registrations &amp; Moderation (Food &amp; Non-Food)
               </h2>
               <p className="text-xs text-gray-500 mt-1">
                 Verify table charges (₹1,000/table), check UPI UTR references, and approve resident stalls before they appear in the public directory.
@@ -4927,11 +4927,11 @@ function decodeCategoryDescription(desc?: string) {
                 <thead className="bg-gray-50/50 text-gray-500 uppercase text-[10px] font-bold border-b border-gray-100">
                   <tr>
                     <th className="p-3.5">Stall &amp; Category</th>
-                    <th className="p-3.5">Chef, Tower &amp; Flat</th>
+                    <th className="p-3.5">Chef / Host, Tower &amp; Flat</th>
                     <th className="p-3.5">WhatsApp</th>
                     <th className="p-3.5">Tables &amp; Fee</th>
                     <th className="p-3.5">Payment / UTR</th>
-                    <th className="p-3.5">Dishes / Menu</th>
+                    <th className="p-3.5">Dishes / Offerings</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5 text-right">Moderation Actions</th>
                   </tr>
@@ -4943,15 +4943,30 @@ function decodeCategoryDescription(desc?: string) {
                       const fee = Number(stall.totalAmount) || tables * 1000;
                       const isFeeVerified = stall.paymentStatus === "Payment Verified";
                       const isApproved = stall.status === "Approved";
+                      const isNonFood = stall.stallType === "Non-Food";
 
                       return (
                         <tr key={stall.id || idx} className="hover:bg-amber-50/30 transition">
                           <td className="p-3.5">
                             <span className="font-bold text-gray-900 block">{stall.stallName}</span>
-                            <span className="text-[10px] text-gray-500">{stall.category || "General"}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span
+                                className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                                  isNonFood
+                                    ? "bg-purple-100 text-purple-800 border border-purple-200"
+                                    : "bg-amber-100 text-amber-900 border border-amber-200"
+                                }`}
+                              >
+                                {isNonFood ? "🛍️ Non-Food" : "🍲 Food"}
+                              </span>
+                              <span className="text-[10px] text-gray-500">{stall.category || "General"}</span>
+                            </div>
                           </td>
                           <td className="p-3.5">
-                            <span className="font-semibold text-gray-800 block">{stall.chefName}</span>
+                            <span className="font-semibold text-gray-800 block">
+                              <span className="text-gray-400 font-normal">{isNonFood ? "Host: " : "Chef: "}</span>
+                              {stall.chefName}
+                            </span>
                             <span className="text-[11px] text-gray-500">{stall.tower} • Flat {stall.flatNumber}</span>
                           </td>
                           <td className="p-3.5 font-mono text-gray-700">
@@ -4995,7 +5010,19 @@ function decodeCategoryDescription(desc?: string) {
                             </div>
                           </td>
                           <td className="p-3.5 max-w-xs">
-                            {stall.dishes && stall.dishes.length > 0 ? (
+                            {isNonFood ? (
+                              <div className="space-y-1">
+                                <div className="text-[11px] text-gray-800 line-clamp-2">
+                                  <span className="font-bold text-purple-900">🛍️ Offerings: </span>
+                                  {stall.itemsDescription || stall.description || "Handicrafts, Goods & Services"}
+                                </div>
+                                {stall.priceRange && (
+                                  <span className="inline-block text-[10px] font-semibold text-primary bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                                    Price: {stall.priceRange}
+                                  </span>
+                                )}
+                              </div>
+                            ) : stall.dishes && stall.dishes.length > 0 ? (
                               <div className="space-y-0.5">
                                 {stall.dishes.map((d: any, dIdx: number) => (
                                   <div key={dIdx} className="text-[11px] text-gray-700 truncate">

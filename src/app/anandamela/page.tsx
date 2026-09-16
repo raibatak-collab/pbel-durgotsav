@@ -17,7 +17,11 @@ import {
   Check,
   Info,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  ShoppingBag,
+  Tag,
+  Palette,
+  Gift
 } from "lucide-react";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { sanitizeText, validatePhoneNumber, buildUpiPayUri, OFFICIAL_BANK_UPI } from "@/utils/security";
@@ -31,17 +35,40 @@ export interface FoodDish {
   specialty?: boolean;
 }
 
+export type StallType = "Food" | "Non-Food";
+
+export const FOOD_CATEGORIES = [
+  "Rolls & Mughlai",
+  "Bengali Delicacies",
+  "Street Food & Chaat",
+  "Sweets & Pithe",
+  "Snacks & Quick Bites",
+] as const;
+
+export const NON_FOOD_CATEGORIES = [
+  "Handicrafts & Art",
+  "Jewellery & Accessories",
+  "Apparel & Festive Wear",
+  "Games & Fun Activities",
+  "Mehndi & Face Art",
+  "Home Decor & Festive",
+  "Other Services & Goods",
+] as const;
+
 export interface FoodStall {
   id: string;
   stallNumber: string;
   stallName: string;
-  chefName: string;
+  chefName: string; // Used for Chef / Stall Host
+  stallType?: StallType;
   tower: string;
   flatNumber: string;
   phone: string;
-  category: "Rolls & Mughlai" | "Bengali Delicacies" | "Street Food & Chaat" | "Sweets & Pithe" | "Snacks & Quick Bites";
+  category: string;
   description: string;
-  dishes: FoodDish[];
+  dishes?: FoodDish[];
+  itemsDescription?: string; // For non-food stalls
+  priceRange?: string; // For non-food stalls (e.g. ₹50 - ₹500)
   emoji: string;
   status: "Approved" | "Pending";
   tablesCount?: number; // 1 or 2
@@ -59,6 +86,7 @@ const INITIAL_STALLS: FoodStall[] = [];
 export default function AnandamelaPage() {
   const [stalls, setStalls] = useState<FoodStall[]>(INITIAL_STALLS);
   const [towersList, setTowersList] = useState<TowerDefinition[]>([]);
+  const [stallTypeFilter, setStallTypeFilter] = useState<"all" | "Food" | "Non-Food">("all");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [dietaryFilter, setDietaryFilter] = useState<"all" | "veg" | "non-veg">("all");
@@ -67,26 +95,31 @@ export default function AnandamelaPage() {
 
   // Form State for Stall Registration
   const [regForm, setRegForm] = useState({
+    stallType: "Food" as StallType,
     stallName: "",
     chefName: "",
     tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
     flatNumber: "",
     phone: "",
-    category: "Rolls & Mughlai" as FoodStall["category"],
+    category: "Rolls & Mughlai" as string,
     description: "",
     tablesCount: 1 as 1 | 2,
     paymentRef: "",
+    // Food-specific fields
     dish1Name: "",
     dish1Price: "",
     dish1Veg: false,
     dish2Name: "",
     dish2Price: "",
     dish2Veg: true,
+    // Non-food specific fields
+    itemsDescription: "",
+    priceRange: "",
   });
 
   // Seva Nudge Modal State
   const [nudgeModalOpen, setNudgeModalOpen] = useState(false);
-  const [submittedStallInfo, setSubmittedStallInfo] = useState<{ stallName: string; chefName: string } | null>(null);
+  const [submittedStallInfo, setSubmittedStallInfo] = useState<{ stallName: string; chefName: string; stallType: StallType } | null>(null);
 
   useEffect(() => {
     try {
@@ -135,15 +168,17 @@ export default function AnandamelaPage() {
   const isCapacityFull = approvedStalls.length >= MAX_STALLS;
   const remainingSlots = Math.max(0, MAX_STALLS - approvedStalls.length);
 
-  // Progressive disclosure check: Has the resident completed all stall details?
+  // Progressive disclosure check: Has the resident completed all stall details based on Stall Type?
+  const isFood = regForm.stallType === "Food";
   const isDetailsFilled = Boolean(
     regForm.stallName.trim() &&
     regForm.chefName.trim() &&
     regForm.flatNumber.trim() &&
     validatePhoneNumber(regForm.phone) &&
-    regForm.dish1Name.trim() &&
-    Number(regForm.dish1Price) > 0 &&
-    (regForm.tablesCount === 1 || regForm.tablesCount === 2)
+    (regForm.tablesCount === 1 || regForm.tablesCount === 2) &&
+    (isFood
+      ? regForm.dish1Name.trim() && Number(regForm.dish1Price) > 0
+      : regForm.itemsDescription.trim().length > 0)
   );
 
   const totalFeeToPay = regForm.tablesCount * PRICE_PER_TABLE;
@@ -151,7 +186,11 @@ export default function AnandamelaPage() {
   const handleRegisterStall = (e: React.FormEvent) => {
     e.preventDefault();
     if (!isDetailsFilled) {
-      alert("Please fill in Stall Name, Chef Name, Flat Number, WhatsApp Phone, and Primary Signature Dish.");
+      if (isFood) {
+        alert("Please fill in Stall Name, Chef Name, Flat Number, WhatsApp Phone, and Primary Signature Dish.");
+      } else {
+        alert("Please fill in Stall Name, Host Name, Flat Number, WhatsApp Phone, and Featured Items / Services Description.");
+      }
       return;
     }
 
@@ -161,20 +200,40 @@ export default function AnandamelaPage() {
     }
 
     const dishes: FoodDish[] = [];
-    if (regForm.dish1Name.trim()) {
-      dishes.push({
-        name: sanitizeText(regForm.dish1Name),
-        price: Number(regForm.dish1Price) || 150,
-        isVeg: regForm.dish1Veg,
-        specialty: true,
-      });
+    if (isFood) {
+      if (regForm.dish1Name.trim()) {
+        dishes.push({
+          name: sanitizeText(regForm.dish1Name),
+          price: Number(regForm.dish1Price) || 150,
+          isVeg: regForm.dish1Veg,
+          specialty: true,
+        });
+      }
+      if (regForm.dish2Name.trim()) {
+        dishes.push({
+          name: sanitizeText(regForm.dish2Name),
+          price: Number(regForm.dish2Price) || 120,
+          isVeg: regForm.dish2Veg,
+        });
+      }
     }
-    if (regForm.dish2Name.trim()) {
-      dishes.push({
-        name: sanitizeText(regForm.dish2Name),
-        price: Number(regForm.dish2Price) || 120,
-        isVeg: regForm.dish2Veg,
-      });
+
+    // Determine representative emoji
+    let emoji = "🍲";
+    if (isFood) {
+      if (regForm.category === "Sweets & Pithe") emoji = "🍯";
+      else if (regForm.category === "Rolls & Mughlai") emoji = "🌯";
+      else if (regForm.category === "Bengali Delicacies") emoji = "🐟";
+      else if (regForm.category === "Snacks & Quick Bites") emoji = "🥟";
+      else emoji = "🍲";
+    } else {
+      if (regForm.category === "Handicrafts & Art") emoji = "🎨";
+      else if (regForm.category === "Jewellery & Accessories") emoji = "💍";
+      else if (regForm.category === "Apparel & Festive Wear") emoji = "👗";
+      else if (regForm.category === "Games & Fun Activities") emoji = "🎯";
+      else if (regForm.category === "Mehndi & Face Art") emoji = "🪔";
+      else if (regForm.category === "Home Decor & Festive") emoji = "🏮";
+      else emoji = "🛍️";
     }
 
     const newStall: FoodStall = {
@@ -182,13 +241,16 @@ export default function AnandamelaPage() {
       stallNumber: `Stall #${String(stalls.length + 1).padStart(2, "0")}`,
       stallName: sanitizeText(regForm.stallName),
       chefName: sanitizeText(regForm.chefName),
+      stallType: regForm.stallType,
       tower: regForm.tower,
       flatNumber: sanitizeText(regForm.flatNumber),
       phone: sanitizeText(regForm.phone),
       category: regForm.category,
-      description: sanitizeText(regForm.description) || "Home-cooked festive specialty prepared with love by PBEL City residents.",
-      emoji: regForm.category === "Sweets & Pithe" ? "🍯" : regForm.category === "Rolls & Mughlai" ? "🌯" : "🍲",
-      dishes: dishes.length > 0 ? dishes : [{ name: "Festive Specialty", price: 150, isVeg: false }],
+      description: sanitizeText(regForm.description) || (isFood ? "Home-cooked festive specialty prepared with love by PBEL City residents." : "Festive items and community creations curated with passion by PBEL City residents."),
+      emoji,
+      dishes: isFood ? (dishes.length > 0 ? dishes : [{ name: "Festive Specialty", price: 150, isVeg: false }]) : undefined,
+      itemsDescription: !isFood ? sanitizeText(regForm.itemsDescription) : undefined,
+      priceRange: !isFood && regForm.priceRange.trim() ? sanitizeText(regForm.priceRange.trim()) : undefined,
       status: "Pending",
       tablesCount: regForm.tablesCount,
       totalAmount: totalFeeToPay,
@@ -209,6 +271,7 @@ export default function AnandamelaPage() {
     setSubmittedStallInfo({
       stallName: newStall.stallName,
       chefName: newStall.chefName,
+      stallType: newStall.stallType || "Food",
     });
 
     // Open Seva Donation Nudge Modal
@@ -216,6 +279,7 @@ export default function AnandamelaPage() {
 
     // Reset Form
     setRegForm({
+      stallType: "Food",
       stallName: "",
       chefName: "",
       tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
@@ -231,27 +295,49 @@ export default function AnandamelaPage() {
       dish2Name: "",
       dish2Price: "",
       dish2Veg: true,
+      itemsDescription: "",
+      priceRange: "",
     });
   };
 
-  const categories = ["All", "Rolls & Mughlai", "Bengali Delicacies", "Street Food & Chaat", "Sweets & Pithe", "Snacks & Quick Bites"];
+  // Compute active category options for filter chips based on selected stall type
+  const activeCategoryList: string[] = [
+    "All",
+    ...(stallTypeFilter === "Food"
+      ? FOOD_CATEGORIES
+      : stallTypeFilter === "Non-Food"
+      ? NON_FOOD_CATEGORIES
+      : [...FOOD_CATEGORIES, ...NON_FOOD_CATEGORIES]),
+  ];
 
   const filteredStalls = stalls.filter((stall) => {
     if (stall.status !== "Approved") return false;
+
+    // Stall Type Filter
+    const isThisFood = !stall.stallType || stall.stallType === "Food";
+    if (stallTypeFilter === "Food" && !isThisFood) return false;
+    if (stallTypeFilter === "Non-Food" && isThisFood) return false;
+
+    // Category Filter
     const matchCategory = selectedCategory === "All" || stall.category === selectedCategory;
+
+    // Search Query
     const q = searchQuery.toLowerCase().trim();
     const matchQuery =
       !q ||
       stall.stallName.toLowerCase().includes(q) ||
       stall.chefName.toLowerCase().includes(q) ||
       stall.tower.toLowerCase().includes(q) ||
-      stall.dishes.some((d) => d.name.toLowerCase().includes(q));
+      (stall.category && stall.category.toLowerCase().includes(q)) ||
+      (stall.dishes && stall.dishes.some((d) => d.name.toLowerCase().includes(q))) ||
+      (stall.itemsDescription && stall.itemsDescription.toLowerCase().includes(q));
 
+    // Dietary Filter (applies to food dishes; if veg/non-veg selected, only matching food stalls appear)
     let matchDiet = true;
     if (dietaryFilter === "veg") {
-      matchDiet = stall.dishes.some((d) => d.isVeg);
+      matchDiet = Boolean(isThisFood && stall.dishes && stall.dishes.some((d) => d.isVeg));
     } else if (dietaryFilter === "non-veg") {
-      matchDiet = stall.dishes.some((d) => !d.isVeg);
+      matchDiet = Boolean(isThisFood && stall.dishes && stall.dishes.some((d) => !d.isVeg));
     }
 
     return matchCategory && matchQuery && matchDiet;
@@ -268,15 +354,15 @@ export default function AnandamelaPage() {
         <div className="max-w-6xl mx-auto relative z-10 text-center">
           <div className="inline-flex items-center gap-2 bg-amber-300/20 border border-amber-300/40 text-amber-200 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider mb-4 shadow-sm">
             <Sparkles size={14} className="text-amber-300" />
-            <span>Maha Panchami Evening Food Fiesta • 15th October • 05:00 PM Onwards</span>
+            <span>Maha Panchami Evening Food &amp; Artisan Fiesta • 15th October • 05:00 PM Onwards</span>
           </div>
 
           <h1 className="font-heading text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-4 drop-shadow-md">
-            Anandamela Food Fiesta 🍲
+            Anandamela Food &amp; Artisan Fiesta 🍲🛍️
           </h1>
 
           <p className="max-w-2xl mx-auto text-amber-100/90 text-sm sm:text-base leading-relaxed mb-8">
-            Experience the vibrant flavours of Bengal cooked with love by our very own <strong>PBEL City Resident Home Chefs</strong>! From Kolkata egg chicken rolls to Bhetki fish fry and hot Nolen Gur sweets.
+            Experience the vibrant flavours and creative crafts prepared with love by our very own <strong>PBEL City Residents</strong>! From authentic Bengali cuisine, rolls &amp; sweets to handmade jewellery, handicrafts, apparel, and games.
           </p>
 
           {/* Quick Stats Bar */}
@@ -314,15 +400,15 @@ export default function AnandamelaPage() {
                 className="bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-500 hover:to-amber-600 text-amber-950 px-6 py-3 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-lg flex items-center gap-2 golden-glow"
               >
                 <ChefHat size={18} />
-                <span>Register Your Home Chef Stall ({remainingSlots} Slots Left) →</span>
+                <span>Register Your Stall ({remainingSlots} Slots Left) →</span>
               </button>
             )}
             <a
               href="#stalls-directory"
               className="bg-white/10 hover:bg-white/20 text-white border border-white/25 px-5 py-3 rounded-2xl font-semibold text-xs sm:text-sm transition flex items-center gap-2"
             >
-              <Utensils size={16} />
-              <span>Explore Food Menu ({approvedStalls.reduce((acc, s) => acc + s.dishes.length, 0)} Dishes)</span>
+              <ShoppingBag size={16} />
+              <span>Explore Stalls &amp; Offerings ({approvedStalls.length} Stalls)</span>
             </a>
           </div>
         </div>
@@ -332,6 +418,76 @@ export default function AnandamelaPage() {
       <section id="stalls-directory" className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
         <div className="bg-white rounded-3xl border border-amber-900/10 p-5 sm:p-6 shadow-xs mb-8 space-y-4">
           
+          {/* Top Filter Chips: Stall Type (All vs Food vs Non-Food) */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-100">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider mr-1">
+                Stall Type:
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setStallTypeFilter("all");
+                  setSelectedCategory("All");
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  stallTypeFilter === "all"
+                    ? "bg-gray-900 text-white shadow-xs"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                <span>All Stalls</span>
+                <span className="text-[10px] opacity-75">({approvedStalls.length})</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStallTypeFilter("Food");
+                  setSelectedCategory("All");
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  stallTypeFilter === "Food"
+                    ? "bg-amber-600 text-white shadow-xs"
+                    : "bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-200"
+                }`}
+              >
+                <Utensils size={13} />
+                <span>Food Stalls</span>
+                <span className="text-[10px] opacity-75">
+                  ({approvedStalls.filter((s) => !s.stallType || s.stallType === "Food").length})
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStallTypeFilter("Non-Food");
+                  setSelectedCategory("All");
+                }}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                  stallTypeFilter === "Non-Food"
+                    ? "bg-purple-600 text-white shadow-xs"
+                    : "bg-purple-50 text-purple-900 hover:bg-purple-100 border border-purple-200"
+                }`}
+              >
+                <ShoppingBag size={13} />
+                <span>Non-Food &amp; Artisan Stalls</span>
+                <span className="text-[10px] opacity-75">
+                  ({approvedStalls.filter((s) => s.stallType === "Non-Food").length})
+                </span>
+              </button>
+            </div>
+
+            {/* Quick action to register */}
+            {!isCapacityFull && (
+              <button
+                onClick={() => setIsRegisterOpen(true)}
+                className="text-primary hover:text-primary-hover font-bold text-xs flex items-center gap-1 transition"
+              >
+                <span>+ Register New Stall</span>
+              </button>
+            )}
+          </div>
+
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Search Input */}
             <div className="relative flex-1">
@@ -340,47 +496,50 @@ export default function AnandamelaPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search dish (e.g. Fish Fry, Rolls, Patishapta, Biryani) or chef..."
+                placeholder="Search stalls, dishes, handicrafts, jewellery, games, or resident hosts..."
                 className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl text-xs sm:text-sm outline-none focus:ring-2 focus:ring-primary focus:bg-white transition"
               />
             </div>
 
-            {/* Dietary Filter */}
-            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-2xl shrink-0">
-              <button
-                onClick={() => setDietaryFilter("all")}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
-                  dietaryFilter === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                All Menu
-              </button>
-              <button
-                onClick={() => setDietaryFilter("veg")}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                  dietaryFilter === "veg" ? "bg-green-100 text-green-900 shadow-xs" : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-green-600 inline-block" /> Pure Veg
-              </button>
-              <button
-                onClick={() => setDietaryFilter("non-veg")}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
-                  dietaryFilter === "non-veg" ? "bg-red-100 text-red-900 shadow-xs" : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-red-600 inline-block" /> Non-Veg
-              </button>
-            </div>
+            {/* Dietary Filter (primarily for food stalls) */}
+            {stallTypeFilter !== "Non-Food" && (
+              <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-2xl shrink-0">
+                <button
+                  onClick={() => setDietaryFilter("all")}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition ${
+                    dietaryFilter === "all" ? "bg-white text-gray-900 shadow-xs" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  All Menu
+                </button>
+                <button
+                  onClick={() => setDietaryFilter("veg")}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    dietaryFilter === "veg" ? "bg-green-100 text-green-900 shadow-xs" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-green-600 inline-block" /> Pure Veg
+                </button>
+                <button
+                  onClick={() => setDietaryFilter("non-veg")}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                    dietaryFilter === "non-veg" ? "bg-red-100 text-red-900 shadow-xs" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-red-600 inline-block" /> Non-Veg
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Category Tabs */}
+          {/* Category Filter Chips / Pills (Dynamically adapts to Stall Type) */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar pt-2 border-t border-gray-100">
-            {categories.map((cat) => (
+            <span className="text-[11px] font-bold text-gray-400 uppercase shrink-0 mr-1">Category:</span>
+            {activeCategoryList.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition ${
                   selectedCategory === cat
                     ? "bg-primary text-white shadow-xs"
                     : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
@@ -395,102 +554,140 @@ export default function AnandamelaPage() {
 
         {/* 3. STALLS DIRECTORY GRID */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredStalls.map((stall) => (
-            <div
-              key={stall.id}
-              className="bg-white rounded-3xl border border-amber-900/10 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group hover:border-amber-300"
-            >
-              <div>
-                {/* Stall Header */}
-                <div className="p-5 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white border-b border-gray-100">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[11px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full uppercase">
-                      {stall.stallNumber}
-                    </span>
-                    <span className="text-xs bg-white text-gray-600 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
-                      {stall.category}
-                    </span>
-                  </div>
+          {filteredStalls.map((stall) => {
+            const isNonFood = stall.stallType === "Non-Food";
 
-                  <div className="flex items-start gap-3 mt-3">
-                    <span className="text-3xl p-2 bg-white rounded-2xl shadow-xs border border-amber-200 shrink-0">
-                      {stall.emoji}
-                    </span>
-                    <div>
-                      <h3 className="font-heading text-lg font-bold text-gray-900 group-hover:text-primary transition leading-snug">
-                        {stall.stallName}
-                      </h3>
-                      <p className="text-xs text-amber-900/80 font-medium mt-0.5">
-                        Chef: {stall.chefName}
-                      </p>
-                      <span className="text-[11px] text-gray-500">
-                        {stall.tower} • Flat {stall.flatNumber}
-                        {stall.tablesCount ? ` • ${stall.tablesCount} ${stall.tablesCount === 1 ? 'Table' : 'Tables'}` : ""}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-gray-600 mt-3 line-clamp-2 leading-relaxed">
-                    {stall.description}
-                  </p>
-                </div>
-
-                {/* Signature Dishes List */}
-                <div className="p-5 space-y-2.5">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-                    Signature Menu &amp; Pricing:
-                  </span>
-                  <div className="divide-y divide-gray-100 text-xs">
-                    {stall.dishes.map((dish, idx) => (
-                      <div key={idx} className="py-2 flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <span
-                            className={`w-2.5 h-2.5 rounded-xs shrink-0 border flex items-center justify-center ${
-                              dish.isVeg ? "border-green-600" : "border-red-600"
-                            }`}
-                          >
-                            <span
-                              className={`w-1 h-1 rounded-full ${dish.isVeg ? "bg-green-600" : "bg-red-600"}`}
-                            />
-                          </span>
-                          <span className="font-semibold text-gray-800 truncate">
-                            {dish.name}
-                          </span>
-                          {dish.specialty && (
-                            <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded shrink-0">
-                              ⭐ Must Try
-                            </span>
-                          )}
-                        </div>
-                        <span className="font-bold text-primary font-mono shrink-0">
-                          ₹{dish.price}
+            return (
+              <div
+                key={stall.id}
+                className="bg-white rounded-3xl border border-amber-900/10 shadow-xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group hover:border-amber-300"
+              >
+                <div>
+                  {/* Stall Header */}
+                  <div className="p-5 bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-white border-b border-gray-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[11px] font-bold text-amber-900 bg-amber-200/80 px-2.5 py-0.5 rounded-full uppercase">
+                          {stall.stallNumber}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                            isNonFood
+                              ? "bg-purple-100 text-purple-800 border border-purple-200"
+                              : "bg-amber-100 text-amber-900 border border-amber-200"
+                          }`}
+                        >
+                          {isNonFood ? "🛍️ Non-Food" : "🍲 Food"}
                         </span>
                       </div>
-                    ))}
+                      <span className="text-xs bg-white text-gray-600 border border-gray-200 px-2.5 py-0.5 rounded-full font-medium">
+                        {stall.category}
+                      </span>
+                    </div>
+
+                    <div className="flex items-start gap-3 mt-3">
+                      <span className="text-3xl p-2 bg-white rounded-2xl shadow-xs border border-amber-200 shrink-0">
+                        {stall.emoji}
+                      </span>
+                      <div>
+                        <h3 className="font-heading text-lg font-bold text-gray-900 group-hover:text-primary transition leading-snug">
+                          {stall.stallName}
+                        </h3>
+                        <p className="text-xs text-amber-900/80 font-medium mt-0.5">
+                          {isNonFood ? "Host" : "Chef"}: {stall.chefName}
+                        </p>
+                        <span className="text-[11px] text-gray-500">
+                          {stall.tower} • Flat {stall.flatNumber}
+                          {stall.tablesCount ? ` • ${stall.tablesCount} ${stall.tablesCount === 1 ? 'Table' : 'Tables'}` : ""}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-gray-600 mt-3 line-clamp-2 leading-relaxed">
+                      {stall.description}
+                    </p>
                   </div>
+
+                  {/* Offerings Section: Dishes for Food OR Products / Services for Non-Food */}
+                  {isNonFood ? (
+                    <div className="p-5 space-y-2.5">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                        Featured Products / Offerings:
+                      </span>
+                      <div className="bg-amber-50/50 p-3 rounded-2xl border border-amber-200/60 text-xs text-gray-700 leading-relaxed font-medium">
+                        {stall.itemsDescription || stall.description}
+                      </div>
+                      {stall.priceRange && (
+                        <div className="flex items-center justify-between text-xs pt-1 px-1">
+                          <span className="text-gray-500 font-medium">Estimated Pricing:</span>
+                          <span className="font-bold text-primary font-mono bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200">
+                            {stall.priceRange}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-5 space-y-2.5">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
+                        Signature Menu &amp; Pricing:
+                      </span>
+                      <div className="divide-y divide-gray-100 text-xs">
+                        {stall.dishes && stall.dishes.length > 0 ? (
+                          stall.dishes.map((dish, idx) => (
+                            <div key={idx} className="py-2 flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span
+                                  className={`w-2.5 h-2.5 rounded-xs shrink-0 border flex items-center justify-center ${
+                                    dish.isVeg ? "border-green-600" : "border-red-600"
+                                  }`}
+                                >
+                                  <span
+                                    className={`w-1 h-1 rounded-full ${dish.isVeg ? "bg-green-600" : "bg-red-600"}`}
+                                  />
+                                </span>
+                                <span className="font-semibold text-gray-800 truncate">
+                                  {dish.name}
+                                </span>
+                                {dish.specialty && (
+                                  <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-1.5 py-0.5 rounded shrink-0">
+                                    ⭐ Must Try
+                                  </span>
+                                )}
+                              </div>
+                              <span className="font-bold text-primary font-mono shrink-0">
+                                ₹{dish.price}
+                              </span>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="py-2 text-gray-500 italic">Menu details to be announced</div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stall Footer Actions */}
+                <div className="p-5 pt-0">
+                  <a
+                    href={`https://api.whatsapp.com/send?phone=91${stall.phone.replace(/[^0-9]/g, "")}&text=Hello%20${encodeURIComponent(stall.chefName)}%2C%20I%20saw%20your%20Anandamela%20stall%20"${encodeURIComponent(stall.stallName)}"%20on%20the%20PBEL%20Durgotsav%20Portal!%20I%20would%20like%20to%20know%20more%20and%20pre-order.`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white py-2.5 px-4 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
+                  >
+                    <span>{isNonFood ? "💬 WhatsApp Host / Inquire" : "💬 WhatsApp Chef / Pre-Order"}</span>
+                  </a>
                 </div>
               </div>
-
-              {/* Stall Footer Actions */}
-              <div className="p-5 pt-0">
-                <a
-                  href={`https://api.whatsapp.com/send?phone=91${stall.phone.replace(/[^0-9]/g, "")}&text=Hello%20${encodeURIComponent(stall.chefName)}%2C%20I%20saw%20your%20Anandamela%20stall%20"${encodeURIComponent(stall.stallName)}"%20on%20the%20PBEL%20Durgotsav%20Portal!%20I%20would%20like%20to%20know%20more%20and%20pre-order.`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white py-2.5 px-4 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-xs"
-                >
-                  <span>💬 WhatsApp Chef / Pre-Order</span>
-                </a>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {filteredStalls.length === 0 && (
           <div className="bg-white rounded-3xl border border-gray-200 p-12 text-center text-xs text-gray-500 max-w-md mx-auto space-y-3">
-            <Utensils size={32} className="mx-auto text-gray-400" />
-            <h3 className="font-heading text-lg font-bold text-gray-900">No Food Stalls Found</h3>
-            <p>Try searching for a different dish or clear the selected category filters.</p>
+            <ShoppingBag size={32} className="mx-auto text-gray-400" />
+            <h3 className="font-heading text-lg font-bold text-gray-900">No Stalls Found</h3>
+            <p>Try searching for a different item or clear the selected stall type and category filters.</p>
           </div>
         )}
 
@@ -509,39 +706,100 @@ export default function AnandamelaPage() {
             </button>
 
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-2xl">👩‍🍳</span>
+              <span className="text-2xl">✨</span>
               <h2 className="font-heading text-2xl font-bold text-primary">
                 Register Your Anandamela Stall
               </h2>
             </div>
             <p className="text-xs text-gray-600 mb-5 leading-relaxed">
-              Showcase your signature homemade culinary delicacies on <strong>Maha Panchami Evening (5:00 PM Onwards)</strong>.
+              Showcase your homemade delicacies, handicrafts, jewellery, fashion, games, or services on <strong>Maha Panchami Evening (5:00 PM Onwards)</strong>.
               <br />
               <strong>Notice:</strong> Strictly 15 stalls capacity. Table setup charge is <strong>₹1,000 per table</strong> (1 or 2 tables).
             </p>
 
             <form onSubmit={handleRegisterStall} className="space-y-4 text-xs">
-              {/* SECTION A: STALL & CHEF DETAILS */}
+              
+              {/* STEP 1: STALL TYPE SELECTOR */}
+              <div className="space-y-2">
+                <label className="block font-bold text-gray-800 text-xs">
+                  Choose Stall Type *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegForm((prev) => ({
+                        ...prev,
+                        stallType: "Food",
+                        category: (FOOD_CATEGORIES as readonly string[]).includes(prev.category) ? prev.category : FOOD_CATEGORIES[0],
+                      }));
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all flex items-start gap-2.5 ${
+                      regForm.stallType === "Food"
+                        ? "bg-amber-50 border-amber-500 shadow-xs ring-2 ring-amber-500/20"
+                        : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    <span className="text-2xl">🍲</span>
+                    <div>
+                      <span className="font-bold text-xs text-gray-900 block">Food Stall</span>
+                      <span className="text-[10px] text-gray-500 block leading-tight mt-0.5">
+                        Home-cooked delicacies, rolls, chaat, fish fry, sweets &amp; snacks
+                      </span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRegForm((prev) => ({
+                        ...prev,
+                        stallType: "Non-Food",
+                        category: (NON_FOOD_CATEGORIES as readonly string[]).includes(prev.category) ? prev.category : NON_FOOD_CATEGORIES[0],
+                      }));
+                    }}
+                    className={`p-3 rounded-2xl border text-left transition-all flex items-start gap-2.5 ${
+                      regForm.stallType === "Non-Food"
+                        ? "bg-purple-50 border-purple-500 shadow-xs ring-2 ring-purple-500/20"
+                        : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    <span className="text-2xl">🛍️</span>
+                    <div>
+                      <span className="font-bold text-xs text-gray-900 block">Non-Food Stall</span>
+                      <span className="text-[10px] text-gray-500 block leading-tight mt-0.5">
+                        Handicrafts, jewellery, festive apparel, games, mehndi, decor &amp; goods
+                      </span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION A: STALL & HOST DETAILS */}
               <div className="space-y-3">
                 <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">
-                  1. Stall &amp; Chef Information
+                  1. Stall &amp; Host Information
                 </span>
 
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Stall / Food Brand Name *</label>
+                  <label className="block font-semibold text-gray-700 mb-1">
+                    {isFood ? "Stall / Food Brand Name *" : "Stall / Brand / Shop Name *"}
+                  </label>
                   <input
                     type="text"
                     required
                     value={regForm.stallName}
                     onChange={(e) => setRegForm({ ...regForm, stallName: e.target.value })}
-                    placeholder="e.g. Grandma's Rasogolla & Mughlai Hub"
+                    placeholder={isFood ? "e.g. Grandma's Rasogolla & Mughlai Hub" : "e.g. Srijan Terracotta & Festive Crafts"}
                     className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Home Chef Name *</label>
+                    <label className="block font-semibold text-gray-700 mb-1">
+                      {isFood ? "Home Chef Name *" : "Stall Lead / Host Name *"}
+                    </label>
                     <input
                       type="text"
                       required
@@ -605,17 +863,33 @@ export default function AnandamelaPage() {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Food Category</label>
+                  <label className="block font-semibold text-gray-700 mb-1">
+                    {isFood ? "Food Category *" : "Stall Category *"}
+                  </label>
                   <select
                     value={regForm.category}
-                    onChange={(e) => setRegForm({ ...regForm, category: e.target.value as any })}
+                    onChange={(e) => setRegForm({ ...regForm, category: e.target.value })}
                     className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none"
                   >
-                    <option value="Rolls & Mughlai">Rolls &amp; Mughlai Delicacies</option>
-                    <option value="Bengali Delicacies">Bengali Heritage Cuisine (Fish Fry, Biryani)</option>
-                    <option value="Street Food & Chaat">Kolkata Street Food &amp; Phuchka</option>
-                    <option value="Sweets & Pithe">Sweets, Pithe Puli &amp; Desserts</option>
-                    <option value="Snacks & Quick Bites">Snacks &amp; Beverages</option>
+                    {isFood ? (
+                      <>
+                        <option value="Rolls & Mughlai">Rolls &amp; Mughlai Delicacies</option>
+                        <option value="Bengali Delicacies">Bengali Heritage Cuisine (Fish Fry, Biryani)</option>
+                        <option value="Street Food & Chaat">Kolkata Street Food &amp; Phuchka</option>
+                        <option value="Sweets & Pithe">Sweets, Pithe Puli &amp; Desserts</option>
+                        <option value="Snacks & Quick Bites">Snacks &amp; Beverages</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Handicrafts & Art">Handicrafts, Art &amp; Paintings</option>
+                        <option value="Jewellery & Accessories">Jewellery, Ornaments &amp; Accessories</option>
+                        <option value="Apparel & Festive Wear">Apparel, Sarees &amp; Festive Fashion</option>
+                        <option value="Games & Fun Activities">Kids / Family Games &amp; Fun Activities</option>
+                        <option value="Mehndi & Face Art">Mehndi, Tattoos &amp; Face Art</option>
+                        <option value="Home Decor & Festive">Home Decor, Diyas &amp; Pujo Essentials</option>
+                        <option value="Other Services & Goods">Other Products / Custom Services</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -659,81 +933,118 @@ export default function AnandamelaPage() {
                       <span className="font-bold text-xs text-gray-900">2 Tables</span>
                       <span className="font-bold font-mono text-xs text-primary">₹2,000</span>
                     </div>
-                    <span className="text-[10px] text-gray-500 block">Double Table Space (Recommended for large menus)</span>
+                    <span className="text-[10px] text-gray-500 block">Double Table Space (Recommended for large setups)</span>
                   </button>
                 </div>
               </div>
 
-              {/* SECTION C: SIGNATURE DISHES */}
-              <div className="space-y-3">
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">
-                  2. Dishes &amp; Pricing
-                </span>
+              {/* SECTION C: CONDITIONAL DISHES (FOOD) OR PRODUCTS/SERVICES (NON-FOOD) */}
+              {isFood ? (
+                <div className="space-y-3">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">
+                    2. Signature Dishes &amp; Pricing
+                  </span>
 
-                {/* Dish 1 */}
-                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
-                  <span className="font-bold text-gray-900 block text-[11px] uppercase">Primary Signature Dish: *</span>
-                  <div className="grid grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      required
-                      value={regForm.dish1Name}
-                      onChange={(e) => setRegForm({ ...regForm, dish1Name: e.target.value })}
-                      placeholder="Dish Name (e.g. Kolkata Fish Fry)"
-                      className="col-span-2 p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs"
-                    />
-                    <input
-                      type="number"
-                      required
-                      min="10"
-                      value={regForm.dish1Price}
-                      onChange={(e) => setRegForm({ ...regForm, dish1Price: e.target.value })}
-                      placeholder="₹ Price"
-                      className="p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs font-bold font-mono"
-                    />
+                  {/* Dish 1 */}
+                  <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                    <span className="font-bold text-gray-900 block text-[11px] uppercase">Primary Signature Dish: *</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        required
+                        value={regForm.dish1Name}
+                        onChange={(e) => setRegForm({ ...regForm, dish1Name: e.target.value })}
+                        placeholder="Dish Name (e.g. Kolkata Fish Fry)"
+                        className="col-span-2 p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs"
+                      />
+                      <input
+                        type="number"
+                        required
+                        min="10"
+                        value={regForm.dish1Price}
+                        onChange={(e) => setRegForm({ ...regForm, dish1Price: e.target.value })}
+                        placeholder="₹ Price"
+                        className="p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs font-bold font-mono"
+                      />
+                    </div>
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={regForm.dish1Veg}
+                        onChange={(e) => setRegForm({ ...regForm, dish1Veg: e.target.checked })}
+                        className="rounded accent-primary"
+                      />
+                      <span>Is this item Pure Vegetarian?</span>
+                    </label>
                   </div>
-                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={regForm.dish1Veg}
-                      onChange={(e) => setRegForm({ ...regForm, dish1Veg: e.target.checked })}
-                      className="rounded accent-primary"
-                    />
-                    <span>Is this item Pure Vegetarian?</span>
-                  </label>
-                </div>
 
-                {/* Dish 2 */}
-                <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
-                  <span className="font-bold text-gray-900 block text-[11px] uppercase">Secondary Dish (Optional):</span>
-                  <div className="grid grid-cols-3 gap-2">
-                    <input
-                      type="text"
-                      value={regForm.dish2Name}
-                      onChange={(e) => setRegForm({ ...regForm, dish2Name: e.target.value })}
-                      placeholder="Dish Name (e.g. Postor Bora)"
-                      className="col-span-2 p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs"
-                    />
-                    <input
-                      type="number"
-                      min="10"
-                      value={regForm.dish2Price}
-                      onChange={(e) => setRegForm({ ...regForm, dish2Price: e.target.value })}
-                      placeholder="₹ Price"
-                      className="p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs font-bold font-mono"
-                    />
+                  {/* Dish 2 */}
+                  <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 space-y-2">
+                    <span className="font-bold text-gray-900 block text-[11px] uppercase">Secondary Dish (Optional):</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        value={regForm.dish2Name}
+                        onChange={(e) => setRegForm({ ...regForm, dish2Name: e.target.value })}
+                        placeholder="Dish Name (e.g. Postor Bora)"
+                        className="col-span-2 p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs"
+                      />
+                      <input
+                        type="number"
+                        min="10"
+                        value={regForm.dish2Price}
+                        onChange={(e) => setRegForm({ ...regForm, dish2Price: e.target.value })}
+                        placeholder="₹ Price"
+                        className="p-2 bg-white border border-gray-200 rounded-xl outline-none text-xs font-bold font-mono"
+                      />
+                    </div>
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={regForm.dish2Veg}
+                        onChange={(e) => setRegForm({ ...regForm, dish2Veg: e.target.checked })}
+                        className="rounded accent-primary"
+                      />
+                      <span>Is this item Pure Vegetarian?</span>
+                    </label>
                   </div>
-                  <label className="inline-flex items-center gap-1.5 cursor-pointer text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={regForm.dish2Veg}
-                      onChange={(e) => setRegForm({ ...regForm, dish2Veg: e.target.checked })}
-                      className="rounded accent-primary"
-                    />
-                    <span>Is this item Pure Vegetarian?</span>
-                  </label>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block border-b border-gray-100 pb-1">
+                    2. Featured Products, Activities &amp; Offerings
+                  </span>
+
+                  <div className="p-3 bg-gray-50 rounded-2xl border border-gray-200 space-y-2.5">
+                    <div>
+                      <label className="block font-bold text-gray-900 text-[11px] uppercase mb-1">
+                        Featured Items / Services / Activity Description *
+                      </label>
+                      <textarea
+                        required
+                        rows={3}
+                        value={regForm.itemsDescription}
+                        onChange={(e) => setRegForm({ ...regForm, itemsDescription: e.target.value })}
+                        placeholder="Describe what you will sell, showcase or host (e.g. Handcrafted terracotta jewellery, hand-painted sarees, festive greeting cards, ring toss game with prizes, organic herbal mehndi)..."
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs leading-relaxed"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-gray-900 text-[11px] uppercase mb-1">
+                        Estimated Price Range / Starting Price (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={regForm.priceRange}
+                        onChange={(e) => setRegForm({ ...regForm, priceRange: e.target.value })}
+                        placeholder="e.g. Starting from ₹50 (₹50 - ₹500)"
+                        className="w-full p-2.5 bg-white border border-gray-200 rounded-xl outline-none text-xs font-medium"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* SECTION D: PAYMENT & QR CODE SECTION (LOCKED UNTIL DETAILS ARE COMPLETED) */}
               <div className="pt-2">
@@ -744,7 +1055,9 @@ export default function AnandamelaPage() {
                       <span>Step 3: Payment &amp; QR Code (Locked)</span>
                     </div>
                     <p className="text-[11px] text-gray-500">
-                      Please fill in your Stall Name, Chef Name, WhatsApp Phone, Flat, and Signature Dish above to unlock your UPI payment QR code.
+                      {isFood
+                        ? "Please fill in your Stall Name, Chef Name, WhatsApp Phone, Flat, and Signature Dish above to unlock your UPI payment QR code."
+                        : "Please fill in your Stall Name, Host Name, WhatsApp Phone, Flat, and Featured Offerings details above to unlock your UPI payment QR code."}
                     </p>
                   </div>
                 ) : (
@@ -838,7 +1151,7 @@ export default function AnandamelaPage() {
       <SevaDonationNudgeModal
         isOpen={nudgeModalOpen}
         onClose={() => setNudgeModalOpen(false)}
-        activityName="Anandamela Food Stall Registration"
+        activityName={submittedStallInfo?.stallType === "Non-Food" ? "Anandamela Non-Food Stall Registration" : "Anandamela Food Stall Registration"}
         residentName={submittedStallInfo?.chefName}
         stallOrEventName={submittedStallInfo?.stallName}
         note="The Anandamela Committee and Finance Team will verify your table payment and confirm your stall allocation in the festival directory."

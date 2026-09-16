@@ -3482,6 +3482,35 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(homeSrc.includes('Anandamela Home Chef Stalls'), 'Homepage must feature Anandamela spotlight card');
       assert.ok(homeSrc.includes('href="/anandamela"'), 'Homepage must link to /anandamela');
     });
+
+    it('should verify Non-Food Stall support, dynamic filter chips, conditional dish vs product inputs, and admin moderation', () => {
+      const anandamelaSrc = fs.readFileSync('src/app/anandamela/page.tsx', 'utf8');
+      // Types & Categories
+      assert.ok(anandamelaSrc.includes('StallType = "Food" | "Non-Food"'), 'Must define StallType union');
+      assert.ok(anandamelaSrc.includes('FOOD_CATEGORIES'), 'Must define FOOD_CATEGORIES');
+      assert.ok(anandamelaSrc.includes('NON_FOOD_CATEGORIES'), 'Must define NON_FOOD_CATEGORIES');
+      assert.ok(anandamelaSrc.includes('Handicrafts & Art'), 'Must support non-food category Handicrafts');
+      assert.ok(anandamelaSrc.includes('Jewellery & Accessories'), 'Must support non-food category Jewellery');
+      assert.ok(anandamelaSrc.includes('Games & Fun Activities'), 'Must support non-food category Games');
+
+      // Filter chips
+      assert.ok(anandamelaSrc.includes('stallTypeFilter'), 'Must maintain stallTypeFilter state');
+      assert.ok(anandamelaSrc.includes('Food Stalls'), 'Must provide Food Stalls filter chip');
+      assert.ok(anandamelaSrc.includes('Non-Food &amp; Artisan Stalls'), 'Must provide Non-Food filter chip');
+      assert.ok(anandamelaSrc.includes('activeCategoryList'), 'Must dynamically compute active category chips');
+
+      // Form conditional logic
+      assert.ok(anandamelaSrc.includes('Choose Stall Type *'), 'Form must prompt to choose Stall Type');
+      assert.ok(anandamelaSrc.includes('Featured Items / Services / Activity Description *'), 'Form must render product/activity description for non-food');
+      assert.ok(anandamelaSrc.includes('itemsDescription'), 'Must store itemsDescription in form state');
+      assert.ok(anandamelaSrc.includes('isFood'), 'Must conditionally check dish vs non-food details');
+
+      // Admin console
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('🛍️ Non-Food'), 'Admin table must render Non-Food badge');
+      assert.ok(adminSrc.includes('Dishes / Offerings'), 'Admin table must have Dishes / Offerings column header');
+      assert.ok(adminSrc.includes('🛍️ Offerings:'), 'Admin table must render non-food offerings summary');
+    });
   });
 
 });
