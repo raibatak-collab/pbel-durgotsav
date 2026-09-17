@@ -46,6 +46,8 @@ import {
   Upload,
   Mail,
   Edit3,
+  CreditCard,
+  ArrowRight,
   Video,
   Play,
   ExternalLink
@@ -225,6 +227,8 @@ export default function AdminDashboard() {
   const [isSavingHeroChips, setIsSavingHeroChips] = useState(false);
   const [includeMemberContributions, setIncludeMemberContributions] = useState<boolean>(true);
   const [isUpdatingMemberToggle, setIsUpdatingMemberToggle] = useState<boolean>(false);
+  const [cashfreeLiveEnabled, setCashfreeLiveEnabled] = useState<boolean>(false);
+  const [isUpdatingCashfreeToggle, setIsUpdatingCashfreeToggle] = useState<boolean>(false);
   const [eveningsConfig, setEveningsConfig] = useState<any[]>(initialEveningsConfig);
   const [sponsorsList, setSponsorsList] = useState<any[]>([]);
   const [galleryList, setGalleryList] = useState<any[]>([
@@ -446,6 +450,8 @@ export default function AdminDashboard() {
 
       // 5c. Fetch Member Contribution Public Toggle from Cloud
       const incMem = await fetchCloudConfig<boolean>("include_member_contributions", true);
+      const pgLive = await fetchCloudConfig<boolean>("cashfree_gateway_live", false);
+      setCashfreeLiveEnabled(Boolean(pgLive));
       setIncludeMemberContributions(incMem !== false);
 
       // 5d. Fetch Sponsorship Tier Packages from Cloud
@@ -531,6 +537,10 @@ export default function AdminDashboard() {
       }
 
       const savedIncMem = localStorage.getItem("pbel_include_member_contributions");
+      const savedPgLive = localStorage.getItem("pbel_cashfree_gateway_live");
+      if (savedPgLive !== null) {
+        try { setCashfreeLiveEnabled(JSON.parse(savedPgLive)); } catch (e) {}
+      }
       if (savedIncMem !== null) {
         setIncludeMemberContributions(JSON.parse(savedIncMem) !== false);
       }
@@ -1337,6 +1347,26 @@ export default function AdminDashboard() {
   };
 
   // MEMBER CONTRIBUTION PUBLIC VISIBILITY TOGGLE HANDLER
+  const handleToggleCashfreeLive = async () => {
+    try {
+      setIsUpdatingCashfreeToggle(true);
+      const nextVal = !cashfreeLiveEnabled;
+      setCashfreeLiveEnabled(nextVal);
+      await saveCloudConfig("cashfree_gateway_live", nextVal);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pbel_cashfree_gateway_live", JSON.stringify(nextVal));
+      }
+      alert(nextVal
+        ? "🚀 Cashfree Payment Gateway is now LIVE for all residents across /contribute and /anandamela!"
+        : "🔒 Cashfree Payment Gateway is now hidden from public view (accessible via /test-payment).");
+    } catch (err) {
+      console.error(err);
+      alert("Error updating gateway live status.");
+    } finally {
+      setIsUpdatingCashfreeToggle(false);
+    }
+  };
+
   const handleToggleMemberContributions = async () => {
     setIsUpdatingMemberToggle(true);
     const nextVal = !includeMemberContributions;
@@ -2969,6 +2999,56 @@ function decodeCategoryDescription(desc?: string) {
       {activeTab === "overview" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
+
+          {/* Payment Gateway Test & Go-Live Center */}
+          <div className="lg:col-span-2 bg-gradient-to-r from-amber-50 via-orange-50/50 to-amber-100/60 p-5 rounded-2xl border border-amber-300 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 rounded-xl bg-amber-600 text-white shadow-sm shrink-0">
+                <CreditCard size={22} />
+              </div>
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h4 className="font-heading text-base font-bold text-gray-900">
+                    Cashfree Payment Gateway &amp; Verification Lab
+                  </h4>
+                  <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider ${
+                    cashfreeLiveEnabled
+                      ? "bg-green-100 text-green-800 border border-green-300"
+                      : "bg-amber-100 text-amber-800 border border-amber-300"
+                  }`}>
+                    {cashfreeLiveEnabled ? "✅ LIVE FOR ALL RESIDENTS" : "🧪 TEST MODE (HIDDEN FROM PUBLIC)"}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-600 mt-1 max-w-2xl leading-relaxed">
+                  Test small ₹1 or ₹10 contributions safely on the dedicated verification lab. When you are satisfied, click Make Live to activate instant online checkout for all devotees.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap self-end md:self-center">
+              <Link
+                href="/test-payment"
+                target="_blank"
+                className="bg-white hover:bg-amber-50 text-amber-900 border border-amber-300 text-xs font-bold px-4 py-2.5 rounded-xl shadow-2xs transition flex items-center gap-1.5"
+              >
+                <span>🧪 Test Pay ₹1 via Cashfree</span>
+                <ArrowRight size={14} />
+              </Link>
+              <button
+                type="button"
+                onClick={handleToggleCashfreeLive}
+                disabled={isUpdatingCashfreeToggle}
+                className={`text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                  cashfreeLiveEnabled
+                    ? "bg-green-600 hover:bg-green-700 text-white ring-2 ring-green-400/40"
+                    : "bg-gray-800 hover:bg-gray-900 text-white"
+                }`}
+              >
+                <span>{cashfreeLiveEnabled ? "Disable Gateway" : "🚀 Make Live for All"}</span>
+              </button>
+            </div>
+          </div>
+
           {/* Administrative Data Export Center (CSV) */}
           <div className="lg:col-span-2 bg-gradient-to-r from-blue-50 via-indigo-50/50 to-blue-50/80 p-5 rounded-2xl border border-blue-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="flex items-start gap-3.5">

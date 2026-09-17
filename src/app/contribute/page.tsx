@@ -27,6 +27,8 @@ import { DevotionalShareModal } from "@/components/DevotionalShareModal";
 import { TowerParticipation } from "@/components/TowerParticipation";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { buildUpiPayUri } from "@/utils/security";
+import { loadCashfreeSDK } from "@/utils/cashfree";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
 import { saveQrCodeToGallery } from "@/utils/qrDownload";
 import OfficialContributionReceipt, { ReceiptData } from "@/components/OfficialContributionReceipt";
 import { getStoredBranding, fetchStoredBranding, SamitiBrandingConfig, DEFAULT_BRANDING } from "@/config/branding";
@@ -330,14 +332,8 @@ export default function ContributePage() {
   const [copiedUpi, setCopiedUpi] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isPgEnabled, setIsPgEnabled] = useState(false);
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
-  const [isUatTest, setIsUatTest] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsUatTest(window.location.search.includes('test_pg=icici'));
-    }
-  }, []);
   const [branding, setBranding] = useState<SamitiBrandingConfig>(getStoredBranding());
 
 // Category metadata decoder
@@ -523,10 +519,21 @@ function decodeCategoryDescription(desc?: string) {
         setDayFilter(dayParam.toLowerCase());
         setActiveMode("catalog");
       }
+      const hasTestPg = params.get("test_pg") === "cashfree" || params.get("pg") === "1" || params.get("test") === "1";
+      fetchCloudConfig<boolean>("cashfree_gateway_live", false).then((isLive: boolean) => {
+        setIsPgEnabled(Boolean(isLive || hasTestPg));
+      });
+
       if (tabParam === "catalog" || tabParam === "sponsor" || tabParam === "sevas" || params.get("category") || (params.get("amount") && tabParam !== "general")) {
         setActiveMode("catalog");
       } else if (tabParam === "general" || tabParam === "any" || tabParam === "open") {
         setActiveMode("general");
+      }
+      const errorParam = params.get("error");
+      if (errorParam === "payment_failed") {
+        setTimeout(() => {
+          alert("Your online transaction was not completed or was cancelled. You can retry with Cashfree or pay directly via UPI QR.");
+        }, 300);
       }
     }
 
@@ -587,11 +594,10 @@ function decodeCategoryDescription(desc?: string) {
     });
   };
 
-  const handleIciciCheckout = async (e: React.FormEvent, amount: number, isGeneral: boolean) => {
+  const handleCashfreeCheckout = async (e: React.FormEvent, amount: number, isGeneral: boolean) => {
     e.preventDefault();
     try {
       setIsSubmitting(true);
-      const generatedPaymentId = `WEB${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
       const formData = isGeneral ? customFormData : modalFormData;
       
       const activeTower = isGeneral ? customTower : modalTower;
@@ -599,6 +605,22 @@ function decodeCategoryDescription(desc?: string) {
       const formattedFlat = activeTower === "Other"
         ? activeFlat.trim() || "Guest Devotee"
         : `${activeTower} - ${activeFlat.trim()}`;
+
+      if (!formData.name.trim()) {
+        alert("Please enter your full name.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (formData.phone.trim().replace(/\D/g, "").length !== 10) {
+        alert("Please enter a valid 10-digit mobile number.");
+        setIsSubmitting(false);
+        return;
+      }
+      if (!activeFlat.trim()) {
+        alert("Please enter your flat / unit number.");
+        setIsSubmitting(false);
+        return;
+      }
 
       const catName = isGeneral ? "General Pujo Fund" : modalSeva?.title;
       let catId = undefined;
@@ -609,52 +631,46 @@ function decodeCategoryDescription(desc?: string) {
         } catch (e) {}
       }
 
-      // 1. Insert Pending Record
-      const { error } = await supabase.from("contributions").insert({
-        contributor_name: formData.name.trim(),
-        email: formData.email.trim(),
-        phone: formData.phone.trim(),
-        flat_number: formattedFlat,
-        amount: amount,
-        category_id: catId,
-        status: "Pending",
-        is_name_visible: formData.isNameVisible,
-        payment_id: generatedPaymentId,
+      // 1. Call server-side Cashfree initiate API
+      const res = await fetch('/api/payment/cashfree/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          customerName: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          flatNumber: formattedFlat,
+          purpose: catName,
+          categoryId: catId,
+          isNameVisible: formData.isNameVisible,
+          orderType: 'contribution',
+        }),
       });
 
-      if (error) {
-        console.error("DB Error:", error);
-        alert("Error registering transaction.");
+      const data = await res.json();
+      
+      if (!data.success || !data.paymentSessionId) {
+        alert("Payment initialization error: " + (data.error || "Unable to reach Cashfree. Please try direct UPI QR scan."));
         setIsSubmitting(false);
         return;
       }
 
-      // 2. Initiate ICICI Session
-      const payload = {
-        amount,
-        customerName: formData.name.trim(),
-        email: formData.email.trim(),
-        mobileNo: formData.phone.trim(),
-        paymentId: generatedPaymentId,
-        isUAT: true
-      };
-
-      const res = await fetch('/api/payment/icici/initiate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      
-      if (data.success && data.redirectURI) {
-        window.location.href = `${data.redirectURI}?tranCtx=${data.tranCtx}`;
+      // 2. Launch Cashfree Hosted Web Checkout
+      const CashfreeSDK = await loadCashfreeSDK();
+      if (CashfreeSDK) {
+        const cashfree = CashfreeSDK({ mode: data.environment || 'sandbox' });
+        cashfree.checkout({
+          paymentSessionId: data.paymentSessionId,
+          redirectTarget: "_self",
+        });
       } else {
-        alert("ICICI Initiate Failed: " + (data.error || JSON.stringify(data.details || "Unknown error")));
-        setIsSubmitting(false);
+        // Direct fallback navigation
+        window.location.href = `/api/payment/cashfree/return?order_id=${encodeURIComponent(data.orderId)}`;
       }
-    } catch (err) {
-      console.error(err);
-      alert("Error initiating ICICI payment.");
+    } catch (err: any) {
+      console.error("[Cashfree Checkout Error]", err);
+      alert("Error initiating payment gateway. Please try again or use direct UPI QR.");
       setIsSubmitting(false);
     }
   };
@@ -1055,7 +1071,7 @@ function decodeCategoryDescription(desc?: string) {
 
               {/* Dynamic QR Scanner & 1-Tap Mobile Payment Widget */}
               {customAmount && Number(customAmount) > 0 ? (
-                <div className={`bg-gradient-to-br from-amber-50/95 via-orange-50/80 to-amber-100/50 p-5 sm:p-6 rounded-3xl border border-amber-300/90 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 ${isUatTest ? "hidden" : ""}`}>
+                <div className={`bg-gradient-to-br from-amber-50/95 via-orange-50/80 to-amber-100/50 p-5 sm:p-6 rounded-3xl border border-amber-300/90 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 `}>
                   <div className="text-center md:text-left space-y-3 flex-1">
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-200/80 text-amber-950 text-xs font-bold">
                       <Sparkles size={13} className="text-primary" />
@@ -1245,39 +1261,61 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
               </div>
 
-              {/* Submit Action */}
-                <div className="pt-2 space-y-2">
-                  {isUatTest ? (
-                    <button
-                      type="button"
-                      onClick={(e) => handleIciciCheckout(e, Number(customAmount), true)}
-                      disabled={isSubmitting || !customAmount || customAmount <= 0 || !customFormData.name.trim() || customFormData.phone.trim().length !== 10 || !customFlatUnit.trim()}
-                      className="w-full bg-gradient-to-r from-orange-600 via-orange-500 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale"
-                    >
-                      <CreditCard size={20} className={isSubmitting ? "animate-pulse" : ""} />
-                      <span>
-                        {isSubmitting ? "Securely Connecting to ICICI..." : `Pay ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} via ICICI Gateway`}
-                      </span>
-                    </button>
-                  ) : (
+                {/* Submit Action: Cashfree PG (Primary when enabled) + Direct UPI QR */}
+                <div className="pt-2 space-y-2.5">
+                  {isPgEnabled ? (
                     <>
+                      <button
+                        type="button"
+                        onClick={(e) => handleCashfreeCheckout(e, Number(customAmount), true)}
+                        disabled={isSubmitting || !customAmount || customAmount <= 0 || !customFormData.name.trim() || customFormData.phone.trim().length !== 10 || !customFlatUnit.trim()}
+                        className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-[15px] golden-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <CreditCard size={20} className={isSubmitting ? "animate-pulse" : ""} />
+                        <span>
+                          {isSubmitting
+                            ? "Connecting to Cashfree..."
+                            : `Pay ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Online (UPI, Cards, NetBanking)`}
+                        </span>
+                      </button>
+
+                      <div className="relative flex py-1 items-center">
+                        <div className="flex-grow border-t border-gray-200"></div>
+                        <span className="flex-shrink mx-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">or direct transfer</span>
+                        <div className="flex-grow border-t border-gray-200"></div>
+                      </div>
+
                       <button
                         type="submit"
                         disabled={isSubmitting || !customAmount || customAmount <= 0}
-                        className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] hover:from-[#B8801C] hover:to-[#78520D] text-white font-bold text-base py-3.5 rounded-2xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2"
+                        className="w-full bg-white hover:bg-amber-50/60 text-amber-900 border border-amber-300 font-semibold text-xs py-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2"
                       >
-                        <HeartHandshake size={20} />
+                        <HeartHandshake size={16} className="text-primary" />
                         <span>
                           {isSubmitting
                             ? "Recording Offering..."
-                            : `Confirm & Record ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Offering`}
+                            : `I Have Scanned QR • Record Direct Bank Transfer`}
                         </span>
                       </button>
-                      <p className="text-[11px] text-gray-400 text-center mt-2.5 flex items-center justify-center gap-1">
-                        <ShieldCheck size={13} className="text-green-600" /> Direct 100% Zero-Fee Transfer to PBEL Sanskritik Samiti Bank Account
-                      </p>
                     </>
+                  ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !customAmount || customAmount <= 0}
+                    className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] hover:from-[#B8801C] hover:to-[#78520D] text-white font-bold text-base py-3.5 rounded-2xl transition-all shadow-lg hover:shadow-xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2"
+                  >
+                    <HeartHandshake size={20} />
+                    <span>
+                      {isSubmitting
+                        ? "Recording Offering..."
+                        : `Confirm & Record ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Offering`}
+                    </span>
+                  </button>
                   )}
+
+                  <p className="text-[11px] text-gray-500 text-center mt-1 flex items-center justify-center gap-1">
+                    <ShieldCheck size={13} className="text-green-600" /> Secure 128-bit Encrypted Checkout • Instant Official Receipt
+                  </p>
                 </div>
 
             </form>
@@ -1524,7 +1562,7 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
 
-            {!isUatTest && (
+            {/* UPI & QR Section */ true && (
 <div className="test-wrapper">{/* UPI & QR Scanner Section (Zero Friction: 1-Tap Copy UPI + QR Scanner) */}
             <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-300/90 mb-5 text-center space-y-3">
               
@@ -1669,7 +1707,7 @@ function decodeCategoryDescription(desc?: string) {
                   />
                 </div>
                 <div>
-                  <label className={`block font-semibold text-gray-700 mb-1 ${isUatTest ? "hidden" : ""}`}>UPI UTR / Ref No. (Optional)</label>
+                  <label className={"block font-semibold text-gray-700 mb-1"}>UPI UTR / Ref No. (Optional)</label>
                   <input
                     type="text"
                     value={modalFormData.upiRef}
@@ -1709,33 +1747,58 @@ function decodeCategoryDescription(desc?: string) {
                 </label>
               </div>
 
-              <div className="pt-3 space-y-2">
-                {isUatTest ? (
-                  <button
-                    type="button"
-                    onClick={(e) => handleIciciCheckout(e, Number(modalSeva.amount), false)}
-                    disabled={isSubmitting || !modalFormData.name.trim() || modalFormData.phone.trim().length !== 10 || !modalFlatUnit.trim()}
-                    className="w-full bg-gradient-to-r from-orange-600 via-orange-500 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-[15px] disabled:opacity-50 disabled:cursor-not-allowed disabled:grayscale"
-                  >
-                    <CreditCard size={20} className={isSubmitting ? "animate-pulse" : ""} />
-                    <span>
-                      {isSubmitting ? "Securely Connecting to ICICI..." : `Pay ₹${modalSeva.amount.toLocaleString("en-IN")} via ICICI Gateway`}
-                    </span>
-                  </button>
+              <div className="pt-3 space-y-2.5">
+                {isPgEnabled ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => handleCashfreeCheckout(e, Number(modalSeva.amount), false)}
+                      disabled={isSubmitting || !modalFormData.name.trim() || modalFormData.phone.trim().length !== 10 || !modalFlatUnit.trim()}
+                      className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-[15px] golden-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <CreditCard size={19} className={isSubmitting ? "animate-pulse" : ""} />
+                      <span>
+                        {isSubmitting ? "Connecting to Cashfree..." : `Pay ₹${modalSeva.amount.toLocaleString("en-IN")} Online (UPI / Cards / NetBanking)`}
+                      </span>
+                    </button>
+
+                    <div className="relative flex py-0.5 items-center">
+                      <div className="flex-grow border-t border-gray-200"></div>
+                      <span className="flex-shrink mx-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">or scanned QR</span>
+                      <div className="flex-grow border-t border-gray-200"></div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full bg-white hover:bg-amber-50/60 text-amber-900 border border-amber-300 font-semibold py-2.5 rounded-xl transition shadow-xs flex items-center justify-center gap-2 text-xs"
+                    >
+                      <CheckCircle2 size={15} className="text-primary" />
+                      <span>
+                        {isSubmitting
+                          ? "Recording Offering..."
+                          : `I Have Paid ₹${modalSeva.amount.toLocaleString("en-IN")} • Confirm & Get Receipt`}
+                      </span>
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] text-white font-bold py-3.5 rounded-xl transition shadow-lg golden-glow flex items-center justify-center gap-2 text-sm"
-                  >
-                    <CheckCircle2 size={17} />
-                    <span>
-                      {isSubmitting
-                        ? "Recording Offering..."
-                        : `I Have Paid ₹${modalSeva.amount.toLocaleString("en-IN")} �• Confirm & Get Receipt`}
-                    </span>
-                  </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] text-white font-bold py-3.5 rounded-xl transition shadow-lg golden-glow flex items-center justify-center gap-2 text-sm"
+                >
+                  <CheckCircle2 size={17} />
+                  <span>
+                    {isSubmitting
+                      ? "Recording Offering..."
+                      : `I Have Paid ₹${modalSeva.amount.toLocaleString("en-IN")} • Confirm & Get Receipt`}
+                  </span>
+                </button>
                 )}
+
+                <p className="text-[10px] text-gray-500 text-center flex items-center justify-center gap-1">
+                  <ShieldCheck size={12} className="text-green-600" /> Instant Verified Receipt with WhatsApp Download
+                </p>
               </div>
             </form>
 

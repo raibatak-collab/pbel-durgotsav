@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   AlertCircle,
   ShoppingBag,
+  CreditCard,
   Tag,
   Palette,
   Gift
@@ -26,6 +27,7 @@ import {
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { sanitizeText, validatePhoneNumber, buildUpiPayUri, OFFICIAL_BANK_UPI } from "@/utils/security";
 import { fetchCloudConfig, saveCloudConfig } from "@/utils/cloudConfig";
+import { loadCashfreeSDK } from "@/utils/cashfree";
 import SevaDonationNudgeModal from "@/components/SevaDonationNudgeModal";
 
 export interface FoodDish {
@@ -74,7 +76,7 @@ export interface FoodStall {
   tablesCount?: number; // 1 or 2
   totalAmount?: number; // 1000 or 2000
   paymentRef?: string; // UPI UTR or Reference Number
-  paymentStatus?: "Pending Verification" | "Payment Verified";
+  paymentStatus?: "Pending Verification" | "Payment Verified" | "Paid Online (Cashfree)";
   createdAt?: string;
 }
 
@@ -91,6 +93,9 @@ export default function AnandamelaPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dietaryFilter, setDietaryFilter] = useState<"all" | "veg" | "non-veg">("all");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<"cashfree" | "manual_upi">("cashfree");
+  const [isSubmittingPg, setIsSubmittingPg] = useState(false);
+  const [isPgEnabled, setIsPgEnabled] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
 
   // Form State for Stall Registration
@@ -182,6 +187,116 @@ export default function AnandamelaPage() {
   );
 
   const totalFeeToPay = regForm.tablesCount * PRICE_PER_TABLE;
+
+  const handleCashfreeStallPayment = async () => {
+    if (!isDetailsFilled) return;
+    try {
+      setIsSubmittingPg(true);
+      const cleanStallName = sanitizeText(regForm.stallName);
+      const cleanChefName = sanitizeText(regForm.chefName);
+      const cleanPhone = sanitizeText(regForm.phone).replace(/\D/g, "");
+      const cleanFlat = `${regForm.tower} - ${sanitizeText(regForm.flatNumber)}`;
+
+      const dishes: FoodDish[] = [];
+      if (regForm.dish1Name.trim()) {
+        dishes.push({
+          name: sanitizeText(regForm.dish1Name),
+          price: Number(regForm.dish1Price) || 100,
+          isVeg: regForm.dish1Veg,
+          specialty: true,
+        });
+      }
+      if (regForm.dish2Name.trim()) {
+        dishes.push({
+          name: sanitizeText(regForm.dish2Name),
+          price: Number(regForm.dish2Price) || 100,
+          isVeg: regForm.dish2Veg,
+          specialty: false,
+        });
+      }
+
+      let emoji = "🍲";
+      if (isFood) {
+        if (regForm.category === "Sweets & Pithe") emoji = "🍯";
+        else if (regForm.category === "Rolls & Mughlai") emoji = "🌯";
+        else if (regForm.category === "Bengali Delicacies") emoji = "🐟";
+        else if (regForm.category === "Snacks & Quick Bites") emoji = "🥟";
+        else emoji = "🍲";
+      } else {
+        if (regForm.category === "Handicrafts & Art") emoji = "🎨";
+        else if (regForm.category === "Jewellery & Accessories") emoji = "💍";
+        else if (regForm.category === "Apparel & Festive Wear") emoji = "👗";
+        else if (regForm.category === "Games & Fun Activities") emoji = "🎯";
+        else if (regForm.category === "Mehndi & Face Art") emoji = "🪔";
+        else if (regForm.category === "Home Decor & Festive") emoji = "🏮";
+        else emoji = "🛍️";
+      }
+
+      const pendingStall: FoodStall = {
+        id: `stall-${Date.now()}`,
+        stallNumber: `Stall #${String(stalls.length + 1).padStart(2, "0")}`,
+        stallName: cleanStallName,
+        chefName: cleanChefName,
+        stallType: regForm.stallType,
+        tower: regForm.tower,
+        flatNumber: sanitizeText(regForm.flatNumber),
+        phone: sanitizeText(regForm.phone),
+        category: regForm.category,
+        description: sanitizeText(regForm.description) || (isFood ? "Home-cooked festive specialty prepared with love by PBEL City residents." : "Festive items and community creations curated with passion by PBEL City residents."),
+        emoji,
+        dishes: isFood ? (dishes.length > 0 ? dishes : [{ name: "Festive Specialty", price: 150, isVeg: false }]) : undefined,
+        itemsDescription: !isFood ? sanitizeText(regForm.itemsDescription) : undefined,
+        priceRange: !isFood && regForm.priceRange.trim() ? sanitizeText(regForm.priceRange.trim()) : undefined,
+        status: "Pending",
+        tablesCount: regForm.tablesCount,
+        totalAmount: totalFeeToPay,
+        paymentRef: "Online PG (Pending)",
+        paymentStatus: "Paid Online (Cashfree)",
+        createdAt: new Date().toISOString(),
+      };
+
+      localStorage.setItem("pbel_pending_anandamela_stall", JSON.stringify(pendingStall));
+
+      const res = await fetch('/api/payment/cashfree/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: totalFeeToPay,
+          customerName: cleanChefName,
+          phone: cleanPhone,
+          flatNumber: cleanFlat,
+          purpose: `Anandamela Stall Fee (${regForm.tablesCount} Table) - ${cleanStallName}`,
+          orderType: 'anandamela',
+          metadata: {
+            stall_name: cleanStallName,
+            tables_count: String(regForm.tablesCount),
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (!data.success || !data.paymentSessionId) {
+        alert("Unable to initialize Cashfree payment: " + (data.error || "Please try manual UPI transfer."));
+        setIsSubmittingPg(false);
+        return;
+      }
+
+      const CashfreeSDK = await loadCashfreeSDK();
+      if (CashfreeSDK) {
+        const cashfree = CashfreeSDK({ mode: data.environment || 'sandbox' });
+        cashfree.checkout({
+          paymentSessionId: data.paymentSessionId,
+          redirectTarget: "_self",
+        });
+      } else {
+        window.location.href = `/api/payment/cashfree/return?order_id=${encodeURIComponent(data.orderId)}&type=anandamela`;
+      }
+    } catch (err: any) {
+      console.error("[Anandamela Cashfree Error]", err);
+      alert("Error opening payment gateway: " + (err.message || "Please use manual UPI QR scan."));
+      setIsSubmittingPg(false);
+    }
+  };
 
   const handleRegisterStall = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1046,7 +1161,7 @@ export default function AnandamelaPage() {
                 </div>
               )}
 
-              {/* SECTION D: PAYMENT & QR CODE SECTION (LOCKED UNTIL DETAILS ARE COMPLETED) */}
+              {/* SECTION D: PAYMENT SECTION (ONLINE GATEWAY OR DIRECT UPI) */}
               <div className="pt-2">
                 {!isDetailsFilled ? (
                   <div className="p-4 bg-gray-50 border border-dashed border-gray-300 rounded-2xl text-center space-y-1.5">
@@ -1056,15 +1171,15 @@ export default function AnandamelaPage() {
                     </div>
                     <p className="text-[11px] text-gray-500">
                       {isFood
-                        ? "Please fill in your Stall Name, Chef Name, WhatsApp Phone, Flat, and Signature Dish above to unlock your UPI payment QR code."
-                        : "Please fill in your Stall Name, Host Name, WhatsApp Phone, Flat, and Featured Offerings details above to unlock your UPI payment QR code."}
+                        ? "Please fill in your Stall Name, Chef Name, WhatsApp Phone, Flat, and Signature Dish above to unlock stall payment."
+                        : "Please fill in your Stall Name, Host Name, WhatsApp Phone, Flat, and Featured Offerings details above to unlock stall payment."}
                     </p>
                   </div>
                 ) : (
                   <div className="p-4 bg-gradient-to-br from-amber-50 via-orange-50/60 to-amber-100/40 rounded-2xl border border-amber-300 shadow-xs space-y-3.5">
                     <div className="flex items-center justify-between border-b border-amber-200/80 pb-2">
                       <div className="flex items-center gap-1.5 text-xs font-bold text-amber-950 uppercase">
-                        <QrCode size={16} className="text-primary" />
+                        <CreditCard size={16} className="text-primary" />
                         <span>Step 3: Stall Setup Fee Payment</span>
                       </div>
                       <span className="text-sm font-bold font-mono text-primary">
@@ -1072,76 +1187,140 @@ export default function AnandamelaPage() {
                       </span>
                     </div>
 
-                    {/* QR Code and 1-tap copy */}
-                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3 rounded-xl border border-amber-200">
-                      <img
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
-                          buildUpiPayUri({
-                            am: totalFeeToPay,
-                            tn: `Anandamela Stall - ${regForm.stallName.slice(0, 20)}`,
-                          })
-                        )}`}
-                        alt="Anandamela Stall Fee UPI QR"
-                        className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg border border-gray-200 shadow-2xs"
-                      />
-                      <div className="space-y-2 flex-1 text-center sm:text-left">
-                        <span className="text-xs font-bold text-gray-800 block">
-                          Scan &amp; Pay ₹{totalFeeToPay.toLocaleString("en-IN")} via Any UPI App
-                        </span>
-                        <p className="text-[11px] text-gray-500">
-                          Official Society VPA: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong>
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigator.clipboard.writeText(SOCIETY_UPI_ID);
-                            setCopiedUpi(true);
-                            setTimeout(() => setCopiedUpi(false), 2000);
-                          }}
-                          className="text-[11px] font-bold text-primary bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5"
-                        >
-                          {copiedUpi ? <Check size={13} /> : <Copy size={13} />}
-                          <span>{copiedUpi ? "UPI ID Copied!" : "1-Tap Copy UPI ID"}</span>
-                        </button>
-                      </div>
+                    {/* Payment Mode Selector Tabs */}
+                    <div className="grid grid-cols-2 gap-2 bg-amber-100/60 p-1 rounded-xl">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode("cashfree")}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                          paymentMode === "cashfree"
+                            ? "bg-white text-primary shadow-xs"
+                            : "text-gray-700 hover:text-gray-900"
+                        }`}
+                      >
+                        <CreditCard size={14} />
+                        <span>Pay Online (Instant)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode("manual_upi")}
+                        className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                          paymentMode === "manual_upi"
+                            ? "bg-white text-primary shadow-xs"
+                            : "text-gray-700 hover:text-gray-900"
+                        }`}
+                      >
+                        <QrCode size={14} />
+                        <span>Scan UPI QR &amp; UTR</span>
+                      </button>
                     </div>
 
-                    {/* UTR Input */}
-                    <div>
-                      <label className="block font-bold text-gray-800 text-xs mb-1">
-                        UPI UTR / Transaction Reference Number *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={regForm.paymentRef}
-                        onChange={(e) => setRegForm({ ...regForm, paymentRef: e.target.value.trim() })}
-                        placeholder="e.g. 12-digit UPI UTR from GPay / PhonePe / Paytm"
-                        className="w-full p-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono text-xs"
-                      />
-                      <span className="text-[10px] text-gray-500 block mt-1">
-                        Required for PSS Finance Committee to verify your table fee before confirming the stall.
-                      </span>
-                    </div>
+                    {paymentMode === "cashfree" ? (
+                      /* Online Cashfree Checkout Option */
+                      <div className="bg-white p-4 rounded-xl border border-amber-200 space-y-3">
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-primary shrink-0">
+                            <CreditCard size={20} />
+                          </div>
+                          <div>
+                            <span className="font-bold text-xs text-gray-900 block">
+                              Instant Automated Checkout via Cashfree
+                            </span>
+                            <span className="text-[11px] text-gray-500 block leading-tight mt-0.5">
+                              Pay via GPay, PhonePe, Paytm, BHIM UPI, RuPay / Visa / Mastercard cards, or NetBanking. Instant automated confirmation.
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleCashfreeStallPayment}
+                          disabled={isSubmittingPg || !isDetailsFilled}
+                          className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white py-3.5 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2 golden-glow disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                        >
+                          <CreditCard size={16} className={isSubmittingPg ? "animate-pulse" : ""} />
+                          <span>
+                            {isSubmittingPg
+                              ? "Connecting to Cashfree Gateway..."
+                              : `Pay ₹${totalFeeToPay.toLocaleString("en-IN")} Table Fee Online`}
+                          </span>
+                        </button>
+                        <p className="text-[10px] text-gray-400 text-center flex items-center justify-center gap-1">
+                          <ShieldCheck size={12} className="text-green-600" /> Secure 128-bit Encrypted Checkout • Zero Manual UTR Typing Required
+                        </p>
+                      </div>
+                    ) : (
+                      /* Manual UPI QR Option */
+                      <div className="space-y-3">
+                        <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-3 rounded-xl border border-amber-200">
+                          <img
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                              buildUpiPayUri({
+                                am: totalFeeToPay,
+                                tn: `Anandamela Stall - ${regForm.stallName.slice(0, 20)}`,
+                              })
+                            )}`}
+                            alt="Anandamela Stall Fee UPI QR"
+                            className="w-28 h-28 sm:w-32 sm:h-32 rounded-lg border border-gray-200 shadow-2xs"
+                          />
+                          <div className="space-y-2 flex-1 text-center sm:text-left">
+                            <span className="text-xs font-bold text-gray-800 block">
+                              Scan &amp; Pay ₹{totalFeeToPay.toLocaleString("en-IN")} via Any UPI App
+                            </span>
+                            <p className="text-[11px] text-gray-500">
+                              Official Society VPA: <strong className="font-mono text-primary">{SOCIETY_UPI_ID}</strong>
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(SOCIETY_UPI_ID);
+                                setCopiedUpi(true);
+                                setTimeout(() => setCopiedUpi(false), 2000);
+                              }}
+                              className="text-[11px] font-bold text-primary bg-amber-50 hover:bg-amber-100 border border-amber-300 px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1.5"
+                            >
+                              {copiedUpi ? <Check size={13} /> : <Copy size={13} />}
+                              <span>{copiedUpi ? "UPI ID Copied!" : "1-Tap Copy UPI ID"}</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block font-bold text-gray-800 text-xs mb-1">
+                            UPI UTR / Transaction Reference Number *
+                          </label>
+                          <input
+                            type="text"
+                            required={paymentMode === "manual_upi"}
+                            value={regForm.paymentRef}
+                            onChange={(e) => setRegForm({ ...regForm, paymentRef: e.target.value.trim() })}
+                            placeholder="e.g. 12-digit UPI UTR from GPay / PhonePe / Paytm"
+                            className="w-full p-2.5 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono text-xs"
+                          />
+                          <span className="text-[10px] text-gray-500 block mt-1">
+                            Required for PSS Finance Committee to verify your table fee before confirming the stall.
+                          </span>
+                        </div>
+
+                        <button
+                          type="submit"
+                          disabled={!isDetailsFilled || !regForm.paymentRef.trim()}
+                          className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2 golden-glow disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
+                        >
+                          <Send size={15} />
+                          <span>
+                            {!isDetailsFilled
+                              ? "Fill Details Above to Unlock Payment"
+                              : !regForm.paymentRef.trim()
+                              ? "Enter UPI Reference / UTR Number to Submit"
+                              : `Submit Application with UTR (₹${totalFeeToPay.toLocaleString("en-IN")})`}
+                          </span>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-
-              {/* SUBMIT BUTTON */}
-              <button
-                type="submit"
-                disabled={!isDetailsFilled || !regForm.paymentRef.trim()}
-                className="w-full bg-primary hover:bg-primary-hover text-white py-3.5 rounded-xl font-bold transition shadow-sm flex items-center justify-center gap-2 golden-glow disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
-              >
-                <Send size={15} />
-                <span>
-                  {!isDetailsFilled
-                    ? "Fill Details Above to Unlock Payment"
-                    : !regForm.paymentRef.trim()
-                    ? "Enter UPI Reference / UTR Number to Submit"
-                    : `Submit Application & Complete Payment (₹${totalFeeToPay.toLocaleString("en-IN")})`}
-                </span>
-              </button>
             </form>
           </div>
         </div>

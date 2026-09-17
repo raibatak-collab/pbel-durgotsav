@@ -3543,6 +3543,55 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 81: Cashfree Hosted Web Checkout Payment Gateway Integration', () => {
+    it('should verify cashfree configuration and utilities exist', () => {
+      assert.ok(fs.existsSync('src/utils/cashfree.ts'), 'Must have src/utils/cashfree.ts utility');
+      const cashfreeSrc = fs.readFileSync('src/utils/cashfree.ts', 'utf8');
+      assert.ok(cashfreeSrc.includes('CASHFREE_API_VERSION'), 'Must define Cashfree API version (2023-08-01)');
+      assert.ok(cashfreeSrc.includes('createCashfreeOrder'), 'Must define createCashfreeOrder helper');
+      assert.ok(cashfreeSrc.includes('fetchCashfreeOrder'), 'Must define fetchCashfreeOrder helper');
+      assert.ok(cashfreeSrc.includes('verifyCashfreeWebhookSignature'), 'Must define verifyCashfreeWebhookSignature helper');
+      assert.ok(cashfreeSrc.includes('loadCashfreeSDK'), 'Must define dynamic loadCashfreeSDK helper');
+    });
+
+    it('should verify server-side Cashfree API routes exist', () => {
+      assert.ok(fs.existsSync('src/app/api/payment/cashfree/initiate/route.ts'), 'Must have initiate route');
+      assert.ok(fs.existsSync('src/app/api/payment/cashfree/return/route.ts'), 'Must have return route');
+      assert.ok(fs.existsSync('src/app/api/payment/cashfree/webhook/route.ts'), 'Must have webhook route');
+
+      const initiateSrc = fs.readFileSync('src/app/api/payment/cashfree/initiate/route.ts', 'utf8');
+      assert.ok(initiateSrc.includes('createCashfreeOrder'), 'Initiate route must call createCashfreeOrder');
+      assert.ok(initiateSrc.includes('return_url'), 'Initiate route must configure return_url');
+
+      const returnSrc = fs.readFileSync('src/app/api/payment/cashfree/return/route.ts', 'utf8');
+      assert.ok(returnSrc.includes('fetchCashfreeOrder'), 'Return route must verify order with fetchCashfreeOrder');
+      assert.ok(returnSrc.includes('/receipt?id='), 'Return route must redirect to receipt on PAID');
+
+      const webhookSrc = fs.readFileSync('src/app/api/payment/cashfree/webhook/route.ts', 'utf8');
+      assert.ok(webhookSrc.includes('verifyCashfreeWebhookSignature'), 'Webhook must verify signature');
+    });
+
+    it('should verify Cashfree checkout integration in contribute and anandamela pages', () => {
+      const contributeSrc = fs.readFileSync('src/app/contribute/page.tsx', 'utf8');
+      assert.ok(contributeSrc.includes('handleCashfreeCheckout'), 'Contribute page must have handleCashfreeCheckout');
+      assert.ok(contributeSrc.includes('/api/payment/cashfree/initiate'), 'Contribute page must call Cashfree initiate endpoint');
+      assert.ok(contributeSrc.includes('Online (UPI, Cards, NetBanking)'), 'Contribute page must have Pay Online button');
+
+      const anandamelaSrc = fs.readFileSync('src/app/anandamela/page.tsx', 'utf8');
+      assert.ok(anandamelaSrc.includes('handleCashfreeStallPayment'), 'Anandamela must have handleCashfreeStallPayment');
+      assert.ok(anandamelaSrc.includes('Pay Online (Instant)'), 'Anandamela must have Pay Online selector');
+      assert.ok(anandamelaSrc.includes('pbel_pending_anandamela_stall'), 'Anandamela must support return reconciliation for pending stall');
+    });
+
+    it('should verify .env.example documents Cashfree credentials', () => {
+      assert.ok(fs.existsSync('.env.example'), '.env.example must exist');
+      const envSrc = fs.readFileSync('.env.example', 'utf8');
+      assert.ok(envSrc.includes('CASHFREE_APP_ID'), 'Must document CASHFREE_APP_ID');
+      assert.ok(envSrc.includes('CASHFREE_SECRET_KEY'), 'Must document CASHFREE_SECRET_KEY');
+      assert.ok(envSrc.includes('CASHFREE_ENV'), 'Must document CASHFREE_ENV');
+    });
+  });
+
 });
 
 
