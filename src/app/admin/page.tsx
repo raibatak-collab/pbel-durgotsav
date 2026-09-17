@@ -2046,9 +2046,17 @@ function decodeCategoryDescription(desc?: string) {
   };
 
   const displayedContributions = contributions.filter((c) => {
-    const isPg = c.payment_method === "Cashfree PG";
+    const isPg = Boolean(
+      c.payment_id?.startsWith("PSS26_") ||
+      c.payment_id?.startsWith("PSS") ||
+      c.pg_bank_ref_no ||
+      c.payment_method === "Cashfree PG"
+    );
+    const isCancelled = c.status === "Cancelled" || (c.status === "Failed" && c.pg_bank_ref_no === "CANCELLED_BY_USER");
+    const isPendingManual = (c.status === "Pending" || c.status === "Pending Verification") && !isPg;
+
     if (contributionStatusFilter === "verified" && c.status !== "Success") return false;
-    if (contributionStatusFilter === "pending" && ((c.status !== "Pending" && c.status !== "Pending Verification") || isPg)) return false;
+    if (contributionStatusFilter === "pending" && !isPendingManual) return false;
     if (contributionStatusFilter === "pg_incomplete" && (!isPg || c.status === "Success")) return false;
     if (contributionStatusFilter === "rejected" && c.status !== "Failed" && c.status !== "Rejected" && c.status !== "Cancelled") return false;
 
@@ -3677,11 +3685,17 @@ function decodeCategoryDescription(desc?: string) {
                   ) : (
                     displayedContributions.map((c) => {
                       const isVerified = c.status === "Success";
-                      const isPg = c.payment_method === "Cashfree PG";
+                      const isPg = Boolean(
+                        c.payment_id?.startsWith("PSS26_") ||
+                        c.payment_id?.startsWith("PSS") ||
+                        c.pg_bank_ref_no ||
+                        c.payment_method === "Cashfree PG"
+                      );
+                      const isCancelled = c.status === "Cancelled" || (c.status === "Failed" && c.pg_bank_ref_no === "CANCELLED_BY_USER");
+                      const isFailed = c.status === "Failed" && c.pg_bank_ref_no !== "CANCELLED_BY_USER";
                       const isPending = (c.status === "Pending" || c.status === "Pending Verification") && !isPg;
                       const isPgIncomplete = c.status === "Pending" && isPg;
-                      const isCancelled = c.status === "Cancelled";
-                      const isRejected = c.status === "Failed" || c.status === "Rejected";
+                      const isRejected = isFailed || c.status === "Rejected";
                       const catName = getContributionCategoryName(c);
                       const sevaBadge = getSevaBadge(catName);
 

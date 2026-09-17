@@ -16,11 +16,13 @@ export async function POST(request: Request) {
     }
 
     if (orderType === 'contribution') {
-      // Only update if current status is still Pending to protect confirmed payments
+      // DB check constraint allows ('Pending', 'Success', 'Failed').
+      // We mark status as 'Failed' and pg_bank_ref_no as 'CANCELLED_BY_USER' for precise admin classification.
       const { error } = await supabaseAdmin
         .from('contributions')
         .update({
-          status: 'Cancelled',
+          status: 'Failed',
+          pg_bank_ref_no: 'CANCELLED_BY_USER',
         })
         .eq('payment_id', orderId)
         .eq('status', 'Pending');
