@@ -3558,6 +3558,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(fs.existsSync('src/app/api/payment/cashfree/initiate/route.ts'), 'Must have initiate route');
       assert.ok(fs.existsSync('src/app/api/payment/cashfree/return/route.ts'), 'Must have return route');
       assert.ok(fs.existsSync('src/app/api/payment/cashfree/webhook/route.ts'), 'Must have webhook route');
+      assert.ok(fs.existsSync('src/app/api/payment/cashfree/cancel/route.ts'), 'Must have cancel route');
 
       const initiateSrc = fs.readFileSync('src/app/api/payment/cashfree/initiate/route.ts', 'utf8');
       assert.ok(initiateSrc.includes('createCashfreeOrder'), 'Initiate route must call createCashfreeOrder');
@@ -3569,25 +3570,35 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
 
       const webhookSrc = fs.readFileSync('src/app/api/payment/cashfree/webhook/route.ts', 'utf8');
       assert.ok(webhookSrc.includes('verifyCashfreeWebhookSignature'), 'Webhook must verify signature');
+
+      const cancelSrc = fs.readFileSync('src/app/api/payment/cashfree/cancel/route.ts', 'utf8');
+      assert.ok(cancelSrc.includes('Cancelled'), 'Cancel route must update status to Cancelled');
     });
 
     it('should verify Cashfree checkout integration in contribute and anandamela pages', () => {
       const contributeSrc = fs.readFileSync('src/app/contribute/page.tsx', 'utf8');
       assert.ok(contributeSrc.includes('handleCashfreeCheckout'), 'Contribute page must have handleCashfreeCheckout');
       assert.ok(contributeSrc.includes('/api/payment/cashfree/initiate'), 'Contribute page must call Cashfree initiate endpoint');
-      assert.ok(contributeSrc.includes('Online (UPI, Cards, NetBanking)'), 'Contribute page must have Pay Online button');
+      assert.ok(contributeSrc.includes('1-Tap Checkout'), 'Contribute page must have 1-Tap Checkout button');
+      assert.ok(contributeSrc.includes('!isPgEnabled && customAmount'), 'Contribute page must suppress QR code when PG is enabled');
+      assert.ok(contributeSrc.includes('isGeneralFormValid'), 'Contribute page must validate mandatory fields before enabling pay button');
       assert.ok(contributeSrc.includes('redirectTarget: "_modal"'), 'Contribute page must use in-page modal checkout');
       assert.ok(contributeSrc.includes('/api/payment/cashfree/return?order_id='), 'Contribute page must route completed modal to return endpoint for receipt generation');
+      assert.ok(contributeSrc.includes('/api/payment/cashfree/cancel'), 'Contribute page must notify cancel endpoint on modal dismissal');
 
       const anandamelaSrc = fs.readFileSync('src/app/anandamela/page.tsx', 'utf8');
       assert.ok(anandamelaSrc.includes('handleCashfreeStallPayment'), 'Anandamela must have handleCashfreeStallPayment');
-      assert.ok(anandamelaSrc.includes('Pay Online (Instant)'), 'Anandamela must have Pay Online selector');
       assert.ok(anandamelaSrc.includes('redirectTarget: "_modal"'), 'Anandamela must use in-page modal checkout');
       assert.ok(anandamelaSrc.includes('pbel_pending_anandamela_stall'), 'Anandamela must support return reconciliation for pending stall');
 
       const testPaymentSrc = fs.readFileSync('src/app/test-payment/page.tsx', 'utf8');
       assert.ok(testPaymentSrc.includes('redirectTarget: "_modal"'), 'Test payment lab must use in-page modal checkout');
       assert.ok(testPaymentSrc.includes('/api/payment/cashfree/return?order_id='), 'Test payment lab must route completed modal to return endpoint for receipt generation');
+
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('pg_incomplete'), 'Admin must have pg_incomplete filter option');
+      assert.ok(adminSrc.includes('PG Incomplete'), 'Admin must have PG Incomplete badge');
+      assert.ok(adminSrc.includes('Force Approve'), 'Admin must guard manual approval of unconfirmed PG orders');
     });
 
     it('should verify .env.example documents Cashfree credentials', () => {

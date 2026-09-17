@@ -107,6 +107,17 @@ export default function TestPaymentPage() {
           if (result?.error) {
             console.log("[Cashfree Modal Closed/Error]:", result.error);
             setIsSubmitting(false);
+            // Notify backend that modal was closed so status is marked Cancelled instead of lingering Pending
+            fetch('/api/payment/cashfree/cancel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: data.orderId,
+                reason: result.error.message || 'Modal closed by tester',
+                orderType: 'contribution',
+              }),
+            }).catch(() => {});
+
             if (result.error.message && !result.error.message.toLowerCase().includes("closed")) {
               setErrorMessage(result.error.message);
             }

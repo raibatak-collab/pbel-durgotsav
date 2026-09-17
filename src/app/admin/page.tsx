@@ -2046,9 +2046,11 @@ function decodeCategoryDescription(desc?: string) {
   };
 
   const displayedContributions = contributions.filter((c) => {
+    const isPg = c.payment_method === "Cashfree PG";
     if (contributionStatusFilter === "verified" && c.status !== "Success") return false;
-    if (contributionStatusFilter === "pending" && c.status !== "Pending" && c.status !== "Pending Verification") return false;
-    if (contributionStatusFilter === "rejected" && c.status !== "Failed" && c.status !== "Rejected") return false;
+    if (contributionStatusFilter === "pending" && ((c.status !== "Pending" && c.status !== "Pending Verification") || isPg)) return false;
+    if (contributionStatusFilter === "pg_incomplete" && (!isPg || c.status === "Success")) return false;
+    if (contributionStatusFilter === "rejected" && c.status !== "Failed" && c.status !== "Rejected" && c.status !== "Cancelled") return false;
 
     const catName = getContributionCategoryName(c);
     if (contributionSevaFilter !== "all") {
@@ -3598,8 +3600,9 @@ function decodeCategoryDescription(desc?: string) {
                     >
                       <option value="all">All Status</option>
                       <option value="verified">✓ Verified Only</option>
-                      <option value="pending">⏳ Pending Review</option>
-                      <option value="rejected">✕ Rejected</option>
+                      <option value="pending">⏳ Manual UPI Pending</option>
+                      <option value="pg_incomplete">⚠️ Gateway Incomplete / Cancelled</option>
+                      <option value="rejected">✕ Rejected / Failed</option>
                     </select>
                   </div>
 
@@ -3674,7 +3677,10 @@ function decodeCategoryDescription(desc?: string) {
                   ) : (
                     displayedContributions.map((c) => {
                       const isVerified = c.status === "Success";
-                      const isPending = c.status === "Pending" || c.status === "Pending Verification";
+                      const isPg = c.payment_method === "Cashfree PG";
+                      const isPending = (c.status === "Pending" || c.status === "Pending Verification") && !isPg;
+                      const isPgIncomplete = c.status === "Pending" && isPg;
+                      const isCancelled = c.status === "Cancelled";
                       const isRejected = c.status === "Failed" || c.status === "Rejected";
                       const catName = getContributionCategoryName(c);
                       const sevaBadge = getSevaBadge(catName);
@@ -3721,15 +3727,28 @@ function decodeCategoryDescription(desc?: string) {
                             </button>
                           </td>
                           <td className="p-3.5">
-                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                              isVerified 
-                                ? "bg-green-100 text-green-800" 
-                                : isPending 
-                                ? "bg-amber-100 text-amber-900 border border-amber-300 animate-pulse" 
-                                : "bg-red-100 text-red-800"
-                            }`}>
-                              {isVerified ? "✓ Verified" : isPending ? "⏳ Pending Review" : "✕ Rejected"}
-                            </span>
+                            {isVerified ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200 inline-flex items-center gap-1">
+                                <span>✓ Verified</span>
+                                {isPg && <span className="text-[9px] opacity-75 font-mono">(PG)</span>}
+                              </span>
+                            ) : isPending ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 animate-pulse">
+                                ⏳ Pending Review
+                              </span>
+                            ) : isPgIncomplete ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200" title="Gateway session initiated but payment not completed">
+                                ⚠️ PG Incomplete
+                              </span>
+                            ) : isCancelled ? (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-gray-100 text-gray-600 border border-gray-200" title="Checkout modal closed without payment">
+                                ✕ Cancelled
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-800 border border-red-200">
+                                ✕ Rejected
+                              </span>
+                            )}
                           </td>
                           <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
                             {/* EDIT CONTRIBUTOR BUTTON */}
@@ -3754,11 +3773,18 @@ function decodeCategoryDescription(desc?: string) {
 
                             {!isVerified && (
                               <button
-                                onClick={() => handleUpdateContributionStatus(c.id, "Success")}
-                                className="bg-green-600 hover:bg-green-700 text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer"
-                                title="Approve and add to public fund ticker & Wall"
+                                onClick={() => {
+                                  if (isPg) {
+                                    if (!confirm("Note: This is an automated Cashfree transaction that was not confirmed by the gateway. Are you sure you verified receipt of funds in the bank account?")) {
+                                      return;
+                                    }
+                                  }
+                                  handleUpdateContributionStatus(c.id, "Success");
+                                }}
+                                className={`${isPg ? "bg-gray-600 hover:bg-gray-700" : "bg-green-600 hover:bg-green-700"} text-white font-bold text-[11px] px-2.5 py-1 rounded-lg transition shadow-2xs cursor-pointer`}
+                                title={isPg ? "Manual override for unconfirmed gateway transaction" : "Approve and add to public fund ticker & Wall"}
                               >
-                                Approve (✓)
+                                {isPg ? "Force Approve" : "Approve (✓)"}
                               </button>
                             )}
                             {!isRejected && (

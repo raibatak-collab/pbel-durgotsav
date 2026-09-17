@@ -336,6 +336,20 @@ export default function ContributePage() {
   const [receiptData, setReceiptData] = useState<ReceiptData | null>(null);
   const [branding, setBranding] = useState<SamitiBrandingConfig>(getStoredBranding());
 
+  const isGeneralFormValid = Boolean(
+    customAmount &&
+    Number(customAmount) > 0 &&
+    customFormData.name.trim() &&
+    customFormData.phone.trim().replace(/\D/g, '').length === 10 &&
+    customFlatUnit.trim()
+  );
+
+  const isModalFormValid = Boolean(
+    modalFormData.name.trim() &&
+    modalFormData.phone.trim().replace(/\D/g, '').length === 10 &&
+    modalFlatUnit.trim()
+  );
+
 // Category metadata decoder
 function decodeCategoryDescription(desc?: string) {
   const str = desc || '';
@@ -667,6 +681,17 @@ function decodeCategoryDescription(desc?: string) {
           if (result?.error) {
             console.log("[Cashfree Modal Closed/Error]:", result.error);
             setIsSubmitting(false);
+            // Notify backend that modal was closed so status is marked Cancelled
+            fetch('/api/payment/cashfree/cancel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: data.orderId,
+                reason: result.error.message || 'Modal dismissed by user',
+                orderType: 'contribution',
+              }),
+            }).catch(() => {});
+
             if (result.error.message && !result.error.message.toLowerCase().includes("closed")) {
               alert(result.error.message);
             }
@@ -1085,8 +1110,8 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
               </div>
 
-              {/* Dynamic QR Scanner & 1-Tap Mobile Payment Widget */}
-              {customAmount && Number(customAmount) > 0 ? (
+              {/* Dynamic QR Scanner & 1-Tap Mobile Payment Widget (ONLY shown when PG is disabled) */}
+              {!isPgEnabled && customAmount && Number(customAmount) > 0 ? (
                 <div className={`bg-gradient-to-br from-amber-50/95 via-orange-50/80 to-amber-100/50 p-5 sm:p-6 rounded-3xl border border-amber-300/90 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 `}>
                   <div className="text-center md:text-left space-y-3 flex-1">
                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-200/80 text-amber-950 text-xs font-bold">
@@ -1277,43 +1302,42 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
               </div>
 
-                {/* Submit Action: Cashfree PG (Primary when enabled) + Direct UPI QR */}
+                {/* Submit Action: 1-Tap Cashfree PG (When enabled) OR Manual Transfer (When offline) */}
                 <div className="pt-2 space-y-2.5">
                   {isPgEnabled ? (
-                    <>
+                    <div className="space-y-2">
                       <button
                         type="button"
                         onClick={(e) => handleCashfreeCheckout(e, Number(customAmount), true)}
-                        disabled={isSubmitting || !customAmount || customAmount <= 0 || !customFormData.name.trim() || customFormData.phone.trim().length !== 10 || !customFlatUnit.trim()}
-                        className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 text-[15px] golden-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={isSubmitting || !isGeneralFormValid}
+                        className={`w-full py-4 rounded-2xl font-bold transition-all shadow-md flex items-center justify-center gap-2.5 text-[15px] sm:text-base ${
+                          isGeneralFormValid && !isSubmitting
+                            ? "bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white shadow-amber-500/30 hover:shadow-xl cursor-pointer golden-glow active:scale-[0.99]"
+                            : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                        }`}
                       >
                         <CreditCard size={20} className={isSubmitting ? "animate-pulse" : ""} />
                         <span>
                           {isSubmitting
-                            ? "Connecting to Cashfree..."
-                            : `Pay ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"} Online (UPI, Cards, NetBanking)`}
+                            ? "Opening Secure Checkout..."
+                            : isGeneralFormValid
+                            ? `⚡ Pay ₹${Number(customAmount).toLocaleString("en-IN")} • 1-Tap Checkout`
+                            : `Fill Devotee Details to Pay ₹${customAmount ? Number(customAmount).toLocaleString("en-IN") : "0"}`}
                         </span>
                       </button>
 
-                      <div className="relative flex py-1 items-center">
-                        <div className="flex-grow border-t border-gray-200"></div>
-                        <span className="flex-shrink mx-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider">or direct transfer</span>
-                        <div className="flex-grow border-t border-gray-200"></div>
-                      </div>
+                      {!isGeneralFormValid && (
+                        <p className="text-[11.5px] text-amber-900 font-medium text-center flex items-center justify-center gap-1 bg-amber-50/90 border border-amber-200/90 rounded-xl py-2 px-3">
+                          <span>ℹ️</span>
+                          <span>Please enter Devotee Name, 10-digit Phone, Tower &amp; Flat above to enable 1-Tap Checkout</span>
+                        </p>
+                      )}
 
-                      <button
-                        type="submit"
-                        disabled={isSubmitting || !customAmount || customAmount <= 0}
-                        className="w-full bg-white hover:bg-amber-50/60 text-amber-900 border border-amber-300 font-semibold text-xs py-3 rounded-xl transition-all shadow-xs flex items-center justify-center gap-2"
-                      >
-                        <HeartHandshake size={16} className="text-primary" />
-                        <span>
-                          {isSubmitting
-                            ? "Recording Offering..."
-                            : `I Have Scanned QR • Record Direct Bank Transfer`}
-                        </span>
-                      </button>
-                    </>
+                      <p className="text-[11px] text-gray-500 text-center flex items-center justify-center gap-1.5 pt-1">
+                        <ShieldCheck size={13} className="text-green-600" />
+                        <span>100% Secure Checkout • Instant UPI (GPay/PhonePe), Cards &amp; NetBanking</span>
+                      </p>
+                    </div>
                   ) : (
                   <button
                     type="submit"
@@ -1578,8 +1602,8 @@ function decodeCategoryDescription(desc?: string) {
               </div>
             </div>
 
-            {/* UPI & QR Section */ true && (
-<div className="test-wrapper">{/* UPI & QR Scanner Section (Zero Friction: 1-Tap Copy UPI + QR Scanner) */}
+            {/* UPI & QR Section (ONLY shown in offline mode when PG is disabled) */ !isPgEnabled && (
+<div className="test-wrapper">{/* UPI & QR Scanner Section */}
             <div className="bg-amber-50/70 p-4 rounded-2xl border border-amber-300/90 mb-5 text-center space-y-3">
               
               {/* QR Code & Scanner */}
@@ -1763,40 +1787,40 @@ function decodeCategoryDescription(desc?: string) {
                 </label>
               </div>
 
-              <div className="pt-3 space-y-2.5">
+              <div className="pt-3 space-y-2">
                 {isPgEnabled ? (
-                  <>
+                  <div className="space-y-2">
                     <button
                       type="button"
                       onClick={(e) => handleCashfreeCheckout(e, Number(modalSeva.amount), false)}
-                      disabled={isSubmitting || !modalFormData.name.trim() || modalFormData.phone.trim().length !== 10 || !modalFlatUnit.trim()}
-                      className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-[15px] golden-glow disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isSubmitting || !isModalFormValid}
+                      className={`w-full py-3.5 rounded-xl font-bold transition-all shadow-md flex items-center justify-center gap-2 text-[15px] ${
+                        isModalFormValid && !isSubmitting
+                          ? "bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white shadow-amber-500/30 hover:shadow-xl cursor-pointer golden-glow active:scale-[0.99]"
+                          : "bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed"
+                      }`}
                     >
                       <CreditCard size={19} className={isSubmitting ? "animate-pulse" : ""} />
                       <span>
-                        {isSubmitting ? "Connecting to Cashfree..." : `Pay ₹${modalSeva.amount.toLocaleString("en-IN")} Online (UPI / Cards / NetBanking)`}
-                      </span>
-                    </button>
-
-                    <div className="relative flex py-0.5 items-center">
-                      <div className="flex-grow border-t border-gray-200"></div>
-                      <span className="flex-shrink mx-2 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">or scanned QR</span>
-                      <div className="flex-grow border-t border-gray-200"></div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="w-full bg-white hover:bg-amber-50/60 text-amber-900 border border-amber-300 font-semibold py-2.5 rounded-xl transition shadow-xs flex items-center justify-center gap-2 text-xs"
-                    >
-                      <CheckCircle2 size={15} className="text-primary" />
-                      <span>
                         {isSubmitting
-                          ? "Recording Offering..."
-                          : `I Have Paid ₹${modalSeva.amount.toLocaleString("en-IN")} • Confirm & Get Receipt`}
+                          ? "Opening Secure Checkout..."
+                          : isModalFormValid
+                          ? `⚡ Pay ₹${modalSeva.amount.toLocaleString("en-IN")} • 1-Tap Checkout`
+                          : `Fill Devotee Details to Pay ₹${modalSeva.amount.toLocaleString("en-IN")}`}
                       </span>
                     </button>
-                  </>
+
+                    {!isModalFormValid && (
+                      <p className="text-[11px] text-amber-900 font-medium text-center bg-amber-50/90 border border-amber-200/90 rounded-xl py-1.5 px-2.5">
+                        ℹ️ Please enter Devotee Name, 10-digit Phone, Tower &amp; Flat to enable 1-Tap Checkout
+                      </p>
+                    )}
+
+                    <p className="text-[11px] text-gray-500 text-center flex items-center justify-center gap-1.5 pt-0.5">
+                      <ShieldCheck size={12} className="text-green-600" />
+                      <span>100% Secure • Instant UPI (GPay/PhonePe), Cards &amp; NetBanking</span>
+                    </p>
+                  </div>
                 ) : (
                 <button
                   type="submit"

@@ -327,6 +327,16 @@ export default function AnandamelaPage() {
           if (result?.error) {
             console.log("[Anandamela Cashfree Modal Closed/Error]:", result.error);
             setIsSubmittingPg(false);
+            fetch('/api/payment/cashfree/cancel', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: data.orderId,
+                reason: result.error.message || 'Modal dismissed by user',
+                orderType: 'anandamela',
+              }),
+            }).catch(() => {});
+
             if (result.error.message && !result.error.message.toLowerCase().includes("closed")) {
               alert(result.error.message);
             }
@@ -1239,33 +1249,35 @@ export default function AnandamelaPage() {
                       </span>
                     </div>
 
-                    {/* Payment Mode Selector Tabs */}
-                    <div className="grid grid-cols-2 gap-2 bg-amber-100/60 p-1 rounded-xl">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMode("cashfree")}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                          paymentMode === "cashfree"
-                            ? "bg-white text-primary shadow-xs"
-                            : "text-gray-700 hover:text-gray-900"
-                        }`}
-                      >
-                        <CreditCard size={14} />
-                        <span>Pay Online (Instant)</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMode("manual_upi")}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
-                          paymentMode === "manual_upi"
-                            ? "bg-white text-primary shadow-xs"
-                            : "text-gray-700 hover:text-gray-900"
-                        }`}
-                      >
-                        <QrCode size={14} />
-                        <span>Scan UPI QR &amp; UTR</span>
-                      </button>
-                    </div>
+                    {/* Payment Mode Selector Tabs (Manual QR only shown when PG is disabled) */}
+                    {!isPgEnabled && (
+                      <div className="grid grid-cols-2 gap-2 bg-amber-100/60 p-1 rounded-xl">
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMode("cashfree")}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                            paymentMode === "cashfree"
+                              ? "bg-white text-primary shadow-xs"
+                              : "text-gray-700 hover:text-gray-900"
+                          }`}
+                        >
+                          <CreditCard size={14} />
+                          <span>Pay Online (Instant)</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPaymentMode("manual_upi")}
+                          className={`py-2 px-3 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+                            paymentMode === "manual_upi"
+                              ? "bg-white text-primary shadow-xs"
+                              : "text-gray-700 hover:text-gray-900"
+                          }`}
+                        >
+                          <QrCode size={14} />
+                          <span>Scan UPI QR &amp; UTR</span>
+                        </button>
+                      </div>
+                    )}
 
                     {paymentMode === "cashfree" ? (
                       /* Online Cashfree Checkout Option */
