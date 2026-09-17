@@ -288,7 +288,6 @@ export async function fetchStoredSchedule(): Promise<DaySchedule[]> {
       const normalized = normalizeSchedule(cloudSchedule);
       if (typeof window !== "undefined") {
         localStorage.setItem(SCHEDULE_STORAGE_KEY, JSON.stringify(normalized));
-        window.dispatchEvent(new Event("pbel_schedule_updated"));
       }
       return normalized;
     }
@@ -353,7 +352,6 @@ export async function fetchStoredHeroChips(): Promise<HeroHighlightChip[]> {
     if (Array.isArray(cloudChips) && cloudChips.length > 0) {
       if (typeof window !== "undefined") {
         localStorage.setItem(SCHEDULE_HERO_CHIPS_STORAGE_KEY, JSON.stringify(cloudChips));
-        window.dispatchEvent(new Event("pbel_schedule_chips_updated"));
       }
       return cloudChips;
     }

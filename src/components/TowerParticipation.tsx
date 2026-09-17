@@ -135,7 +135,10 @@ export function TowerParticipation({
   const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
+    let isFetching = false;
     async function loadLiveTowerData() {
+      if (isFetching) return;
+      isFetching = true;
       try {
         let currentTowers = getStoredTowers();
         const cloudTowers = await fetchStoredTowers();
@@ -164,6 +167,7 @@ export function TowerParticipation({
       } catch (err) {
         console.error("Error loading tower participation data:", err);
       } finally {
+        isFetching = false;
         setLoading(false);
       }
     }

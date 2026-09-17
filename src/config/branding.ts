@@ -118,7 +118,6 @@ export async function fetchStoredBranding(): Promise<SamitiBrandingConfig> {
       const merged = { ...DEFAULT_BRANDING, ...cloudBranding };
       if (typeof window !== "undefined") {
         localStorage.setItem(BRANDING_STORAGE_KEY, JSON.stringify(merged));
-        window.dispatchEvent(new Event("pbel_branding_updated"));
       }
       return merged;
     }

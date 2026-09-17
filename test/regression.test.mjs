@@ -3659,6 +3659,44 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 83: Event Loop Infinite Recursion Prevention & Dynamic Seva Catalog Caching', () => {
+    it('should verify read/fetch functions in config files never dispatch window update events', () => {
+      const configFiles = [
+        'src/config/towers.ts',
+        'src/config/committee.ts',
+        'src/config/branding.ts',
+        'src/config/gallery.ts',
+        'src/config/schedule.ts'
+      ];
+
+      for (const file of configFiles) {
+        const content = fs.readFileSync(file, 'utf8');
+        // Extract all fetchStored functions
+        const fetchFunctions = content.match(/export\s+async\s+function\s+fetchStored\w+[\s\S]*?(?=export|\Z)/g) || [];
+        for (const fn of fetchFunctions) {
+          assert.strictEqual(
+            fn.includes('window.dispatchEvent'),
+            false,
+            `Function in ${file} must NOT call window.dispatchEvent as it triggers recursive re-render loops`
+          );
+        }
+      }
+    });
+
+    it('should verify TowerParticipation has re-entrancy locking on live data load', () => {
+      const towerSrc = fs.readFileSync('src/components/TowerParticipation.tsx', 'utf8');
+      assert.ok(towerSrc.includes('isFetching'), 'TowerParticipation must include isFetching guard');
+      assert.ok(towerSrc.includes('if (isFetching) return;'), 'TowerParticipation must guard against concurrent re-entrant fetch calls');
+    });
+
+    it('should verify contribute page caches dynamic categories and filters out failed contributions', () => {
+      const contributeSrc = fs.readFileSync('src/app/contribute/page.tsx', 'utf8');
+      assert.ok(contributeSrc.includes('pbel_cached_seva_catalog'), 'Contribute page must utilize localStorage cache for 0ms initial render');
+      assert.ok(contributeSrc.includes('.neq("status", "Failed")'), 'Contribute page must filter out Failed status contributions');
+    });
+  });
+
 });
+
 
 

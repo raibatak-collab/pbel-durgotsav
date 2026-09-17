@@ -124,7 +124,6 @@ export async function fetchStoredCommittee(): Promise<CommitteeWing[]> {
     if (Array.isArray(cloudCommittee) && cloudCommittee.length > 0) {
       if (typeof window !== "undefined") {
         localStorage.setItem(COMMITTEE_STORAGE_KEY, JSON.stringify(cloudCommittee));
-        window.dispatchEvent(new Event("pbel_committee_updated"));
       }
       return cloudCommittee;
     }

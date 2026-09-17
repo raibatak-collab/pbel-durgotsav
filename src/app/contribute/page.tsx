@@ -287,7 +287,18 @@ export default function ContributePage() {
   // Mode switcher: "general" (open-ended) or "catalog" (specific items)
   const [activeMode, setActiveMode] = useState<"general" | "catalog">("general");
 
-  const [sevaList, setSevaList] = useState<SevaItem[]>(defaultSevaCatalog);
+  const [sevaList, setSevaList] = useState<SevaItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const cached = localStorage.getItem("pbel_cached_seva_catalog");
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        }
+      } catch (_) {}
+    }
+    return defaultSevaCatalog;
+  });
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dayFilter, setDayFilter] = useState<string>("all");
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -380,13 +391,20 @@ function decodeCategoryDescription(desc?: string) {
   const loadData = async () => {
     try {
       // 1. Fetch categories
-      const { data: dbCategories } = await supabase.from("contribution_categories").select("*");
+      const { data: dbCategories, error: catErr } = await supabase
+        .from("contribution_categories")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (catErr) {
+        console.error("Error fetching categories:", catErr);
+      }
       
-      // 2. Fetch non-rejected contributions to calculate booked counts
+      // 2. Fetch non-failed contributions to calculate booked counts
       const { data: dbContributions } = await supabase
         .from("contributions")
         .select("category_id, amount, status, contribution_categories(name)")
-        .neq("status", "Rejected");
+        .neq("status", "Failed");
 
       const contributionsList = dbContributions || [];
 
@@ -438,8 +456,13 @@ function decodeCategoryDescription(desc?: string) {
           };
         });
 
-        // Strictly show only what is configured in DB/Admin
+        // Strictly show only what is configured in DB/Admin & cache locally
         setSevaList(dbItems);
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("pbel_cached_seva_catalog", JSON.stringify(dbItems));
+          } catch (_) {}
+        }
       } else {
         // Compute against default catalog if categories table is still using defaults
         const updatedDefaults = defaultSevaCatalog.map((item) => {
@@ -553,6 +576,7 @@ function decodeCategoryDescription(desc?: string) {
 
     return () => {
       window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
+      window.removeEventListener("pbel_branding_updated", handleBrandingUpdate);
       window.removeEventListener("pbel_select_tower", handleSelectTower);
     };
   }, []);

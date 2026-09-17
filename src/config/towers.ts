@@ -154,7 +154,6 @@ export async function fetchStoredTowers(): Promise<TowerDefinition[]> {
       }));
       if (typeof window !== "undefined") {
         localStorage.setItem(TOWERS_STORAGE_KEY, JSON.stringify(cloudTowers));
-        window.dispatchEvent(new Event("pbel_towers_updated"));
       }
       return parsed;
     }

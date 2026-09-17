@@ -127,7 +127,6 @@ export async function fetchStoredGalleryVideos(): Promise<GalleryVideo[]> {
     if (Array.isArray(cloudVideos) && cloudVideos.length > 0) {
       if (typeof window !== "undefined") {
         localStorage.setItem(GALLERY_VIDEOS_STORAGE_KEY, JSON.stringify(cloudVideos));
-        window.dispatchEvent(new Event("pbel_gallery_videos_updated"));
       }
       return cloudVideos;
     }
