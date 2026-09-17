@@ -26,42 +26,56 @@ import { SiteHighlightModal } from "@/components/SiteHighlightModal";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 import { DEFAULT_PUJO_SCHEDULE, DaySchedule } from "@/config/schedule";
 
-export const revalidate = 0; // Fresh data on every load
+export const revalidate = 60; // 60-second ISR cache at Vercel Edge CDN
 
 export default async function Home() {
-  // Fetch sum of all successful contributions
-  const { data: contributionsData } = await supabase
-    .from("contributions")
-    .select("amount, contributor_name, flat_number, is_name_visible, created_at")
-    .eq("status", "Success")
-    .order("created_at", { ascending: false });
+  // Execute all required queries concurrently via Promise.all to slash TTFB
+  const [
+    contributionsResult,
+    includeMemberContributions,
+    pssMembers,
+    dbSponsorsResult,
+    cloudSchedule,
+    dbCategoriesResult
+  ] = await Promise.all([
+    supabase
+      .from("contributions")
+      .select("amount, contributor_name, flat_number, is_name_visible, created_at, status")
+      .eq("status", "Success")
+      .order("created_at", { ascending: false }),
+    fetchCloudConfig<boolean>("include_member_contributions", true),
+    fetchCloudConfig<any[]>("pss_members", []),
+    supabase
+      .from("sponsors")
+      .select("id, name, tier, logo_url, website, is_active")
+      .eq("is_active", true),
+    fetchCloudConfig<DaySchedule[]>("schedule_days", DEFAULT_PUJO_SCHEDULE),
+    supabase
+      .from("contribution_categories")
+      .select("*")
+      .order("created_at", { ascending: true }),
+  ]);
 
-  const totalAmount = contributionsData
-    ? contributionsData.reduce((sum, item) => sum + Number(item.amount), 0)
-    : 0;
+  const cloudSponsors = await fetchCloudConfig<any[]>("sponsors", []);
 
-  const totalContributorsCount = contributionsData ? contributionsData.length : 0;
+  const contributionsData = contributionsResult.data || [];
+  const dbSponsors = dbSponsorsResult.data || [];
+  const dbCategories = dbCategoriesResult.data || [];
 
-  // Fetch PSS members to aggregate member family contributions (₹7,500 per family) if enabled by Admin
-  const includeMemberContributions = await fetchCloudConfig<boolean>("include_member_contributions", true);
+  const totalAmount = contributionsData.reduce((sum, item) => sum + Number(item.amount), 0);
+  const totalContributorsCount = contributionsData.length;
+
   let memberSubscriptionTotal = 0;
   let memberFamiliesCount = 0;
   let pssMembersList: any[] = [];
 
-  if (includeMemberContributions) {
-    try {
-      const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
-      if (pssMembers && Array.isArray(pssMembers)) {
-        pssMembersList = pssMembers;
-        memberFamiliesCount = pssMembers.length;
-        memberSubscriptionTotal = pssMembers.reduce(
-          (sum: number, m: any) => sum + (Number(m.membershipFee) || 7500),
-          0
-        );
-      }
-    } catch (err) {
-      console.error("Error fetching member config:", err);
-    }
+  if (includeMemberContributions && Array.isArray(pssMembers)) {
+    pssMembersList = pssMembers;
+    memberFamiliesCount = pssMembers.length;
+    memberSubscriptionTotal = pssMembers.reduce(
+      (sum: number, m: any) => sum + (Number(m.membershipFee) || 7500),
+      0
+    );
   }
 
   const combinedTotal = totalAmount + memberSubscriptionTotal;
@@ -73,14 +87,7 @@ export default async function Home() {
     maximumFractionDigits: 0,
   }).format(combinedTotal);
 
-  // Fetch active sponsors (reconcile DB and Cloud Config)
-  const { data: dbSponsors } = await supabase
-    .from("sponsors")
-    .select("*")
-    .eq("is_active", true);
-
-  const cloudSponsors = await fetchCloudConfig<any[]>("sponsors", []);
-
+  // Reconcile sponsors (Cloud Config + DB)
   let sponsors: any[] = [];
   if (cloudSponsors && Array.isArray(cloudSponsors) && cloudSponsors.length > 0) {
     sponsors = [...cloudSponsors];
@@ -103,9 +110,7 @@ export default async function Home() {
     sponsors = dbSponsors;
   }
 
-  // 1. DYNAMIC 6-DAY PUJO SCHEDULE FROM CLOUD CONFIG (EDITABLE VIA ADMIN)
-  const cloudSchedule = await fetchCloudConfig<DaySchedule[]>("schedule_days", DEFAULT_PUJO_SCHEDULE);
-
+  // 1. DYNAMIC 6-DAY PUJO SCHEDULE FROM CLOUD CONFIG
   const daysTimeline = (cloudSchedule && cloudSchedule.length > 0 ? cloudSchedule : DEFAULT_PUJO_SCHEDULE).map((d) => {
     const icon = d.id === "panchami" ? "🌟" : d.id === "sashti" ? "🌺" : d.id === "saptami" ? "🌿" : d.id === "ashtami" ? "🪔" : d.id === "nabami" ? "🔥" : "🔴";
     const ritualHighlights = d.rituals && d.rituals.length > 0 ? d.rituals.slice(0, 3).map((r) => r.event).join(", ") : "";
@@ -130,12 +135,7 @@ export default async function Home() {
     };
   });
 
-  // 2. DYNAMIC E-SEVA CATEGORIES FROM SUPABASE DATABASE (EDITABLE VIA ADMIN)
-  const { data: dbCategories } = await supabase
-    .from("contribution_categories")
-    .select("*")
-    .order("created_at", { ascending: true });
-
+  // 2. DYNAMIC E-SEVA CATEGORIES FROM SUPABASE DATABASE
   let popularSevaOfferings: any[] = [];
 
   if (dbCategories && dbCategories.length > 0) {
@@ -259,7 +259,11 @@ export default async function Home() {
 
         {/* PROMINENT TOWER-WISE PARTICIPATION & DEVOTIONAL SOLIDARITY */}
         <div className="pt-2">
-          <TowerParticipation />
+          <TowerParticipation 
+            initialContribs={contributionsData} 
+            initialMembers={pssMembersList} 
+            includeMemberContributions={includeMemberContributions} 
+          />
         </div>
       </section>
 

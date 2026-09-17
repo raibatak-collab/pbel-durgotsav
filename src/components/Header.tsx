@@ -42,7 +42,17 @@ export function Header() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Check if admin is currently logged in on this browser & load announcement & branding
+  // Sync admin session state on route changes (pure local storage check, 0 network calls)
+  useEffect(() => {
+    try {
+      const session = localStorage.getItem("pbel_admin_session") || sessionStorage.getItem("pbel_admin_session");
+      setLoggedInAdmin(session ? JSON.parse(session) : null);
+    } catch (_) {
+      setLoggedInAdmin(null);
+    }
+  }, [pathname]);
+
+  // Load announcement & branding once on mount and listen for live updates
   useEffect(() => {
     try {
       setBranding(getStoredBranding());
@@ -69,20 +79,21 @@ export function Header() {
         }
       });
 
-      const session = localStorage.getItem("pbel_admin_session") || sessionStorage.getItem("pbel_admin_session");
-      if (session) {
-        setLoggedInAdmin(JSON.parse(session));
-      } else {
-        setLoggedInAdmin(null);
-      }
+      const handleConfigUpdate = (e: any) => {
+        if (e.detail?.key === "announcement" && typeof e.detail.value === "string") {
+          setCustomAnnouncement(e.detail.value);
+        }
+      };
+      window.addEventListener("pbel_config_updated", handleConfigUpdate);
 
       return () => {
         window.removeEventListener("pbel_branding_updated", handleBrandingUpdate);
+        window.removeEventListener("pbel_config_updated", handleConfigUpdate);
       };
     } catch (_) {
-      setLoggedInAdmin(null);
+      // fallback
     }
-  }, [pathname]);
+  }, []);
 
   // Primary High-Frequency Desktop Links (Consolidated Distinct Destinations)
   const primaryLinks = [

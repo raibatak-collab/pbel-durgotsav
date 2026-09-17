@@ -63,7 +63,10 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
       }
     }
 
-    loadSponsors();
+    // Only fetch from Supabase if initial sponsors were not provided by SSR
+    if (!initialSponsors || initialSponsors.length === 0) {
+      loadSponsors();
+    }
 
     const handleUpdate = () => {
       try {

@@ -7,7 +7,7 @@ import { supabase } from "@/utils/supabase/client";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 
-interface TowerInfo {
+export interface TowerInfo {
   id: string;
   tower: string;
   name: string;
@@ -16,10 +16,122 @@ interface TowerInfo {
   totalAmount: number;
 }
 
-export function TowerParticipation() {
-  const [towerData, setTowerData] = useState<TowerInfo[]>([]);
-  const [guestStats, setGuestStats] = useState({ familyCount: 0, totalAmount: 0 });
-  const [loading, setLoading] = useState(true);
+export function computeTowerStats(
+  currentTowers: TowerDefinition[],
+  contribs: Array<{ flat_number?: string; amount?: number | string; status?: string }> | null | undefined,
+  pssMembers: any[] | null | undefined,
+  includeMembers: boolean
+) {
+  const counts: Record<string, { families: Set<string>; amount: number }> = {};
+  currentTowers.forEach((t) => {
+    counts[t.id] = { families: new Set<string>(), amount: 0 };
+  });
+
+  let guestFamilies = new Set<string>();
+  let guestAmount = 0;
+
+  if (contribs && contribs.length > 0) {
+    contribs.forEach((c) => {
+      const flatStr = (c.flat_number || "").trim();
+      const amt = Number(c.amount) || 0;
+      if (!flatStr) return;
+
+      let matched = false;
+      for (const t of currentTowers) {
+        if (
+          (t.regex && t.regex.test(flatStr)) ||
+          flatStr.toLowerCase().includes(t.name.toLowerCase()) ||
+          flatStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+          flatStr.toLowerCase().includes(t.fullName.toLowerCase())
+        ) {
+          if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
+          counts[t.id].families.add(flatStr);
+          counts[t.id].amount += amt;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched && flatStr) {
+        guestFamilies.add(flatStr);
+        guestAmount += amt;
+      }
+    });
+  }
+
+  if (includeMembers && pssMembers && Array.isArray(pssMembers) && pssMembers.length > 0) {
+    pssMembers.forEach((m: any) => {
+      const towerStr = (m.tower || "").trim();
+      const flatStr = (m.flatNumber || m.flat_number || "").trim();
+      const fullStr = `${towerStr} ${flatStr}`.trim();
+      const amt = Number(m.membershipFee) || 7500;
+
+      let matched = false;
+      for (const t of currentTowers) {
+        if (
+          (t.regex && (t.regex.test(fullStr) || t.regex.test(towerStr) || t.regex.test(flatStr))) ||
+          towerStr.toLowerCase().includes(t.name.toLowerCase()) ||
+          towerStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+          (t.fullName && towerStr.toLowerCase().includes(t.fullName.toLowerCase())) ||
+          fullStr.toLowerCase().includes(t.name.toLowerCase()) ||
+          fullStr.toLowerCase().includes(t.tower.toLowerCase()) ||
+          (t.fullName && fullStr.toLowerCase().includes(t.fullName.toLowerCase()))
+        ) {
+          if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
+          const uniqueKey = m.id || `${t.id}-${flatStr}-${m.name || "fam"}`;
+          counts[t.id].families.add(uniqueKey);
+          counts[t.id].amount += amt;
+          matched = true;
+          break;
+        }
+      }
+
+      if (!matched && fullStr) {
+        const uniqueGuestKey = m.id || fullStr;
+        guestFamilies.add(uniqueGuestKey);
+        guestAmount += amt;
+      }
+    });
+  }
+
+  const towerData: TowerInfo[] = currentTowers.map((t) => ({
+    id: t.id,
+    tower: t.tower,
+    name: t.name,
+    fullName: t.fullName,
+    familyCount: counts[t.id]?.families.size || 0,
+    totalAmount: counts[t.id]?.amount || 0,
+  }));
+
+  return {
+    towerData,
+    guestStats: { familyCount: guestFamilies.size, totalAmount: guestAmount },
+  };
+}
+
+export interface TowerParticipationProps {
+  initialContribs?: Array<{ flat_number?: string; amount?: number | string; status?: string }>;
+  initialMembers?: any[];
+  includeMemberContributions?: boolean;
+}
+
+export function TowerParticipation({
+  initialContribs,
+  initialMembers,
+  includeMemberContributions: propIncludeMembers
+}: TowerParticipationProps = {}) {
+  const initialCalculated = initialContribs
+    ? computeTowerStats(
+        getStoredTowers(),
+        initialContribs,
+        initialMembers,
+        propIncludeMembers ?? true
+      )
+    : null;
+
+  const [towerData, setTowerData] = useState<TowerInfo[]>(() => initialCalculated?.towerData || []);
+  const [guestStats, setGuestStats] = useState(() => initialCalculated?.guestStats || { familyCount: 0, totalAmount: 0 });
+  const [loading, setLoading] = useState(!initialCalculated);
   const [showConfetti, setShowConfetti] = useState(false);
 
   useEffect(() => {
@@ -35,103 +147,20 @@ export function TowerParticipation() {
           .select("flat_number, amount, status")
           .eq("status", "Success");
 
-        const counts: Record<string, { families: Set<string>; amount: number }> = {};
-        currentTowers.forEach((t) => {
-          counts[t.id] = { families: new Set<string>(), amount: 0 };
-        });
-
-        let guestFamilies = new Set<string>();
-        let guestAmount = 0;
-
-        // 1. Process online seva contributions
-        if (contribs && contribs.length > 0) {
-          contribs.forEach((c) => {
-            const flatStr = (c.flat_number || "").trim();
-            const amt = Number(c.amount) || 0;
-
-            if (!flatStr) return;
-
-            let matched = false;
-            for (const t of currentTowers) {
-              if (
-                (t.regex && t.regex.test(flatStr)) ||
-                flatStr.toLowerCase().includes(t.name.toLowerCase()) ||
-                flatStr.toLowerCase().includes(t.tower.toLowerCase()) ||
-                flatStr.toLowerCase().includes(t.fullName.toLowerCase())
-              ) {
-                if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
-                counts[t.id].families.add(flatStr);
-                counts[t.id].amount += amt;
-                matched = true;
-                break;
-              }
-            }
-
-            // Route non-resident/unmatched contributions to Guest Devotees pool
-            if (!matched && flatStr) {
-              guestFamilies.add(flatStr);
-              guestAmount += amt;
-            }
-          });
-        }
-
-        // 2. Aggregate PSS registered member subscriptions (₹7,500 per family pass) if enabled
+        let includeMembers = true;
+        let pssMembers: any[] = [];
         try {
-          const includeMemberContributions = await fetchCloudConfig<boolean>("include_member_contributions", true);
-
-          if (includeMemberContributions) {
-            const pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
-
-            if (pssMembers && Array.isArray(pssMembers) && pssMembers.length > 0) {
-              pssMembers.forEach((m: any) => {
-                const towerStr = (m.tower || "").trim();
-                const flatStr = (m.flatNumber || m.flat_number || "").trim();
-                const fullStr = `${towerStr} ${flatStr}`.trim();
-                const amt = Number(m.membershipFee) || 7500;
-
-                let matched = false;
-                for (const t of currentTowers) {
-                  if (
-                    (t.regex && (t.regex.test(fullStr) || t.regex.test(towerStr) || t.regex.test(flatStr))) ||
-                    towerStr.toLowerCase().includes(t.name.toLowerCase()) ||
-                    towerStr.toLowerCase().includes(t.tower.toLowerCase()) ||
-                    (t.fullName && towerStr.toLowerCase().includes(t.fullName.toLowerCase())) ||
-                    fullStr.toLowerCase().includes(t.name.toLowerCase()) ||
-                    fullStr.toLowerCase().includes(t.tower.toLowerCase()) ||
-                    (t.fullName && fullStr.toLowerCase().includes(t.fullName.toLowerCase()))
-                  ) {
-                    if (!counts[t.id]) counts[t.id] = { families: new Set<string>(), amount: 0 };
-                    const uniqueKey = m.id || `${t.id}-${flatStr}-${m.name || "fam"}`;
-                    counts[t.id].families.add(uniqueKey);
-                    counts[t.id].amount += amt;
-                    matched = true;
-                    break;
-                  }
-                }
-
-                if (!matched && fullStr) {
-                  const uniqueGuestKey = m.id || fullStr;
-                  guestFamilies.add(uniqueGuestKey);
-                  guestAmount += amt;
-                }
-              });
-            }
+          includeMembers = await fetchCloudConfig<boolean>("include_member_contributions", true);
+          if (includeMembers) {
+            pssMembers = await fetchCloudConfig<any[]>("pss_members", []);
           }
         } catch (mErr) {
-          console.error("Error aggregating member passes in tower participation:", mErr);
+          console.error("Error aggregating member passes:", mErr);
         }
 
-        const updated = currentTowers.map((t) => ({
-          id: t.id,
-          tower: t.tower,
-          name: t.name,
-          fullName: t.fullName,
-          familyCount: counts[t.id]?.families.size || 0,
-          totalAmount: counts[t.id]?.amount || 0,
-        }));
-
-        setTowerData(updated);
-        setGuestStats({ familyCount: guestFamilies.size, totalAmount: guestAmount });
+        const calculated = computeTowerStats(currentTowers, contribs, pssMembers, includeMembers);
+        setTowerData(calculated.towerData);
+        setGuestStats(calculated.guestStats);
       } catch (err) {
         console.error("Error loading tower participation data:", err);
       } finally {
@@ -139,7 +168,10 @@ export function TowerParticipation() {
       }
     }
 
-    loadLiveTowerData();
+    // If server provided initial data, don't execute immediate Supabase query on mount
+    if (!initialContribs) {
+      loadLiveTowerData();
+    }
 
     const handleTowersUpdate = () => {
       loadLiveTowerData();
@@ -150,7 +182,7 @@ export function TowerParticipation() {
       window.removeEventListener("pbel_towers_updated", handleTowersUpdate);
       window.removeEventListener("pbel_member_toggle_updated", handleTowersUpdate);
     };
-  }, []);
+  }, [initialContribs]);
 
   const totalContributingFamilies = towerData.reduce((acc, t) => acc + t.familyCount, 0) + guestStats.familyCount;
   const totalTowerRaised = towerData.reduce((acc, t) => acc + t.totalAmount, 0) + guestStats.totalAmount;

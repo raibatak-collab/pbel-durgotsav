@@ -69,6 +69,7 @@ import {
   AestheticWallpaper
 } from "@/config/branding";
 import { saveCloudConfig, fetchCloudConfig } from "@/utils/cloudConfig";
+import { compressImageFile } from "@/utils/imageCompress";
 import { sanitizeText, validateDonationAmount, validatePhoneNumber } from "@/utils/security";
 import { SitePopupHighlight, DEFAULT_POPUP_HIGHLIGHT } from "@/components/SiteHighlightModal";
 import { OfficialContributionReceipt, ReceiptData } from "@/components/OfficialContributionReceipt";
@@ -756,99 +757,83 @@ export default function AdminDashboard() {
   };
 
   // Local File Upload for Hero Wallpaper from Computer
-  const handleUploadWallpaperFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadWallpaperFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 1200, 800, 0.75);
       const updated = {
         ...branding,
         customWallpaperUrl: dataUrl,
       };
       setBranding(updated);
       saveStoredBranding(updated);
-      alert("Custom Maa Durga Wallpaper uploaded & activated across the portal!");
-    };
-    if (file.size > 2 * 1024 * 1024) {
-      alert("File size must be under 2MB. Please compress or resize the image before uploading.");
-      return;
+      alert("Custom Maa Durga Wallpaper optimized & activated across the portal!");
+    } catch {
+      alert("Failed to process image. Please try another file.");
     }
-    reader.readAsDataURL(file);
   };
 
   // Local File Upload for PSS Logo from Computer
-  const handleUploadPssLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadPssLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 400, 400, 0.85);
       const updated = {
         ...branding,
         pssLogoUrl: dataUrl,
       };
       setBranding(updated);
       saveStoredBranding(updated);
-      alert("PBEL Sanskritik Samiti Logo uploaded & updated across Header & Hero!");
-    };
-    if (file.size > 2 * 1024 * 1024) {
-      alert("File size must be under 2MB. Please compress or resize the image before uploading.");
-      return;
+      alert("PBEL Sanskritik Samiti Logo optimized & updated across Header & Hero!");
+    } catch {
+      alert("Failed to process logo. Please try another file.");
     }
-    reader.readAsDataURL(file);
   };
 
   // Local File Upload for Festival Logo from Computer
-  const handleUploadDurgotsavLogoFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadDurgotsavLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 400, 400, 0.85);
       const updated = {
         ...branding,
         durgotsavLogoUrl: dataUrl,
       };
       setBranding(updated);
       saveStoredBranding(updated);
-      alert("PBEL Durgotsav Festival Logo uploaded & updated!");
-    };
-    if (file.size > 2 * 1024 * 1024) {
-      alert("File size must be under 2MB. Please compress or resize the image before uploading.");
-      return;
+      alert("PBEL Durgotsav Festival Logo optimized & updated!");
+    } catch {
+      alert("Failed to process festival logo. Please try another file.");
     }
-    reader.readAsDataURL(file);
   };
 
   // Local File Upload for President / Signatory Signature
-  const handleUploadPresidentSignatureFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUploadPresidentSignatureFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file, 400, 200, 0.85);
       const updated = {
         ...branding,
         presidentSignatureUrl: dataUrl,
       };
       setBranding(updated);
       saveStoredBranding(updated);
-      alert("President / Signatory Signature uploaded & updated on all Official Receipts!");
-    };
-    if (file.size > 2 * 1024 * 1024) {
-      alert("File size must be under 2MB. Please compress or resize the image before uploading.");
-      return;
+      alert("President / Signatory Signature optimized & updated on all Official Receipts!");
+    } catch {
+      alert("Failed to process signature image.");
     }
-    reader.readAsDataURL(file);
   };
 
   const handleUploadPdfFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 35 * 1024 * 1024) {
-      alert("File size exceeds 35MB. Please upload a PDF under 35MB or provide an external URL.");
+    if (file.size > 1.5 * 1024 * 1024) {
+      alert("PDF exceeds 1.5MB. Storing large PDFs directly in database configs exhausts Supabase monthly egress limits. Please place the PDF in public/docs or provide a hosted URL (Google Drive / Cloud CDN), or use a compressed PDF under 1.5MB.");
       return;
     }
 

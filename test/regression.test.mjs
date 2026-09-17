@@ -3610,6 +3610,55 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 82: Database Query & Egress Optimization, ISR & Static Asset Offloading', () => {
+    it('should verify fetchCloudConfig implements in-memory TTL caching and request deduplication', () => {
+      const cloudConfigSrc = fs.readFileSync('src/utils/cloudConfig.ts', 'utf8');
+      assert.ok(cloudConfigSrc.includes('configMemoryCache'), 'cloudConfig must maintain an in-memory cache');
+      assert.ok(cloudConfigSrc.includes('inFlightRequests'), 'cloudConfig must implement in-flight request deduplication');
+      assert.ok(cloudConfigSrc.includes('invalidateCloudConfig'), 'cloudConfig must export cache invalidation helper');
+      assert.ok(cloudConfigSrc.includes('pbel_config_updated'), 'saveCloudConfig must dispatch pbel_config_updated event');
+    });
+
+    it('should verify homepage implements 60-second ISR and concurrent query execution', () => {
+      const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(homeSrc.includes('export const revalidate = 60'), 'Homepage must specify 60-second ISR revalidation');
+      assert.ok(homeSrc.includes('Promise.all(['), 'Homepage must parallelize queries using Promise.all');
+      assert.ok(homeSrc.includes('initialContribs={contributionsData}'), 'Homepage must pass initialContribs to TowerParticipation');
+    });
+
+    it('should verify TowerParticipation supports props-based initialization and skips client fetch', () => {
+      const towerSrc = fs.readFileSync('src/components/TowerParticipation.tsx', 'utf8');
+      assert.ok(towerSrc.includes('computeTowerStats'), 'TowerParticipation must export pure computeTowerStats helper');
+      assert.ok(towerSrc.includes('initialContribs'), 'TowerParticipation must accept initialContribs prop');
+      assert.ok(towerSrc.includes('if (!initialContribs)'), 'TowerParticipation must skip initial fetch when initialContribs is provided');
+    });
+
+    it('should verify sponsor carousels skip duplicate client fetch when server sponsors are passed', () => {
+      const ribbonSrc = fs.readFileSync('src/components/TopSponsorRibbon.tsx', 'utf8');
+      assert.ok(ribbonSrc.includes('if (!initialSponsors || initialSponsors.length === 0)'), 'TopSponsorRibbon must skip fetch when initialSponsors is provided');
+
+      const carouselSrc = fs.readFileSync('src/components/SponsorLogoCarousel.tsx', 'utf8');
+      assert.ok(carouselSrc.includes('if (!initialSponsors || initialSponsors.length === 0)'), 'SponsorLogoCarousel must skip fetch when initialSponsors is provided');
+    });
+
+    it('should verify Header isolates route changes from branding network fetches', () => {
+      const headerSrc = fs.readFileSync('src/components/Header.tsx', 'utf8');
+      assert.ok(headerSrc.includes('setLoggedInAdmin(session ? JSON.parse(session) : null);'), 'Admin session check must run on route change');
+      assert.ok(headerSrc.includes('fetchCloudConfig<string>("announcement"'), 'Announcement fetch must exist');
+    });
+
+    it('should verify static asset directories and image compression utility exist', () => {
+      assert.ok(fs.existsSync('public/images/sponsors'), 'public/images/sponsors directory must exist');
+      assert.ok(fs.existsSync('public/images/gallery'), 'public/images/gallery directory must exist');
+      assert.ok(fs.existsSync('public/images/branding'), 'public/images/branding directory must exist');
+      assert.ok(fs.existsSync('src/utils/imageCompress.ts'), 'src/utils/imageCompress.ts must exist');
+
+      const compressSrc = fs.readFileSync('src/utils/imageCompress.ts', 'utf8');
+      assert.ok(compressSrc.includes('compressImageFile'), 'imageCompress must export compressImageFile');
+      assert.ok(compressSrc.includes('toDataURL'), 'imageCompress must use canvas toDataURL');
+    });
+  });
+
 });
 
 

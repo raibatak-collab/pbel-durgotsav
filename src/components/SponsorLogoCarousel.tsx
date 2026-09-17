@@ -44,7 +44,10 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
         }
       } catch (_) {}
     };
-    loadCloudSponsors();
+    // Only fetch from Supabase if initial sponsors were not provided by SSR
+    if (!initialSponsors || initialSponsors.length === 0) {
+      loadCloudSponsors();
+    }
 
     const handleUpdate = () => {
       try {
