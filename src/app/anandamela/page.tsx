@@ -147,6 +147,42 @@ export default function AnandamelaPage() {
         setStalls(JSON.parse(stored));
       }
 
+      // Check for returning successful Cashfree stall payment
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get("status") === "success") {
+          const pendingRaw = localStorage.getItem("pbel_pending_anandamela_stall");
+          if (pendingRaw) {
+            try {
+              const pendingStall = JSON.parse(pendingRaw);
+              const bankRef = urlParams.get("ref") || urlParams.get("order_id") || "Cashfree PG Verified";
+              pendingStall.paymentRef = bankRef;
+              pendingStall.paymentStatus = "Paid Online (Cashfree)";
+              pendingStall.status = "Pending";
+
+              const existingStallsRaw = localStorage.getItem("pbel_anandamela_stalls");
+              const existingStalls: FoodStall[] = existingStallsRaw ? JSON.parse(existingStallsRaw) : [];
+              if (!existingStalls.some((s: FoodStall) => s.id === pendingStall.id)) {
+                const updated = [pendingStall, ...existingStalls];
+                setStalls(updated);
+                localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(updated));
+                saveCloudConfig("anandamela_stalls", updated);
+              }
+              setSubmittedStallInfo({
+                stallName: pendingStall.stallName,
+                chefName: pendingStall.chefName,
+                stallType: pendingStall.stallType || "Food",
+              });
+              setNudgeModalOpen(true);
+              localStorage.removeItem("pbel_pending_anandamela_stall");
+              window.history.replaceState({}, document.title, window.location.pathname);
+            } catch (err) {
+              console.error("[Anandamela Payment Return Error]", err);
+            }
+          }
+        }
+      }
+
       // Fetch fresh cloud stalls
       fetchCloudConfig<FoodStall[]>("anandamela_stalls", INITIAL_STALLS).then((cloudStalls) => {
         if (cloudStalls && cloudStalls.length > 0) {
@@ -283,10 +319,26 @@ export default function AnandamelaPage() {
 
       const CashfreeSDK = await loadCashfreeSDK();
       if (CashfreeSDK) {
-        const cashfree = CashfreeSDK({ mode: data.environment || 'sandbox' });
+        const cashfree = CashfreeSDK({ mode: data.environment || 'production' });
         cashfree.checkout({
           paymentSessionId: data.paymentSessionId,
-          redirectTarget: "_self",
+          redirectTarget: "_modal",
+        }).then((result: any) => {
+          if (result?.error) {
+            console.log("[Anandamela Cashfree Modal Closed/Error]:", result.error);
+            setIsSubmittingPg(false);
+            if (result.error.message && !result.error.message.toLowerCase().includes("closed")) {
+              alert(result.error.message);
+            }
+          } else if (result?.redirect) {
+            console.log("[Anandamela Cashfree Modal Redirecting]");
+          } else {
+            // Modal completed: route to return verification endpoint
+            window.location.href = `/api/payment/cashfree/return?order_id=${encodeURIComponent(data.orderId)}&type=anandamela`;
+          }
+        }).catch((err: any) => {
+          console.error("[Anandamela Modal Error]:", err);
+          setIsSubmittingPg(false);
         });
       } else {
         window.location.href = `/api/payment/cashfree/return?order_id=${encodeURIComponent(data.orderId)}&type=anandamela`;

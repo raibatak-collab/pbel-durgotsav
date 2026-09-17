@@ -656,13 +656,29 @@ function decodeCategoryDescription(desc?: string) {
         return;
       }
 
-      // 2. Launch Cashfree Hosted Web Checkout
+      // 2. Launch Cashfree In-Page Modal Checkout
       const CashfreeSDK = await loadCashfreeSDK();
       if (CashfreeSDK) {
-        const cashfree = CashfreeSDK({ mode: data.environment || 'sandbox' });
+        const cashfree = CashfreeSDK({ mode: data.environment || 'production' });
         cashfree.checkout({
           paymentSessionId: data.paymentSessionId,
-          redirectTarget: "_self",
+          redirectTarget: "_modal",
+        }).then((result: any) => {
+          if (result?.error) {
+            console.log("[Cashfree Modal Closed/Error]:", result.error);
+            setIsSubmitting(false);
+            if (result.error.message && !result.error.message.toLowerCase().includes("closed")) {
+              alert(result.error.message);
+            }
+          } else if (result?.redirect) {
+            console.log("[Cashfree Modal Redirecting]");
+          } else {
+            // Modal completed: route to return verification endpoint to verify status and load receipt
+            window.location.href = `/api/payment/cashfree/return?order_id=${encodeURIComponent(data.orderId)}`;
+          }
+        }).catch((err: any) => {
+          console.error("[Cashfree Modal Error]:", err);
+          setIsSubmitting(false);
         });
       } else {
         // Direct fallback navigation

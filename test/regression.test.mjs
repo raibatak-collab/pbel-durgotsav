@@ -3576,11 +3576,18 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(contributeSrc.includes('handleCashfreeCheckout'), 'Contribute page must have handleCashfreeCheckout');
       assert.ok(contributeSrc.includes('/api/payment/cashfree/initiate'), 'Contribute page must call Cashfree initiate endpoint');
       assert.ok(contributeSrc.includes('Online (UPI, Cards, NetBanking)'), 'Contribute page must have Pay Online button');
+      assert.ok(contributeSrc.includes('redirectTarget: "_modal"'), 'Contribute page must use in-page modal checkout');
+      assert.ok(contributeSrc.includes('/api/payment/cashfree/return?order_id='), 'Contribute page must route completed modal to return endpoint for receipt generation');
 
       const anandamelaSrc = fs.readFileSync('src/app/anandamela/page.tsx', 'utf8');
       assert.ok(anandamelaSrc.includes('handleCashfreeStallPayment'), 'Anandamela must have handleCashfreeStallPayment');
       assert.ok(anandamelaSrc.includes('Pay Online (Instant)'), 'Anandamela must have Pay Online selector');
+      assert.ok(anandamelaSrc.includes('redirectTarget: "_modal"'), 'Anandamela must use in-page modal checkout');
       assert.ok(anandamelaSrc.includes('pbel_pending_anandamela_stall'), 'Anandamela must support return reconciliation for pending stall');
+
+      const testPaymentSrc = fs.readFileSync('src/app/test-payment/page.tsx', 'utf8');
+      assert.ok(testPaymentSrc.includes('redirectTarget: "_modal"'), 'Test payment lab must use in-page modal checkout');
+      assert.ok(testPaymentSrc.includes('/api/payment/cashfree/return?order_id='), 'Test payment lab must route completed modal to return endpoint for receipt generation');
     });
 
     it('should verify .env.example documents Cashfree credentials', () => {

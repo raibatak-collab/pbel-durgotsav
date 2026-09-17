@@ -96,13 +96,29 @@ export default function TestPaymentPage() {
         return;
       }
 
-      // 2. Load Cashfree JS SDK and launch redirect checkout
+      // 2. Load Cashfree JS SDK and launch in-page modal checkout
       const CashfreeSDK = await loadCashfreeSDK();
       if (CashfreeSDK) {
         const cashfree = CashfreeSDK({ mode: data.environment || "production" });
         cashfree.checkout({
           paymentSessionId: data.paymentSessionId,
-          redirectTarget: "_self",
+          redirectTarget: "_modal",
+        }).then((result: any) => {
+          if (result?.error) {
+            console.log("[Cashfree Modal Closed/Error]:", result.error);
+            setIsSubmitting(false);
+            if (result.error.message && !result.error.message.toLowerCase().includes("closed")) {
+              setErrorMessage(result.error.message);
+            }
+          } else if (result?.redirect) {
+            console.log("[Cashfree Modal Redirecting]");
+          } else {
+            // Payment completed inside modal: navigate to return verification endpoint to create receipt
+            window.location.href = `/api/payment/cashfree/return?order_id=${encodeURIComponent(data.orderId)}`;
+          }
+        }).catch((err: any) => {
+          console.error("[Cashfree Modal Error]:", err);
+          setIsSubmitting(false);
         });
       } else {
         window.location.href = `/api/payment/cashfree/return?order_id=${encodeURIComponent(data.orderId)}`;
