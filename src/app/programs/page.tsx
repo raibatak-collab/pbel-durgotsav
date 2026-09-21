@@ -25,12 +25,14 @@ import {
   ExternalLink,
   Download,
   Building,
-  Heart
+  Heart,
+  Palette
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent, buildUpiPayUri } from "@/utils/security";
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredSchedule, fetchStoredSchedule, DaySchedule, getStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip } from "@/config/schedule";
+import { CulturalEventsRegistration } from "@/components/CulturalEventsRegistration";
 
 export default function ProgramsPage() {
   const [selectedDay, setSelectedDay] = useState<string>("sashti");
@@ -353,14 +355,23 @@ export default function ProgramsPage() {
             </button>
           </div>
 
-          {/* Quick Jump to Performance Registration */}
-          <a
-            href="#register-performance"
-            className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#8B1024] to-[#680A1A] hover:from-[#A5132B] hover:to-[#8B1024] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm self-stretch sm:self-auto"
-          >
-            <Music size={14} className="text-amber-300" />
-            <span>🎤 Register Your Performance ↓</span>
-          </a>
+          {/* Quick Jump to Cultural Competitions & Performance Registration */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <a
+              href="#competitions"
+              className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm self-stretch sm:self-auto"
+            >
+              <Palette size={14} className="text-amber-100" />
+              <span>🎨 Cultural Competitions (Open) ↓</span>
+            </a>
+            <a
+              href="#register-performance"
+              className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#8B1024] to-[#680A1A] hover:from-[#A5132B] hover:to-[#8B1024] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm self-stretch sm:self-auto"
+            >
+              <Music size={14} className="text-amber-300" />
+              <span>🎤 Stage Acts ↓</span>
+            </a>
+          </div>
 
         </div>
       </div>
@@ -628,13 +639,20 @@ export default function ProgramsPage() {
                 </ul>
               </div>
 
-              <div className="pt-2 border-t border-amber-900/10">
+              <div className="pt-2 border-t border-amber-900/10 space-y-2">
+                <a
+                  href="#competitions"
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white py-3 rounded-2xl font-bold text-xs transition shadow-md flex items-center justify-center gap-2"
+                >
+                  <Palette size={15} />
+                  <span>Register for Cultural Competitions (5 Events Open)</span>
+                </a>
                 <a
                   href="#register-performance"
-                  className="w-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 py-3 rounded-2xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-2"
+                  className="w-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 py-2.5 rounded-2xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-2"
                 >
-                  <Clock size={15} className="text-primary" />
-                  <span>Stage Registrations Opening Soon</span>
+                  <Clock size={14} className="text-primary" />
+                  <span>Stage Slot Bookings Opening Soon</span>
                 </a>
               </div>
 
@@ -645,8 +663,11 @@ export default function ProgramsPage() {
 
         </div>
 
+        {/* 3.5. PRATIBIMB CULTURAL COMPETITIONS REGISTRATION HUB */}
+        <CulturalEventsRegistration />
+
         {/* 4. PRATIBIMB PERFORMANCE REGISTRATION FORM (CURRENTLY DISABLED - OPENING SOON) */}
-        <div id="register-performance" className="mt-16 bg-white rounded-3xl p-6 sm:p-10 border border-amber-900/15 shadow-xl">
+        <div id="register-performance" className="mt-8 bg-white rounded-3xl p-6 sm:p-10 border border-amber-900/15 shadow-xl">
           
           {/* Opening Soon Notification Banner */}
           <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/25 to-amber-500/15 border-2 border-amber-400/80 rounded-3xl p-6 text-center space-y-2.5 shadow-sm backdrop-blur-xs mb-8">

@@ -3696,7 +3696,101 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 84: Hero Partner Auto-Rotation, 5 Cultural Event Registrations, Schedule Updates & Admin CMS', () => {
+    it('should verify TopSponsorRibbon auto-rotation, pause-on-hover, and safe first-logo alignment', () => {
+      const ribbonSrc = fs.readFileSync('src/components/TopSponsorRibbon.tsx', 'utf8');
+      assert.ok(ribbonSrc.includes('isPaused'), 'TopSponsorRibbon must manage isPaused state');
+      assert.ok(ribbonSrc.includes('onMouseEnter'), 'TopSponsorRibbon must pause on mouse hover');
+      assert.ok(ribbonSrc.includes('onMouseLeave'), 'TopSponsorRibbon must resume on mouse leave');
+      assert.ok(ribbonSrc.includes('justify-start'), 'TopSponsorRibbon must use justify-start to prevent left-edge clipping');
+      assert.strictEqual(ribbonSrc.includes('sm:justify-center mx-auto'), false, 'TopSponsorRibbon must not use sm:justify-center which cuts off 1st logo');
+      assert.ok(ribbonSrc.includes('handleManualScroll'), 'TopSponsorRibbon must support manual scroll nudges');
+    });
+
+    it('should verify all 5 cultural events configurations, team limits and dress code rules', () => {
+      const cultSrc = fs.readFileSync('src/config/culturalEvents.ts', 'utf8');
+      assert.ok(cultSrc.includes('sit_and_draw'), 'culturalEvents must define sit_and_draw');
+      assert.ok(cultSrc.includes('junior_quiz'), 'culturalEvents must define junior_quiz');
+      assert.ok(cultSrc.includes('mini_kumartuli'), 'culturalEvents must define mini_kumartuli');
+      assert.ok(cultSrc.includes('duet_dhunuchi'), 'culturalEvents must define duet_dhunuchi');
+      assert.ok(cultSrc.includes('flash_mob'), 'culturalEvents must define flash_mob');
+
+      // Sit & Draw Indradhanush: 120 slots, 3 age categories
+      assert.ok(cultSrc.includes('maxLimit: 120'), 'Sit and Draw must be capped at 120 entries');
+      assert.ok(cultSrc.includes('group_1') && cultSrc.includes('group_2') && cultSrc.includes('group_3'), 'Sit and Draw must have 3 age categories');
+
+      // Junior Discovery Quiz: 6 teams max, 5 members, Gr 4-10
+      assert.ok(cultSrc.includes('maxLimit: 6'), 'Junior Quiz must be capped at 6 teams');
+      assert.ok(cultSrc.includes('teamSize: 5'), 'Junior Quiz must require 5 members per team');
+      assert.ok(cultSrc.includes('Grade 4 to Grade 10'), 'Quiz must specify Grade 4-10 eligibility');
+
+      // Mini Kumartuli: 10 teams max, 3 members
+      assert.ok(cultSrc.includes('maxLimit: 10'), 'Mini Kumartuli must be capped at 10 teams');
+      assert.ok(cultSrc.includes('teamSize: 3'), 'Mini Kumartuli must have 3 members per team');
+
+      // Duet Dhunuchi: 10 groups, 2 members, compulsory traditional dress code
+      assert.ok(cultSrc.includes('teamSize: 2'), 'Duet Dhunuchi must have 2 members (duo)');
+      assert.ok(cultSrc.includes('Dhunuchi Jugalbandi'), 'Duet Dhunuchi must be named Dhunuchi Jugalbandi');
+      assert.ok(cultSrc.includes('Saree and Dhoti/Pyjama Kurta compulsory'), 'Must enforce compulsory traditional dress code');
+
+      // Helpers
+      assert.ok(cultSrc.includes('submitCulturalRegistration'), 'Must export submitCulturalRegistration helper');
+      assert.ok(cultSrc.includes('fetchStoredCulturalEvents'), 'Must export fetchStoredCulturalEvents helper');
+    });
+
+    it('should verify official cultural schedule additions across Panchami, Saptami and Navami', async () => {
+      const schedModule = await import('../src/config/schedule.ts');
+      const schedule = schedModule.DEFAULT_PUJO_SCHEDULE;
+
+      // 1. Panchami: Sit & Draw Indradhanush (10:00 AM - 12:15 PM)
+      const panchami = schedule.find((s) => s.id === 'panchami');
+      assert.ok(panchami, 'Panchami must exist');
+      const sitAndDrawRitual = panchami.rituals.find((r) => r.event.includes('Indradhanush'));
+      assert.ok(sitAndDrawRitual, 'Panchami rituals must include Indradhanush');
+      assert.strictEqual(sitAndDrawRitual.time, '10:00 AM', 'Sit and Draw must start at 10:00 AM');
+
+      // 2. Saptami: Junior Discovery Quiz (10:30 AM - 12:30 PM)
+      const saptami = schedule.find((s) => s.id === 'saptami');
+      assert.ok(saptami, 'Saptami must exist');
+      const quizRitual = saptami.rituals.find((r) => r.event.includes('Junior Discovery Quiz'));
+      assert.ok(quizRitual, 'Saptami rituals must include Junior Discovery Quiz');
+      assert.strictEqual(quizRitual.time, '10:30 AM', 'Junior Quiz must start at 10:30 AM');
+
+      // 3. Navami: Mini Kumartuli (11:00 AM - 12:00 PM) & Duet Dhunuchi (07:00 PM - 07:15 PM)
+      const navami = schedule.find((s) => s.id === 'nabami');
+      assert.ok(navami, 'Navami must exist');
+      const kumartuliRitual = navami.rituals.find((r) => r.event.includes('Mini Kumartuli'));
+      assert.ok(kumartuliRitual, 'Navami rituals must include Mini Kumartuli');
+      assert.strictEqual(kumartuliRitual.time, '11:00 AM', 'Mini Kumartuli must start at 11:00 AM');
+
+      const dhunuchiRitual = navami.rituals.find((r) => r.event.includes('Dhunuchi Jugalbandi') || r.event.includes('Duet Dhunuchi'));
+      assert.ok(dhunuchiRitual, 'Navami rituals must include Duet Dhunuchi');
+      assert.strictEqual(dhunuchiRitual.time, '07:00 PM', 'Duet Dhunuchi must start at 07:00 PM');
+    });
+
+    it('should verify CulturalEventsRegistration public component is integrated in Programs page and Hero', () => {
+      const programsSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
+      assert.ok(programsSrc.includes('CulturalEventsRegistration'), 'Programs page must import and render CulturalEventsRegistration');
+      assert.ok(programsSrc.includes('#competitions'), 'Programs page must provide #competitions anchor link');
+
+      const heroSrc = fs.readFileSync('src/components/FestiveHero.tsx', 'utf8');
+      assert.ok(heroSrc.includes('/programs#competitions'), 'FestiveHero must feature Competitions link');
+    });
+
+    it('should verify Admin CMS Competitions controls, toggles, CSV export and announcement broadcaster', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('scheduleSubView === "competitions"'), 'Admin must have competitions subview');
+      assert.ok(adminSrc.includes('handleToggleEventStatus'), 'Admin must support event status toggling');
+      assert.ok(adminSrc.includes('handleToggleEventVisibility'), 'Admin must support public visibility toggling');
+      assert.ok(adminSrc.includes('handleUpdateEventLimit'), 'Admin must support maxLimit capacity adjustments');
+      assert.ok(adminSrc.includes('handleAnnounceCulturalRegistrations'), 'Admin must include 1-click registration announcement broadcaster');
+      assert.ok(adminSrc.includes('handleCopyWhatsAppBroadcast'), 'Admin must support WhatsApp broadcast message copying');
+      assert.ok(adminSrc.includes('handleExportCulturalRegistrationsCsv'), 'Admin must support 1-click CSV export');
+    });
+  });
+
 });
+
 
 
 

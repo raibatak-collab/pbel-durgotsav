@@ -50,10 +50,25 @@ import {
   ArrowRight,
   Video,
   Play,
-  ExternalLink
+  ExternalLink,
+  Share2,
+  Check
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { GalleryVideo, extractYouTubeVideoId, getStoredGalleryVideos, saveStoredGalleryVideos, fetchStoredGalleryVideos } from "@/config/gallery";
+import {
+  CulturalEventConfig,
+  CulturalEventId,
+  CulturalRegistrationEntry,
+  DEFAULT_CULTURAL_EVENTS,
+  getStoredCulturalEvents,
+  fetchStoredCulturalEvents,
+  saveStoredCulturalEvents,
+  getStoredCulturalRegistrations,
+  fetchStoredCulturalRegistrations,
+  CULTURAL_REGISTRATIONS_KEY,
+  CULTURAL_REGISTRATIONS_STORAGE_KEY,
+} from "@/config/culturalEvents";
 import { PBEL_TOWERS, PBEL_TOWER_NAMES, matchTower, getStoredTowers, saveStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredCommittee, saveStoredCommittee, fetchStoredCommittee, DEFAULT_COMMITTEE_WINGS, CommitteeWing, CommitteeMember } from "@/config/committee";
 import { getStoredSchedule, saveStoredSchedule, fetchStoredSchedule, DaySchedule, DEFAULT_PUJO_SCHEDULE, sortRitualsByTime, RitualEvent, getStoredHeroChips, saveStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip, DEFAULT_HERO_HIGHLIGHT_CHIPS } from "@/config/schedule";
@@ -186,7 +201,174 @@ export default function AdminDashboard() {
     "overview" | "contributions" | "pss_members" | "categories" | "schedule" | "volunteers" | "anandamela" | "sponsors" | "budget" | "committee" | "towers" | "branding" | "gallery" | "users"
   >("overview");
   const [membersSubView, setMembersSubView] = useState<"roster" | "kitchen">("roster");
-  const [scheduleSubView, setScheduleSubView] = useState<"schedule" | "pratibimb">("schedule");
+  // Cultural Competitions & Events State
+  const [culturalEvents, setCulturalEvents] = useState<CulturalEventConfig[]>(getStoredCulturalEvents());
+  const [culturalRegistrations, setCulturalRegistrations] = useState<CulturalRegistrationEntry[]>(getStoredCulturalRegistrations());
+  const [isSavingCulturalConfig, setIsSavingCulturalConfig] = useState(false);
+  const [competitionsFilter, setCompetitionsFilter] = useState<string>("all");
+  const [competitionsSearch, setCompetitionsSearch] = useState<string>("");
+  const [scheduleSubView, setScheduleSubView] = useState<"schedule" | "pratibimb" | "competitions">("schedule");
+
+  // ================= CULTURAL COMPETITIONS HANDLERS =================
+  const handleToggleEventStatus = (id: CulturalEventId, newStatus: "open" | "coming_soon" | "closed") => {
+    setCulturalEvents((prev) =>
+      prev.map((ev) =>
+        ev.id === id ? { ...ev, status: newStatus, isOpen: newStatus === "open" } : ev
+      )
+    );
+  };
+
+  const handleToggleEventVisibility = (id: CulturalEventId, isVisible: boolean) => {
+    setCulturalEvents((prev) =>
+      prev.map((ev) => (ev.id === id ? { ...ev, isVisible } : ev))
+    );
+  };
+
+  const handleUpdateEventLimit = (id: CulturalEventId, maxLimit: number) => {
+    setCulturalEvents((prev) =>
+      prev.map((ev) => (ev.id === id ? { ...ev, maxLimit: Math.max(1, Number(maxLimit) || 1) } : ev))
+    );
+  };
+
+  const handleSaveCulturalEventsConfig = async () => {
+    setIsSavingCulturalConfig(true);
+    try {
+      const success = await saveStoredCulturalEvents(culturalEvents);
+      if (success) {
+        alert("Cultural competitions settings successfully saved and synced to cloud!");
+      } else {
+        alert("Failed to sync to cloud. Please check network connection.");
+      }
+    } catch (err: any) {
+      alert("Error saving: " + err?.message);
+    } finally {
+      setIsSavingCulturalConfig(false);
+    }
+  };
+
+  const handleAnnounceCulturalRegistrations = async () => {
+    try {
+      const announcementText =
+        "🎭 Cultural Registrations are now OPEN! Register for Sit & Draw Indradhanush, Junior Discovery Quiz, Mini Kumartuli, Dhunuchi Jugalbandi & Flash Mob on the Programs page.";
+      await saveCloudConfig("announcement", announcementText);
+      alert("Registration opening announcement successfully broadcasted to website banner!");
+    } catch (err: any) {
+      alert("Error publishing announcement: " + err?.message);
+    }
+  };
+
+  const handleCopyWhatsAppBroadcast = () => {
+    const text = [
+      "*PBEL City Durgotsav 2026 • Cultural Competitions Registrations Open!* 🎭",
+      "",
+      "Dear PBEL City Residents,",
+      "Registrations are officially OPEN for our 5 flagship Pratibimb cultural competitions:",
+      "",
+      '1. 🎨 *Sit & Draw Competition "Indradhanush"* (Panchami, 15 Oct)',
+      "   • 3 Age Categories: Up to Gr 1 | Gr 2 - 5 | Gr 6 - 10",
+      "   • Total 120 slots max",
+      "",
+      "2. 🧠 *Junior Discovery Quiz* (Saptami, 17 Oct)",
+      "   • 6 Teams max, 5 members per team (Grade 4 to 10)",
+      "",
+      "3. 🏺 *Mini Kumartuli - Kids Clay Idol Sculpting* (Navami, 19 Oct)",
+      "   • 10 Teams max, 3 members per team (Clay & tools provided)",
+      "",
+      "4. 💃 *Dhunuchi Jugalbandi (Duet Dhunuchi Competition)* (Navami, 19 Oct)",
+      "   • 10 Groups max (Pairs / Duos)",
+      "   • Mandatory Dress Code: Traditional Saree & Dhoti / Pyjama Kurta",
+      "",
+      "5. 🕺 *Durga Pujo Grand Flash Mob*",
+      "   • Open to all residents (Kids, Teens & Adults)",
+      "",
+      "⚡ Slots are strictly limited on a first-come, first-registered basis!",
+      "👉 Register your team / entry here: https://pbeldurgotsav.in/programs#competitions",
+      "",
+      "— PBEL Sanskritik Samiti (PSS)"
+    ].join("\n");
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text);
+      alert("WhatsApp broadcast message copied to clipboard! Ready to paste into PBEL City Tower groups.");
+    } else {
+      alert("Please copy text manually: " + text);
+    }
+  };
+
+  const handleDeleteCulturalRegistration = async (entryId: string) => {
+    if (!window.confirm("Are you sure you want to cancel and delete this competition registration?")) return;
+    try {
+      const next = culturalRegistrations.filter((r) => r.id !== entryId);
+      setCulturalRegistrations(next);
+      localStorage.setItem(CULTURAL_REGISTRATIONS_STORAGE_KEY, JSON.stringify(next));
+      window.dispatchEvent(new Event("pbel_cultural_registrations_updated"));
+      await saveCloudConfig(CULTURAL_REGISTRATIONS_KEY, next);
+      alert("Registration deleted successfully.");
+    } catch (err: any) {
+      alert("Error deleting registration: " + err?.message);
+    }
+  };
+
+  const handleExportCulturalRegistrationsCsv = () => {
+    if (culturalRegistrations.length === 0) {
+      alert("No competition registrations to export.");
+      return;
+    }
+
+    const headers = [
+      "Registration ID",
+      "Event ID",
+      "Event Title",
+      "Registered Date",
+      "Contact / Lead Name",
+      "Phone",
+      "Tower",
+      "Flat",
+      "Team Name",
+      "Category / Group",
+      "Grade",
+      "Dress Code Confirmed",
+      "Total Members",
+      "Members Details",
+      "Notes / Availability",
+      "Status"
+    ];
+
+    const rows = culturalRegistrations.map((r) => {
+      const membersStr = r.members && r.members.length > 0
+        ? r.members.map((m) => m.name + (m.grade ? " (" + m.grade + ")" : "")).join(" | ")
+        : "";
+
+      return [
+        '"' + r.id + '"',
+        '"' + r.eventId + '"',
+        '"' + r.eventTitle + '"',
+        '"' + new Date(r.registeredAt).toLocaleString("en-IN") + '"',
+        '"' + (r.contactName || "") + '"',
+        '"' + (r.phone || "") + '"',
+        '"' + (r.tower || "") + '"',
+        '"' + (r.flat || "") + '"',
+        '"' + (r.teamName || "") + '"',
+        '"' + (r.category || r.ageGroup || "") + '"',
+        '"' + (r.grade || "") + '"',
+        '"' + (r.dressCodeConfirmed ? "Yes (Compulsory Attire Confirmed)" : "N/A") + '"',
+        '"' + (r.members ? r.members.length : 1) + '"',
+        '"' + membersStr.replace(/"/g, '""') + '"',
+        '"' + (r.notes || "").replace(/"/g, '""') + '"',
+        '"' + (r.status || "confirmed") + '"',
+      ].join(",");
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "PBEL_Durgotsav_2026_Cultural_Competitions_Roster.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   // Authentication & Session State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -460,6 +642,12 @@ export default function AdminDashboard() {
       if (cloudTiers && cloudTiers.length > 0) {
         setSponsorshipTiers(cloudTiers);
       }
+
+      // 5e. Fetch Cultural Competitions & Registrations from Cloud
+      const cloudCultEvents = await fetchStoredCulturalEvents();
+      if (cloudCultEvents && cloudCultEvents.length > 0) setCulturalEvents(cloudCultEvents);
+      const cloudCultRegs = await fetchStoredCulturalRegistrations();
+      if (cloudCultRegs) setCulturalRegistrations(cloudCultRegs);
 
       // 6. Fetch Sponsors - Reconcile DB and Cloud Config
       const { data: dbSps } = await supabase
@@ -4428,6 +4616,17 @@ function decodeCategoryDescription(desc?: string) {
               <Music size={14} />
               <span>2. Pratibimb Stage Slots & Registered Acts ({performances.length})</span>
             </button>
+            <button
+              onClick={() => setScheduleSubView("competitions")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                scheduleSubView === "competitions"
+                  ? "bg-white text-primary shadow-xs"
+                  : "text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <Palette size={14} />
+              <span>3. Cultural Competitions & Registrations ({culturalRegistrations.length})</span>
+            </button>
           </div>
 
           {scheduleSubView === "schedule" && (() => {
@@ -5024,6 +5223,333 @@ function decodeCategoryDescription(desc?: string) {
                         <tr>
                           <td colSpan={8} className="p-6 text-center text-gray-500">
                             No resident performance submissions recorded yet.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {/* ================= 3. CULTURAL COMPETITIONS & REGISTRATIONS CMS ================= */}
+          {scheduleSubView === "competitions" && (
+            <div className="space-y-6">
+              
+              {/* TOP ACTION BAR: Broadcaster & Announcements */}
+              <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/25 to-amber-500/15 border-2 border-amber-400/80 rounded-3xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <div className="inline-flex items-center gap-2 bg-amber-400/40 text-amber-950 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider mb-1.5 border border-amber-300">
+                    <Sparkles size={14} className="text-primary" />
+                    <span>Pratibimb 2026 Cultural Competitions Hub</span>
+                  </div>
+                  <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900">
+                    Manage 5 Official Cultural Events &amp; Team Limits
+                  </h3>
+                  <p className="text-xs text-gray-600 max-w-xl">
+                    Sit &amp; Draw (120 entries), Junior Discovery Quiz (6 teams), Mini Kumartuli (10 teams), Dhunuchi Jugalbandi (10 duos), and Flash Mob.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={handleAnnounceCulturalRegistrations}
+                    className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md"
+                  >
+                    <Sparkles size={14} />
+                    <span>📢 Announce Registrations Open</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCopyWhatsAppBroadcast}
+                    className="bg-[#25D366] hover:bg-[#1EBE5D] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md"
+                  >
+                    <Share2 size={14} />
+                    <span>📲 Copy WhatsApp Broadcast</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isSavingCulturalConfig}
+                    onClick={handleSaveCulturalEventsConfig}
+                    className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition flex items-center gap-1.5 shadow-md disabled:opacity-50"
+                  >
+                    <Check size={14} />
+                    <span>{isSavingCulturalConfig ? "Saving..." : "Save Event Toggles"}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 1. EVENT VISIBILITY & CAPACITY TOGGLES TABLE */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
+                  <div>
+                    <h4 className="font-heading text-lg font-bold text-gray-900">
+                      Competition Status &amp; Capacity Controls
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      Toggle whether registrations are actively open, teaser coming soon, or closed. Adjust slot capacity limits dynamically.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-gray-700">
+                    <thead className="bg-gray-50 uppercase text-[10px] font-bold text-gray-500 border-b border-gray-200">
+                      <tr>
+                        <th className="p-3">Event</th>
+                        <th className="p-3">Day &amp; Time</th>
+                        <th className="p-3">Team Structure</th>
+                        <th className="p-3">Registered / Limit</th>
+                        <th className="p-3">Registration Status</th>
+                        <th className="p-3">Public Visibility</th>
+                        <th className="p-3 text-right">Max Capacity</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {culturalEvents.map((ev) => {
+                        const count = culturalRegistrations.filter((r) => r.eventId === ev.id && r.status !== "cancelled").length;
+                        const isCapped = count >= ev.maxLimit;
+
+                        return (
+                          <tr key={ev.id} className="hover:bg-gray-50/80 transition">
+                            <td className="p-3">
+                              <div className="font-bold text-gray-900">{ev.title}</div>
+                              <div className="text-[10px] text-gray-500">{ev.subtitle}</div>
+                              {ev.dressCode && (
+                                <span className="inline-block mt-1 text-[9px] bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-semibold">
+                                  Attire: {ev.dressCode}
+                                </span>
+                              )}
+                            </td>
+                            <td className="p-3 text-gray-600">
+                              <div>{ev.day}</div>
+                              <div className="font-mono text-[11px] text-gray-500">{ev.time}</div>
+                            </td>
+                            <td className="p-3">
+                              <span className="font-bold text-gray-800">
+                                {ev.teamSize === 1 ? "Solo Entry" : ev.teamSize + " Members / Team"}
+                              </span>
+                              {ev.gradeEligibility && (
+                                <div className="text-[10px] text-gray-500">{ev.gradeEligibility}</div>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <span className={"font-bold px-2 py-0.5 rounded-full text-[11px] " + (isCapped ? "bg-red-100 text-red-800 font-extrabold" : "bg-emerald-100 text-emerald-800")}>
+                                {count} / {ev.maxLimit} {ev.teamSize > 1 ? "Teams" : "Entries"}
+                              </span>
+                              {isCapped && (
+                                <div className="text-[10px] text-red-600 font-bold mt-0.5">Slots Full</div>
+                              )}
+                            </td>
+                            <td className="p-3">
+                              <select
+                                value={ev.status}
+                                onChange={(e) => handleToggleEventStatus(ev.id, e.target.value as any)}
+                                className={"p-1.5 rounded-xl border text-xs font-bold outline-none " + (ev.status === "open" ? "bg-emerald-50 text-emerald-800 border-emerald-300" : ev.status === "coming_soon" ? "bg-amber-50 text-amber-800 border-amber-300" : "bg-gray-100 text-gray-700 border-gray-300")}
+                              >
+                                <option value="open">Open (Accepting)</option>
+                                <option value="coming_soon">Coming Soon</option>
+                                <option value="closed">Closed</option>
+                              </select>
+                            </td>
+                            <td className="p-3">
+                              <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={ev.isVisible}
+                                  onChange={(e) => handleToggleEventVisibility(ev.id, e.target.checked)}
+                                  className="w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer"
+                                />
+                                <span className="text-[11px] font-semibold text-gray-700">
+                                  {ev.isVisible ? "Visible" : "Hidden"}
+                                </span>
+                              </label>
+                            </td>
+                            <td className="p-3 text-right">
+                              <input
+                                type="number"
+                                min={1}
+                                max={500}
+                                value={ev.maxLimit}
+                                onChange={(e) => handleUpdateEventLimit(ev.id, parseInt(e.target.value, 10) || 1)}
+                                className="w-16 p-1.5 border border-gray-200 rounded-lg text-center font-bold text-xs bg-gray-50 focus:bg-white outline-none"
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* 2. REGISTERED PARTICIPANTS & TEAMS ROSTER */}
+              <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                  <div>
+                    <h4 className="font-heading text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <Users size={18} className="text-primary" />
+                      <span>Registered Teams &amp; Participants ({culturalRegistrations.length})</span>
+                    </h4>
+                    <p className="text-xs text-gray-500">
+                      View all registered resident teams, inspect member names, and export official lists for judges.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Event Filter */}
+                    <select
+                      value={competitionsFilter}
+                      onChange={(e) => setCompetitionsFilter(e.target.value)}
+                      className="p-2 border border-gray-200 rounded-xl text-xs bg-gray-50 focus:bg-white outline-none font-medium"
+                    >
+                      <option value="all">All Events ({culturalRegistrations.length})</option>
+                      <option value="sit_and_draw">Sit &amp; Draw "Indradhanush"</option>
+                      <option value="junior_quiz">Junior Discovery Quiz</option>
+                      <option value="mini_kumartuli">Mini Kumartuli</option>
+                      <option value="duet_dhunuchi">Dhunuchi Jugalbandi</option>
+                      <option value="flash_mob">Flash Mob</option>
+                    </select>
+
+                    {/* Search Query */}
+                    <input
+                      type="text"
+                      placeholder="Search name, phone, flat..."
+                      value={competitionsSearch}
+                      onChange={(e) => setCompetitionsSearch(e.target.value)}
+                      className="p-2 border border-gray-200 rounded-xl text-xs bg-gray-50 focus:bg-white outline-none w-48"
+                    />
+
+                    {/* CSV Export Button */}
+                    <button
+                      type="button"
+                      onClick={handleExportCulturalRegistrationsCsv}
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <Download size={13} />
+                      <span>Export Roster (CSV)</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Table of Entries */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-gray-700">
+                    <thead className="bg-gray-50 uppercase text-[10px] font-bold text-gray-500 border-b border-gray-200">
+                      <tr>
+                        <th className="p-3">Event</th>
+                        <th className="p-3">Contact / Lead</th>
+                        <th className="p-3">Tower &amp; Flat</th>
+                        <th className="p-3">WhatsApp</th>
+                        <th className="p-3">Team / Details</th>
+                        <th className="p-3">Team Members</th>
+                        <th className="p-3">Registered At</th>
+                        <th className="p-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {culturalRegistrations
+                        .filter((r) => competitionsFilter === "all" || r.eventId === competitionsFilter)
+                        .filter((r) => {
+                          if (!competitionsSearch.trim()) return true;
+                          const q = competitionsSearch.toLowerCase();
+                          return (
+                            (r.contactName || "").toLowerCase().includes(q) ||
+                            (r.phone || "").includes(q) ||
+                            (r.flat || "").toLowerCase().includes(q) ||
+                            (r.teamName || "").toLowerCase().includes(q)
+                          );
+                        })
+                        .map((reg) => (
+                          <tr key={reg.id} className="hover:bg-gray-50/80 transition">
+                            <td className="p-3 font-semibold text-gray-900">
+                              <div className="font-bold text-primary">{reg.eventTitle}</div>
+                              <span className="text-[10px] text-gray-500 font-mono">{reg.id}</span>
+                            </td>
+                            <td className="p-3">
+                              <div className="font-bold text-gray-900">{reg.contactName}</div>
+                              {reg.notes && <div className="text-[10px] text-gray-500">{reg.notes}</div>}
+                            </td>
+                            <td className="p-3 font-medium text-gray-800">{reg.flat}</td>
+                            <td className="p-3">
+                              <a
+                                href={"https://wa.me/91" + reg.phone}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-700 hover:underline font-mono"
+                              >
+                                +91 {reg.phone}
+                              </a>
+                            </td>
+                            <td className="p-3">
+                              {reg.teamName && (
+                                <div className="font-bold text-gray-900">Team: {reg.teamName}</div>
+                              )}
+                              {reg.category && (
+                                <span className="inline-block text-[10px] bg-pink-100 text-pink-800 px-1.5 py-0.5 rounded font-semibold">
+                                  {reg.category}
+                                </span>
+                              )}
+                              {reg.grade && (
+                                <span className="inline-block ml-1 text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.5 rounded font-semibold">
+                                  {reg.grade}
+                                </span>
+                              )}
+                              {reg.ageGroup && (
+                                <span className="inline-block text-[10px] bg-purple-100 text-purple-800 px-1.5 py-0.5 rounded font-semibold">
+                                  {reg.ageGroup}
+                                </span>
+                              )}
+                              {reg.dressCodeConfirmed && (
+                                <div className="text-[10px] text-emerald-700 font-bold mt-0.5">
+                                  ✓ Saree/Dhoti Confirmed
+                                </div>
+                              )}
+                            </td>
+                            <td className="p-3 text-gray-600 max-w-xs">
+                              {reg.members && reg.members.length > 0 ? (
+                                <ul className="space-y-0.5 text-[11px]">
+                                  {reg.members.map((m, idx) => (
+                                    <li key={idx} className="truncate">
+                                      • <span className="font-semibold text-gray-800">{m.name}</span>
+                                      {m.grade ? " (" + m.grade + ")" : ""}
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <span className="text-gray-400">Solo Entry</span>
+                              )}
+                            </td>
+                            <td className="p-3 text-[11px] text-gray-500 font-mono">
+                              {new Date(reg.registeredAt).toLocaleString("en-IN", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}
+                            </td>
+                            <td className="p-3 text-right">
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCulturalRegistration(reg.id)}
+                                className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition"
+                                title="Cancel and Delete Registration"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+
+                      {culturalRegistrations.length === 0 && (
+                        <tr>
+                          <td colSpan={8} className="p-8 text-center text-gray-500">
+                            No cultural competition registrations submitted yet.
                           </td>
                         </tr>
                       )}

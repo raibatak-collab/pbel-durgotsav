@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Sparkles, ExternalLink, Award, ArrowRight, Building2 } from "lucide-react";
+import { Sparkles, ExternalLink, Award, ArrowRight, Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 import { supabase } from "@/utils/supabase/client";
 import { getSponsorTierRank, TIER_RANK_WEIGHT, getSponsorBadgeLabel } from "@/config/sponsors";
@@ -32,6 +32,8 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
   });
 
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+  const [isPaused, setIsPaused] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -95,6 +97,39 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
       return weightA - weightB;
     });
 
+  // Auto-rotate sponsors carousel every 3.5s unless paused by user hover/touch
+  useEffect(() => {
+    if (activeSponsors.length <= 1 || isPaused) return;
+
+    const timer = setInterval(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+
+      const maxScroll = container.scrollWidth - container.clientWidth;
+      if (maxScroll <= 0) return;
+
+      const step = 220; // Average card width + gap
+      if (container.scrollLeft + step >= maxScroll - 10) {
+        // Smoothly return to first logo
+        container.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        container.scrollBy({ left: step, behavior: "smooth" });
+      }
+    }, 3500);
+
+    return () => clearInterval(timer);
+  }, [activeSponsors.length, isPaused]);
+
+  const handleManualScroll = (direction: "left" | "right") => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const step = 220;
+    container.scrollBy({
+      left: direction === "left" ? -step : step,
+      behavior: "smooth",
+    });
+  };
+
   const getTierBadgeColor = (tier: string) => {
     const rank = getSponsorTierRank(tier);
     switch (rank) {
@@ -144,35 +179,69 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
     );
   }
 
-  // ACTIVE SPONSORS VIEW: Premium Glassmorphism Ribbon with Touch-Friendly Mobile Track
+  // ACTIVE SPONSORS VIEW: Premium Auto-Rotating Glassmorphism Ribbon with Safe Left Alignment
   return (
-    <div className="w-full max-w-3xl mx-auto pt-2 px-1 sm:px-2 box-border">
+    <div 
+      className="w-full max-w-3xl mx-auto pt-2 px-1 sm:px-2 box-border"
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onTouchStart={() => setIsPaused(true)}
+      onTouchEnd={() => setIsPaused(false)}
+    >
       <div className="bg-black/50 border border-amber-400/40 rounded-3xl p-3 sm:p-3.5 backdrop-blur-md shadow-2xl space-y-2 box-border">
         
-        {/* Ribbon Header with Quick Deck Link */}
+        {/* Ribbon Header with Auto-Rotate Indicator, Manual Nudges, and Quick Deck Link */}
         <div className="flex items-center justify-between gap-2 px-1 pb-1 border-b border-amber-400/20">
           <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300">
-            <Sparkles size={12} className="text-amber-400 shrink-0" />
+            <Sparkles size={12} className="text-amber-400 shrink-0 animate-pulse" />
             <span>Proud Festival Patrons &amp; Corporate Partners</span>
           </div>
-          <Link
-            href="/sponsors"
-            className="text-[10px] sm:text-[11px] text-amber-200 hover:text-white font-bold flex items-center gap-1 shrink-0 transition"
-          >
-            <span>Partner With Us</span>
-            <ArrowRight size={11} />
-          </Link>
+          
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Manual Nudge Buttons */}
+            {activeSponsors.length > 2 && (
+              <div className="hidden sm:flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => handleManualScroll("left")}
+                  aria-label="Previous partner"
+                  className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-amber-200 flex items-center justify-center transition"
+                >
+                  <ChevronLeft size={12} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleManualScroll("right")}
+                  aria-label="Next partner"
+                  className="w-5 h-5 rounded-full bg-white/10 hover:bg-white/20 text-amber-200 flex items-center justify-center transition"
+                >
+                  <ChevronRight size={12} />
+                </button>
+              </div>
+            )}
+
+            <Link
+              href="/sponsors"
+              className="text-[10px] sm:text-[11px] text-amber-200 hover:text-white font-bold flex items-center gap-1 shrink-0 transition"
+            >
+              <span>Partner With Us</span>
+              <ArrowRight size={11} />
+            </Link>
+          </div>
         </div>
 
-        {/* Responsive Horizontal Scroll Container (Smooth touch-scroll on phones, no layout breaking) */}
-        <div className="w-full overflow-x-auto no-scrollbar py-1">
-          <div className="flex items-center gap-2.5 sm:gap-3 w-max sm:w-auto sm:justify-center mx-auto px-1">
+        {/* Responsive Horizontal Scroll Container (Strictly left-aligned so 1st logo is 100% visible on laptops) */}
+        <div 
+          ref={scrollContainerRef}
+          className="w-full overflow-x-auto no-scrollbar py-1 scroll-smooth"
+        >
+          <div className="flex items-center gap-2.5 sm:gap-3 w-max justify-start px-1">
             {activeSponsors.map((sponsor) => {
               const hasLogo = sponsor.logo_url && !imageErrors.has(sponsor.id);
               const isPlatinum = getSponsorTierRank(sponsor.tier) === "platinum";
               const cardContent = (
                 <div
-                  className={`flex items-center gap-2 bg-white/95 hover:bg-white text-gray-900 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl transition-all max-w-[200px] sm:max-w-[240px] shrink-0 group ${
+                  className={`flex items-center gap-2 bg-white/95 hover:bg-white text-gray-900 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-2xl transition-all w-[200px] sm:w-[230px] shrink-0 group ${
                     isPlatinum
                       ? "border-2 border-[#D4AF37] shadow-[0_0_16px_rgba(212,175,55,0.45)] hover:shadow-[0_0_22px_rgba(212,175,55,0.6)]"
                       : "border border-amber-300/80 shadow-md hover:shadow-xl"
@@ -204,7 +273,7 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
                   </div>
 
                   {/* Sponsor Name & Tier Pill */}
-                  <div className="min-w-0 text-left">
+                  <div className="min-w-0 text-left flex-1">
                     <div className="font-heading font-bold text-[11px] sm:text-xs text-gray-900 truncate leading-tight">
                       {sponsor.name}
                     </div>
@@ -251,3 +320,4 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
     </div>
   );
 }
+

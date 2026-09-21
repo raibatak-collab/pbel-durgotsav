@@ -12,7 +12,8 @@ import {
   Award,
   Utensils,
   Compass,
-  Drama
+  Drama,
+  Palette
 } from "lucide-react";
 import {
   getStoredBranding,
@@ -212,6 +213,13 @@ export function FestiveHero({ sponsors }: { sponsors?: TopSponsorItem[] | null }
             >
               <Utensils size={12} className="text-amber-300 shrink-0" />
               <span>Anandamela Stalls (Open)</span>
+            </Link>
+            <Link
+              href="/programs#competitions"
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400/20 to-orange-400/20 hover:bg-amber-400/30 border border-amber-400/50 text-amber-200 hover:text-white px-3.5 py-1.5 rounded-full text-xs font-bold transition backdrop-blur-md shrink-0 whitespace-nowrap shadow-xs"
+            >
+              <Palette size={12} className="text-amber-300 shrink-0" />
+              <span>Competitions (Open)</span>
             </Link>
             <Link
               href="/programs"

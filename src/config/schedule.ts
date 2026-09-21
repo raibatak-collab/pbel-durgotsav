@@ -57,6 +57,7 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
     isoDate: "2026-10-15",
     theme: "Agomoni, Anandamela & Stage Inauguration",
     rituals: [
+      { time: "10:00 AM", event: 'Sit and Draw Competition "Indradhanush" (10:00 AM - 12:15 PM)', type: "cultural", description: "Flagship art & drawing competition across 3 age categories (Total 120 entries)" },
       { time: "05:30 PM", event: "Pandal Inauguration & Diya Lighting Ceremony", type: "ritual" },
       { time: "06:00 PM", event: "Anandamela Food Stalls (Resident Home Chefs)", type: "bhog" },
       { time: "07:00 PM", event: "Agomoni Songs & Dhaak Welcome Rhythm", type: "cultural" },
@@ -65,7 +66,7 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
       title: "Agomoni Musical Night & Anandamela Gala",
       time: "07:00 PM - 09:30 PM",
       description: "Welcoming Maa Durga with heartfelt Agomoni songs, traditional Rabindra Sangeet, and resident food fiesta.",
-      acts: ["Agomoni Choral Melodies", "Kids Anandamela Performance", "Opening Classical Dance Recital"],
+      acts: ['Sit & Draw "Indradhanush" Showcase', "Agomoni Choral Melodies", "Kids Anandamela Performance", "Opening Classical Dance Recital"],
       residentSlotsAvailable: 10,
     },
     pssHighlight: {
@@ -116,6 +117,7 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
     rituals: [
       { time: "07:30 AM", event: "Nabapatrika (Kola Bou) Snan & Pravesh", type: "ritual" },
       { time: "10:30 AM", event: "Maha Saptami Pushpanjali (Batch 1 & 2)", type: "ritual" },
+      { time: "10:30 AM", event: "Junior Discovery Quiz (10:30 AM - 12:30 PM)", type: "cultural", description: "Inter-tower battle of wits for Grade 4–10 (6 teams) running parallel to morning rituals" },
       { time: "01:00 PM", event: "Maha Bhog Distribution (Khichuri, Labra, Payesh)", type: "bhog" },
       { time: "07:00 PM", event: "Sandhya Aarti & Deepam Seva", type: "aarti" },
     ],
@@ -181,14 +183,16 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
     rituals: [
       { time: "09:30 AM", event: "Maha Nabami Pujo & Pushpanjali", type: "ritual" },
       { time: "11:00 AM", event: "Maha Navami Maha Yajna & Havan", type: "ritual" },
+      { time: "11:00 AM", event: "Mini Kumartuli (Kids) (11:00 AM - 12:00 PM)", type: "cultural", description: "Clay idol crafting & creativity competition for children (10 teams max, 3 members each)" },
       { time: "01:30 PM", event: "Special Navami Maha Bhog Feast", type: "bhog" },
+      { time: "07:00 PM", event: "Duet Dhunuchi Competition - Dhunuchi Jugalbandi (07:00 PM - 07:15 PM)", type: "cultural", description: "Duet Dhunuchi Dance (10 Groups, Dress code: Saree & Dhoti/Pyjama Kurta compulsory)" },
       { time: "07:30 PM", event: "Maha Aarti & Dhunuchi Dance Competition", type: "aarti" },
     ],
     culturalEvening: {
       title: "Pratibimb: Cultural Grand Finale & Awards",
       time: "07:00 PM - 11:00 PM",
       description: "Resident awards ceremony, community talent grand finale, and festive dandiya/dhaak beats.",
-      acts: ["Anandamela & Sports Prize Distribution", "Resident Talent Champions Encore", "Festive Garba & Dandiya Beats"],
+      acts: ["Mini Kumartuli Awards", "Duet Dhunuchi Competition (Dhunuchi Jugalbandi - 07:00 PM)", "Anandamela & Sports Prize Distribution", "Resident Talent Champions Encore", "Festive Garba & Dandiya Beats"],
       residentSlotsAvailable: 12,
     },
     pssHighlight: {
