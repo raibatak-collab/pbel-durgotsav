@@ -3789,6 +3789,63 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+
+  describe('Suite 85: Cultural Competition Dynamic Toggles, Auto-Sync, Open-Events Broadcast & Seva Nudge Payment Gateway', () => {
+    it('should verify Admin competition toggles auto-save to cloud and local storage without requiring manual save button', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('handleToggleEventStatus = async'), 'handleToggleEventStatus must be async and auto-save');
+      assert.ok(adminSrc.includes('handleToggleEventVisibility = async'), 'handleToggleEventVisibility must be async and auto-save');
+      assert.ok(adminSrc.includes('handleUpdateEventLimit = async'), 'handleUpdateEventLimit must be async and auto-save');
+      assert.ok(adminSrc.includes('await saveStoredCulturalEvents(updated)'), 'Must automatically persist updated cultural events');
+    });
+
+    it('should verify Admin announcement and WhatsApp broadcaster strictly filter open events only', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('culturalEvents.filter((ev) => ev.isOpen && ev.status === "open" && ev.isVisible !== false)'),
+        'Admin must filter only open and visible events for announcements');
+      assert.ok(adminSrc.includes('No competitions are currently marked as \'Open\''),
+        'Must guard against broadcasting when no events are open');
+      assert.ok(adminSrc.includes('Registration opening announcement for'),
+        'Must announce count of currently open events');
+    });
+
+    it('should verify CulturalEventsRegistration dynamically reflects status toggles (Coming Soon, Closed, and Open views)', () => {
+      const compSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
+      assert.ok(compSrc.includes('visibleEvents = events.filter((e) => e.isVisible !== false)'),
+        'Must filter out events marked as not visible');
+      assert.ok(compSrc.includes('!activeEvent.isOpen || activeEvent.status === "closed"'),
+        'Must check closed state and prevent showing registration form');
+      assert.ok(compSrc.includes('Registrations for this Event Are Currently Closed'),
+        'Must display informative closed view when event is closed');
+      assert.ok(compSrc.includes('activeEvent.status === "coming_soon"'),
+        'Must check coming soon state and render teaser preview');
+      assert.ok(compSrc.includes('Will Open Shortly!'),
+        'Must render opening soon preview message');
+      assert.ok(compSrc.includes('isClosed ? "Closed" : isComingSoon ? "Soon" : "Open"'),
+        'Must render correct tab status badge');
+    });
+
+    it('should verify SevaDonationNudgeModal integration on registration with Payment Gateway and cancellation button', () => {
+      const compSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
+      assert.ok(compSrc.includes('setShowNudgeModal(true)'),
+        'CulturalEventsRegistration must open SevaDonationNudgeModal upon submission');
+      assert.ok(compSrc.includes('<SevaDonationNudgeModal'),
+        'Must render SevaDonationNudgeModal in CulturalEventsRegistration');
+
+      const modalSrc = fs.readFileSync('src/components/SevaDonationNudgeModal.tsx', 'utf8');
+      assert.ok(modalSrc.includes('I am not interested in donating for a seva'),
+        'Must provide explicit button: I am not interested in donating for a seva');
+      assert.ok(modalSrc.includes('Your event registration is 100% confirmed and accepted regardless of your decision'),
+        'Must reassure resident that registration remains accepted even if they cancel');
+      assert.ok(modalSrc.includes('loadCashfreeSDK'),
+        'Must support Cashfree Payment Gateway checkout');
+      assert.ok(modalSrc.includes('/api/payment/cashfree/initiate'),
+        'Must connect to Payment Gateway initiation endpoint');
+      assert.ok(modalSrc.includes('PRESET_AMOUNTS') && modalSrc.includes('SEVA_PURPOSES'),
+        'Must offer preset contribution amounts and Seva offering categories');
+    });
+  });
+
 });
 
 

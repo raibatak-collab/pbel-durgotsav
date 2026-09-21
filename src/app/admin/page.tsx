@@ -210,24 +210,26 @@ export default function AdminDashboard() {
   const [scheduleSubView, setScheduleSubView] = useState<"schedule" | "pratibimb" | "competitions">("schedule");
 
   // ================= CULTURAL COMPETITIONS HANDLERS =================
-  const handleToggleEventStatus = (id: CulturalEventId, newStatus: "open" | "coming_soon" | "closed") => {
-    setCulturalEvents((prev) =>
-      prev.map((ev) =>
-        ev.id === id ? { ...ev, status: newStatus, isOpen: newStatus === "open" } : ev
-      )
+  const handleToggleEventStatus = async (id: CulturalEventId, newStatus: "open" | "coming_soon" | "closed") => {
+    const updated = culturalEvents.map((ev) =>
+      ev.id === id ? { ...ev, status: newStatus, isOpen: newStatus === "open" } : ev
     );
+    setCulturalEvents(updated);
+    await saveStoredCulturalEvents(updated);
   };
 
-  const handleToggleEventVisibility = (id: CulturalEventId, isVisible: boolean) => {
-    setCulturalEvents((prev) =>
-      prev.map((ev) => (ev.id === id ? { ...ev, isVisible } : ev))
-    );
+  const handleToggleEventVisibility = async (id: CulturalEventId, isVisible: boolean) => {
+    const updated = culturalEvents.map((ev) => (ev.id === id ? { ...ev, isVisible } : ev));
+    setCulturalEvents(updated);
+    await saveStoredCulturalEvents(updated);
   };
 
-  const handleUpdateEventLimit = (id: CulturalEventId, maxLimit: number) => {
-    setCulturalEvents((prev) =>
-      prev.map((ev) => (ev.id === id ? { ...ev, maxLimit: Math.max(1, Number(maxLimit) || 1) } : ev))
+  const handleUpdateEventLimit = async (id: CulturalEventId, maxLimit: number) => {
+    const updated = culturalEvents.map((ev) =>
+      ev.id === id ? { ...ev, maxLimit: Math.max(1, Number(maxLimit) || 1) } : ev
     );
+    setCulturalEvents(updated);
+    await saveStoredCulturalEvents(updated);
   };
 
   const handleSaveCulturalEventsConfig = async () => {
@@ -248,38 +250,45 @@ export default function AdminDashboard() {
 
   const handleAnnounceCulturalRegistrations = async () => {
     try {
-      const announcementText =
-        "🎭 Cultural Registrations are now OPEN! Register for Sit & Draw Indradhanush, Junior Discovery Quiz, Mini Kumartuli, Dhunuchi Jugalbandi & Flash Mob on the Programs page.";
+      const openEvents = culturalEvents.filter((ev) => ev.isOpen && ev.status === "open" && ev.isVisible !== false);
+      if (openEvents.length === 0) {
+        alert("No competitions are currently marked as 'Open'. Please toggle at least one event status to Open before announcing.");
+        return;
+      }
+      const names = openEvents.map((e) => e.title).join(", ");
+      const announcementText = `🎭 Cultural Registrations are now OPEN for: ${names}! Register your entry on the Programs page.`;
       await saveCloudConfig("announcement", announcementText);
-      alert("Registration opening announcement successfully broadcasted to website banner!");
+      alert(`Registration opening announcement for ${openEvents.length} open event(s) successfully broadcasted to website banner!`);
     } catch (err: any) {
       alert("Error publishing announcement: " + err?.message);
     }
   };
 
   const handleCopyWhatsAppBroadcast = () => {
+    const openEvents = culturalEvents.filter((ev) => ev.isOpen && ev.status === "open" && ev.isVisible !== false);
+    if (openEvents.length === 0) {
+      alert("No competitions are currently marked as 'Open'. Please set at least one event status to Open before copying broadcast.");
+      return;
+    }
+
+    const eventDetails = openEvents.map((ev, idx) => {
+      const details = [
+        `${idx + 1}. *${ev.title}* (${ev.day})`,
+        `   • Time: ${ev.time}`,
+        `   • Limit: ${ev.maxLimit} ${ev.teamSize > 1 ? "Teams" : "Entries"} max (${ev.teamSize === 1 ? "Solo" : `${ev.teamSize} members/team`})`,
+      ];
+      if (ev.gradeEligibility) details.push(`   • Eligibility: ${ev.gradeEligibility}`);
+      if (ev.dressCode) details.push(`   • Attire: ${ev.dressCode}`);
+      return details.join("\n");
+    }).join("\n\n");
+
     const text = [
       "*PBEL City Durgotsav 2026 • Cultural Competitions Registrations Open!* 🎭",
       "",
       "Dear PBEL City Residents,",
-      "Registrations are officially OPEN for our 5 flagship Pratibimb cultural competitions:",
+      `Registrations are officially OPEN for ${openEvents.length === 1 ? "the following Pratibimb cultural competition" : `our ${openEvents.length} flagship Pratibimb cultural competitions`}:`,
       "",
-      '1. 🎨 *Sit & Draw Competition "Indradhanush"* (Panchami, 15 Oct)',
-      "   • 3 Age Categories: Up to Gr 1 | Gr 2 - 5 | Gr 6 - 10",
-      "   • Total 120 slots max",
-      "",
-      "2. 🧠 *Junior Discovery Quiz* (Saptami, 17 Oct)",
-      "   • 6 Teams max, 5 members per team (Grade 4 to 10)",
-      "",
-      "3. 🏺 *Mini Kumartuli - Kids Clay Idol Sculpting* (Navami, 19 Oct)",
-      "   • 10 Teams max, 3 members per team (Clay & tools provided)",
-      "",
-      "4. 💃 *Dhunuchi Jugalbandi (Duet Dhunuchi Competition)* (Navami, 19 Oct)",
-      "   • 10 Groups max (Pairs / Duos)",
-      "   • Mandatory Dress Code: Traditional Saree & Dhoti / Pyjama Kurta",
-      "",
-      "5. 🕺 *Durga Pujo Grand Flash Mob*",
-      "   • Open to all residents (Kids, Teens & Adults)",
+      eventDetails,
       "",
       "⚡ Slots are strictly limited on a first-come, first-registered basis!",
       "👉 Register your team / entry here: https://pbeldurgotsav.in/programs#competitions",
@@ -289,9 +298,9 @@ export default function AdminDashboard() {
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text);
-      alert("WhatsApp broadcast message copied to clipboard! Ready to paste into PBEL City Tower groups.");
+      alert(`WhatsApp broadcast message for ${openEvents.length} open event(s) copied to clipboard! Ready to paste into PBEL City Tower groups.`);
     } else {
-      alert("Please copy text manually: " + text);
+      alert("Please copy text manually:\n" + text);
     }
   };
 

@@ -28,6 +28,7 @@ import {
   getStoredCulturalRegistrations,
 } from "@/config/culturalEvents";
 import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import SevaDonationNudgeModal from "@/components/SevaDonationNudgeModal";
 
 const EVENT_ICONS: Record<CulturalEventId, React.ReactNode> = {
   sit_and_draw: <Palette size={20} className="text-pink-500" />,
@@ -73,6 +74,7 @@ export function CulturalEventsRegistration() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successEntry, setSuccessEntry] = useState<CulturalRegistrationEntry | null>(null);
+  const [showNudgeModal, setShowNudgeModal] = useState(false);
 
   useEffect(() => {
     try {
@@ -107,7 +109,8 @@ export function CulturalEventsRegistration() {
     };
   }, []);
 
-  const activeEvent = events.find((e) => e.id === activeEventId) || events[0];
+  const visibleEvents = events.filter((e) => e.isVisible !== false);
+  const activeEvent = visibleEvents.find((e) => e.id === activeEventId) || visibleEvents[0] || events[0];
   const activeEntries = registrations.filter(
     (r) => r.eventId === activeEvent.id && r.status !== "cancelled"
   );
@@ -248,6 +251,7 @@ export function CulturalEventsRegistration() {
 
       if (result.success && result.registration) {
         setSuccessEntry(result.registration);
+        setShowNudgeModal(true);
         resetForm();
       } else {
         setErrorMessage(result.message || "Registration could not be completed. Please try again.");
@@ -278,57 +282,67 @@ export function CulturalEventsRegistration() {
 
       {/* 5 EVENT SELECTOR TABS / CARDS */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
-        {events.map((event) => {
-          const isSelected = event.id === activeEventId;
-          const regCount = registrations.filter((r) => r.eventId === event.id && r.status !== "cancelled").length;
-          const isEventFull = regCount >= event.maxLimit;
+        {visibleEvents.length === 0 ? (
+          <div className="col-span-full bg-white rounded-2xl border border-gray-200 p-6 text-center text-xs text-gray-500">
+            No cultural competitions are currently active for registration.
+          </div>
+        ) : (
+          visibleEvents.map((event) => {
+            const isSelected = event.id === activeEventId;
+            const regCount = registrations.filter((r) => r.eventId === event.id && r.status !== "cancelled").length;
+            const isEventFull = regCount >= event.maxLimit;
+            const isClosed = !event.isOpen || event.status === "closed";
+            const isComingSoon = event.status === "coming_soon";
 
-          return (
-            <button
-              key={event.id}
-              type="button"
-              onClick={() => handleEventTabChange(event.id)}
-              className={
-                "p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between min-h-[115px] " +
-                (isSelected
-                  ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-500 shadow-md ring-2 ring-amber-400/40"
-                  : "bg-white hover:bg-gray-50 border-gray-200 shadow-xs")
-              }
-            >
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="p-1.5 rounded-xl bg-white shadow-xs border border-gray-100">
-                    {EVENT_ICONS[event.id]}
+            return (
+              <button
+                key={event.id}
+                type="button"
+                onClick={() => handleEventTabChange(event.id)}
+                className={
+                  "p-3.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between min-h-[115px] " +
+                  (isSelected
+                    ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-500 shadow-md ring-2 ring-amber-400/40"
+                    : "bg-white hover:bg-gray-50 border-gray-200 shadow-xs")
+                }
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="p-1.5 rounded-xl bg-white shadow-xs border border-gray-100">
+                      {EVENT_ICONS[event.id]}
+                    </span>
+                    <span
+                      className={
+                        "text-[9px] font-bold px-2 py-0.5 rounded-full border " +
+                        (isEventFull
+                          ? "bg-red-50 text-red-700 border-red-200"
+                          : isClosed
+                          ? "bg-gray-100 text-gray-600 border-gray-200"
+                          : isComingSoon
+                          ? "bg-amber-50 text-amber-800 border-amber-200"
+                          : "bg-emerald-50 text-emerald-700 border-emerald-200")
+                      }
+                    >
+                      {isEventFull ? "Full" : isClosed ? "Closed" : isComingSoon ? "Soon" : "Open"}
+                    </span>
+                  </div>
+                  <div className="font-heading font-bold text-xs text-gray-900 line-clamp-2 leading-tight">
+                    {event.title}
+                  </div>
+                </div>
+
+                <div className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
+                  <span>
+                    {event.teamSize === 1 ? "Solo" : (event.teamSize + "-member team")}
                   </span>
-                  <span
-                    className={
-                      "text-[9px] font-bold px-2 py-0.5 rounded-full border " +
-                      (isEventFull
-                        ? "bg-gray-100 text-gray-600 border-gray-200"
-                        : event.isOpen
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                        : "bg-amber-50 text-amber-700 border-amber-200")
-                    }
-                  >
-                    {isEventFull ? "Full" : event.isOpen ? "Open" : "Soon"}
+                  <span className="font-bold text-amber-900">
+                    {regCount}/{event.maxLimit}
                   </span>
                 </div>
-                <div className="font-heading font-bold text-xs text-gray-900 line-clamp-2 leading-tight">
-                  {event.title}
-                </div>
-              </div>
-
-              <div className="text-[10px] text-gray-500 mt-2 pt-2 border-t border-gray-100 flex items-center justify-between">
-                <span>
-                  {event.teamSize === 1 ? "Solo" : (event.teamSize + "-member team")}
-                </span>
-                <span className="font-bold text-amber-900">
-                  {regCount}/{event.maxLimit}
-                </span>
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })
+        )}
       </div>
 
       {/* EVENT DETAILS & REGISTRATION CARD */}
@@ -352,10 +366,20 @@ export function CulturalEventsRegistration() {
                     "text-xs font-extrabold px-3 py-1 rounded-full border shadow-sm " +
                     (isFull
                       ? "bg-red-500/20 text-red-200 border-red-400/40"
+                      : (!activeEvent.isOpen || activeEvent.status === "closed")
+                      ? "bg-gray-500/30 text-gray-200 border-gray-400/40"
+                      : activeEvent.status === "coming_soon"
+                      ? "bg-amber-500/20 text-amber-200 border-amber-400/40"
                       : "bg-emerald-500/20 text-emerald-200 border-emerald-400/40 animate-pulse")
                   }
                 >
-                  {isFull ? "⚠️ Registrations Full" : ("🔥 " + remainingSlots + " of " + activeEvent.maxLimit + " Slots Left")}
+                  {isFull
+                    ? "⚠️ Registrations Full"
+                    : (!activeEvent.isOpen || activeEvent.status === "closed")
+                    ? "🔒 Registrations Closed"
+                    : activeEvent.status === "coming_soon"
+                    ? "⏳ Registrations Opening Soon"
+                    : ("🔥 " + remainingSlots + " of " + activeEvent.maxLimit + " Slots Left")}
                 </span>
               </div>
             </div>
@@ -482,6 +506,91 @@ export function CulturalEventsRegistration() {
                 >
                   <span>Contact Cultural Lead for Waitlist</span>
                   <ArrowRight size={13} />
+                </a>
+              </div>
+            </div>
+          ) : (!activeEvent.isOpen || activeEvent.status === "closed") ? (
+            <div className="max-w-lg mx-auto text-center py-8 space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center mx-auto border border-gray-200 shadow-xs">
+                <AlertCircle size={32} />
+              </div>
+              <div>
+                <h4 className="font-heading text-xl font-bold text-gray-900">
+                  Registrations for this Event Are Currently Closed
+                </h4>
+                <p className="text-xs text-gray-600 mt-1 max-w-md mx-auto leading-relaxed">
+                  Submissions for <strong>{activeEvent.title}</strong> have concluded or have been temporarily paused by the Cultural Committee. Please contact the cultural team if you have any questions.
+                </p>
+              </div>
+              <div className="pt-2">
+                <a
+                  href={"https://api.whatsapp.com/send?phone=917032006645&text=Hello%20Pratibimb%20Committee,%20I%20am%20inquiring%20about%20registrations%20for%20" + encodeURIComponent(activeEvent.title)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 px-4 py-2 rounded-full text-xs font-bold transition"
+                >
+                  <span>Inquire via WhatsApp</span>
+                  <ArrowRight size={13} />
+                </a>
+              </div>
+            </div>
+          ) : activeEvent.status === "coming_soon" ? (
+            <div className="max-w-xl mx-auto text-center py-8 space-y-5">
+              <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto border border-amber-300 shadow-sm">
+                <Sparkles size={32} className="text-amber-600 animate-pulse" />
+              </div>
+              <div>
+                <div className="inline-block bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-2">
+                  Opening Soon
+                </div>
+                <h4 className="font-heading text-xl sm:text-2xl font-bold text-gray-900">
+                  Registrations for {activeEvent.title} Will Open Shortly!
+                </h4>
+                <p className="text-xs text-gray-600 mt-1.5 max-w-lg mx-auto leading-relaxed">
+                  Get ready to showcase your talent! The registration portal will open soon. Review the competition format and team structure below so you can assemble your team in advance.
+                </p>
+              </div>
+
+              {/* Rules & Team Structure Preview */}
+              <div className="bg-amber-50/70 border border-amber-200 rounded-2xl p-4 text-xs text-left space-y-2">
+                <div className="font-bold text-amber-950 uppercase tracking-wider text-[10px]">
+                  📋 Competition Format &amp; Requirements Preview:
+                </div>
+                <ul className="space-y-1 text-gray-700">
+                  <li className="flex items-start gap-1.5">
+                    <span className="text-primary font-bold">›</span>
+                    <span><strong>Team Size:</strong> {activeEvent.teamSize === 1 ? "Solo Entry" : (activeEvent.teamSize + " Members per Team")}</span>
+                  </li>
+                  {activeEvent.gradeEligibility && (
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-primary font-bold">›</span>
+                      <span><strong>Eligibility:</strong> {activeEvent.gradeEligibility}</span>
+                    </li>
+                  )}
+                  {activeEvent.dressCode && (
+                    <li className="flex items-start gap-1.5">
+                      <span className="text-primary font-bold">›</span>
+                      <span><strong>Dress Code:</strong> {activeEvent.dressCode}</span>
+                    </li>
+                  )}
+                  {activeEvent.rules.map((r, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="text-primary font-bold">›</span>
+                      <span>{r}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-3">
+                <a
+                  href={"https://api.whatsapp.com/send?text=" + encodeURIComponent("🎉 Hey neighbors! " + activeEvent.title + " registrations are opening soon at PBEL City Durgotsav 2026. Check the rules and get your team ready: https://pbeldurgotsav.in/programs#competitions")}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1EBE5D] text-white px-5 py-2.5 rounded-full text-xs font-bold transition shadow-sm"
+                >
+                  <Share2 size={14} />
+                  <span>Share with Tower Group to Form Teams</span>
                 </a>
               </div>
             </div>
@@ -965,6 +1074,20 @@ export function CulturalEventsRegistration() {
 
       </div>
 
+          {/* SEVA DONATION NUDGE MODAL WITH PAYMENT GATEWAY */}
+      {showNudgeModal && successEntry && (
+        <SevaDonationNudgeModal
+          isOpen={showNudgeModal}
+          onClose={() => setShowNudgeModal(false)}
+          activityName={successEntry.eventTitle}
+          residentName={successEntry.contactName}
+          stallOrEventName={successEntry.teamName || successEntry.eventTitle}
+          phone={successEntry.phone}
+          flatNumber={successEntry.flat}
+          enablePaymentGateway={true}
+          note={"Your entry for " + successEntry.eventTitle + " (" + successEntry.flat + ") has been officially recorded and accepted! Registration ID: " + successEntry.id}
+        />
+      )}
     </div>
   );
 }
