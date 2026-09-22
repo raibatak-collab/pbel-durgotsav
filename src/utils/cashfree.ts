@@ -35,6 +35,8 @@ export interface CashfreeOrderResponse {
   created_at?: string;
   order_meta?: CashfreeOrderMeta;
   customer_details?: CashfreeCustomerDetails;
+  order_note?: string;
+  order_tags?: Record<string, string>;
   message?: string;
   code?: string;
   type?: string;

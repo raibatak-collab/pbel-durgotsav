@@ -101,11 +101,42 @@ function ReceiptViewerContent() {
           }
         }
 
-        if (error) throw error;
-
         if (data && data.length > 0) {
           setReceiptData(formatContributionToReceipt(data[0]));
         } else {
+          // If Supabase has no record (e.g. during 402 quota restriction), check Cashfree directly
+          try {
+            const cfRes = await fetch(`/api/payment/cashfree/order-status?order_id=${encodeURIComponent(clean)}`);
+            if (cfRes.ok) {
+              const cfJson = await cfRes.json();
+              if (cfJson.success && cfJson.order && (cfJson.order.orderStatus === 'PAID' || cfJson.order.orderStatus === 'ACTIVE')) {
+                const cfOrder = cfJson.order;
+                setReceiptData({
+                  name: cfOrder.customerName || "PBEL Resident",
+                  flatNumber: cfOrder.flatNumber || "PBEL City",
+                  phone: cfOrder.customerPhone || undefined,
+                  email: cfOrder.customerEmail || undefined,
+                  amount: Number(cfOrder.amount) || 0,
+                  category: cfOrder.note || "General Pujo Offering",
+                  paymentId: cfOrder.orderId,
+                  upiRef: cfOrder.bankReference || cfOrder.orderId,
+                  date: new Date(cfOrder.createdAt || Date.now()).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }),
+                  requiresTaxExemption: false,
+                  wantsWhatsappUpdates: true,
+                });
+                return;
+              }
+            }
+          } catch (cfErr) {
+            console.warn("Cashfree direct receipt verification fallback notice:", cfErr);
+          }
+
           setErrorMsg("No official contribution record found matching this Receipt Reference. Please verify your link or contact the PSS Committee.");
         }
       } catch (err: any) {
