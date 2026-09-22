@@ -55,7 +55,6 @@ export function CulturalEventsRegistration() {
   const [childGrade, setChildGrade] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("group_1");
   const [flashMobAgeGroup, setFlashMobAgeGroup] = useState("Adults (18+)");
-  const [flashMobAvailability, setFlashMobAvailability] = useState("Weekend Evenings");
   const [dressCodeConfirmed, setDressCodeConfirmed] = useState(false);
 
   // Dynamic Team Members for Kumartuli (2 extra members) and Quiz (4 extra members)
@@ -244,7 +243,7 @@ export function CulturalEventsRegistration() {
         category: activeEvent.id === "sit_and_draw" ? selectedCategory : undefined,
         grade: activeEvent.id === "sit_and_draw" ? childGrade : undefined,
         ageGroup: activeEvent.id === "flash_mob" ? flashMobAgeGroup : undefined,
-        notes: activeEvent.id === "sit_and_draw" ? ("Parent: " + contactName) : (activeEvent.id === "flash_mob" ? ("Availability: " + flashMobAvailability) : undefined),
+        notes: activeEvent.id === "sit_and_draw" ? ("Parent: " + contactName) : (activeEvent.id === "flash_mob" ? ("Category: " + flashMobAgeGroup) : undefined),
         members: membersList.length > 0 ? membersList : undefined,
         dressCodeConfirmed: activeEvent.id === "duet_dhunuchi" ? true : undefined,
       });
@@ -953,7 +952,7 @@ export function CulturalEventsRegistration() {
                 </div>
               )}
 
-              {/* 5. FLASH MOB (OPEN REGISTRATION) */}
+              {/* 5. FLASH MOB / "ONE COMMUNITY. ONE BEAT." (OPEN REGISTRATION) */}
               {activeEvent.id === "flash_mob" && (
                 <div className="space-y-4 pt-2">
                   <div>
@@ -968,32 +967,22 @@ export function CulturalEventsRegistration() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block font-semibold text-gray-700 mb-1">Age Category *</label>
-                      <select
-                        value={flashMobAgeGroup}
-                        onChange={(e) => setFlashMobAgeGroup(e.target.value)}
-                        className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary outline-none transition"
-                      >
-                        <option value="Kids (Ages 7-12)">Kids (Ages 7-12)</option>
-                        <option value="Teens (Ages 13-17)">Teens (Ages 13-17)</option>
-                        <option value="Adults (18+)">Adults (18+)</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Age Category *</label>
+                    <select
+                      value={flashMobAgeGroup}
+                      onChange={(e) => setFlashMobAgeGroup(e.target.value)}
+                      className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary outline-none transition"
+                    >
+                      <option value="Kids (Ages 7-12)">Kids (Ages 7-12)</option>
+                      <option value="Teens (Ages 13-17)">Teens (Ages 13-17)</option>
+                      <option value="Adults (18+)">Adults (18+)</option>
+                    </select>
+                  </div>
 
-                    <div>
-                      <label className="block font-semibold text-gray-700 mb-1">Rehearsal Availability *</label>
-                      <select
-                        value={flashMobAvailability}
-                        onChange={(e) => setFlashMobAvailability(e.target.value)}
-                        className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary outline-none transition"
-                      >
-                        <option value="Weekend Evenings">Weekend Evenings (Sat &amp; Sun)</option>
-                        <option value="Weekday Evenings">Weekday Evenings</option>
-                        <option value="Both Flexible">Flexible for All Rehearsals</option>
-                      </select>
-                    </div>
+                  <div className="p-3 bg-purple-50/80 border border-purple-200 rounded-xl text-xs text-purple-900 flex items-center gap-2">
+                    <Sparkles size={16} className="text-purple-600 shrink-0" />
+                    <span><strong>No prior rehearsals needed!</strong> Catchy, simple follow-along moves and music track will be shared on WhatsApp for everyone to perform together on Oct 3.</span>
                   </div>
                 </div>
               )}

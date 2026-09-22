@@ -5258,7 +5258,7 @@ function decodeCategoryDescription(desc?: string) {
                     Manage 5 Official Cultural Events &amp; Team Limits
                   </h3>
                   <p className="text-xs text-gray-600 max-w-xl">
-                    Sit &amp; Draw (120 entries), Junior Discovery Quiz (6 teams), Mini Kumartuli (10 teams), Dhunuchi Jugalbandi (10 duos), and Flash Mob.
+                    Sit &amp; Draw (120 entries), Junior Discovery Quiz (6 teams), Mini Kumartuli (10 teams), Dhunuchi Jugalbandi (10 duos), and One Community. One Beat. (Oct 3).
                   </p>
                 </div>
 
@@ -5422,7 +5422,7 @@ function decodeCategoryDescription(desc?: string) {
                       <option value="junior_quiz">Junior Discovery Quiz</option>
                       <option value="mini_kumartuli">Mini Kumartuli</option>
                       <option value="duet_dhunuchi">Dhunuchi Jugalbandi</option>
-                      <option value="flash_mob">Flash Mob</option>
+                      <option value="flash_mob">"One Community. One Beat." (Oct 3)</option>
                     </select>
 
                     {/* Search Query */}
