@@ -1610,9 +1610,9 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
       "Drawing sheets will be provided by PSS. Please bring your own drawing board, pencils, and colors.",
       "Themes will be announced at 10:00 AM sharp at the venue."
     ],
-    "isOpen": true,
+    "isOpen": false,
     "isVisible": true,
-    "status": "open"
+    "status": "coming_soon"
   },
   {
     "id": "junior_quiz",
@@ -1629,9 +1629,9 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
       "Each team must consist of exactly 5 members studying in Grades 4 to 10.",
       "Rounds cover Indian Culture, Bengali Heritage, Science, Literature, and Current Affairs."
     ],
-    "isOpen": true,
+    "isOpen": false,
     "isVisible": true,
-    "status": "open"
+    "status": "coming_soon"
   },
   {
     "id": "mini_kumartuli",
@@ -1648,9 +1648,9 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
       "Each team must comprise exactly 3 participants.",
       "Eco-friendly Ganga clay, wooden support bases, and basic sculpting sticks will be provided by PSS."
     ],
-    "isOpen": true,
+    "isOpen": false,
     "isVisible": true,
-    "status": "open"
+    "status": "coming_soon"
   },
   {
     "id": "duet_dhunuchi",
@@ -1667,9 +1667,9 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
       "Both participants in each group must perform synchronized rhythmic Dhunuchi dance to traditional Dhaak beats.",
       "Dress code is strictly COMPULSORY: Traditional Saree and Dhoti / Pyjama Kurta."
     ],
-    "isOpen": true,
+    "isOpen": false,
     "isVisible": true,
-    "status": "open"
+    "status": "coming_soon"
   },
   {
     "id": "flash_mob",
@@ -1686,9 +1686,9 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
       "No prior rehearsals required! Catchy, simple follow-along moves will be shared on WhatsApp and performed together on Oct 3.",
       "Costume color theme and track details will be communicated directly to registered participants on WhatsApp."
     ],
-    "isOpen": true,
+    "isOpen": false,
     "isVisible": true,
-    "status": "open"
+    "status": "coming_soon"
   }
 ],
   volunteer_categories: [
