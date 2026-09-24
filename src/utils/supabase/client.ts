@@ -11,9 +11,9 @@ const rawSupabase = createClient(supabaseUrl, supabaseAnonKey);
  * Resilient In-Memory & LocalStorage Mutation Store
  * Ensures donations, registrations, and updates work seamlessly even during 402 restrictions.
  */
-let isSupabaseRestricted = true; // Initialized true given current 402 status; re-probed periodically
+let isSupabaseRestricted = false; // Always attempt live Supabase first
 let lastProbeTime = 0;
-const PROBE_INTERVAL_MS = 60 * 60 * 1000; // Probe Supabase once per hour to check if egress cap was lifted
+const PROBE_INTERVAL_MS = 15 * 1000; // Fast 15-second probe interval to immediately recover when quota clears
 
 const localMutationStore: Record<string, any[]> = {};
 

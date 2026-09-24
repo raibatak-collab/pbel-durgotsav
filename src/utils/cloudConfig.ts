@@ -16,8 +16,8 @@ interface CacheEntry<T> {
 const configMemoryCache = new Map<string, CacheEntry<any>>();
 const inFlightRequests = new Map<string, Promise<any>>();
 
-// Server cache: 60s (paired with ISR). Browser cache: 5 minutes.
-const DEFAULT_TTL_MS = typeof window === "undefined" ? 60 * 1000 : 5 * 60 * 1000;
+// Server cache: 30s (paired with ISR). Browser cache: 15s for responsive updates.
+const DEFAULT_TTL_MS = typeof window === "undefined" ? 30 * 1000 : 15 * 1000;
 
 export async function fetchCloudConfig<T>(
   key: string, 
@@ -57,7 +57,7 @@ export async function fetchCloudConfig<T>(
 
       if (error || !data || !data.redirect_link) {
         const seedValue = getSnapshotData(key, fallback);
-        configMemoryCache.set(key, { value: seedValue, expiresAt: now + ttlMs });
+        configMemoryCache.set(key, { value: seedValue, expiresAt: now + 5000 });
         return seedValue;
       }
 
