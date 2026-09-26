@@ -25,10 +25,17 @@ function ReceiptViewerContent() {
   }, []);
 
   const formatContributionToReceipt = (contrib: any): ReceiptData => {
-    const categoryName = 
+    const rawCat = 
       contrib.contribution_categories?.title || 
       contrib.contribution_categories?.name || 
-      "General Pujo Fund";
+      "";
+    const isAnanda =
+      rawCat.toLowerCase().includes("anandamela") ||
+      rawCat.toLowerCase().includes("stall") ||
+      contrib.payment_id?.startsWith("STALL_");
+    const categoryName = isAnanda
+      ? "Anandamela Stall Registration"
+      : (rawCat || "General Pujo Fund");
     const paymentId = contrib.payment_id || contrib.id;
 
     return {

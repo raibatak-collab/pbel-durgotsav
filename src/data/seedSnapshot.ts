@@ -628,6 +628,14 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
 ],
   contribution_categories: [
   {
+    "id": "af82fca7-b267-422b-a4e0-3dedfdf916d5",
+    "name": "Anandamela Stall Registration",
+    "description": "[limit:50] [status:inactive] [featured:false] Anandamela Food & Artisan Stall Registration Fee",
+    "fixed_amount": 1000,
+    "min_amount": 1000,
+    "is_active": false
+  },
+  {
     "id": "cat-general",
     "name": "General Pujo Fund",
     "description": "General devotional offering for township pujo celebrations",

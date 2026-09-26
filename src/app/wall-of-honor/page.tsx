@@ -160,6 +160,16 @@ export default function WallOfHonorPage() {
     return towers.size;
   }, [contributions]);
 
+  const getWallOfferingTitle = (c: any) => {
+    const raw = (c.category_id && categoriesMap[c.category_id]) || c.contribution_categories?.name || "";
+    const isAnanda =
+      raw.toLowerCase().includes("anandamela") ||
+      raw.toLowerCase().includes("stall") ||
+      c.payment_id?.startsWith("STALL_");
+    if (isAnanda) return "🍲 Anandamela Stall Host";
+    return raw || "General Pujo Fund";
+  };
+
   // Filtered list based on date, tower, and search query
   const filteredContributors = useMemo(() => {
     return contributions.filter((c) => {
@@ -193,11 +203,7 @@ export default function WallOfHonorPage() {
         const term = searchTerm.toLowerCase();
         const displayName = c.is_name_visible ? c.contributor_name.toLowerCase() : "devout well wisher anonymous";
         const flat = (c.flat_number || "").toLowerCase();
-        const categoryTitle = (
-          (c.category_id && categoriesMap[c.category_id]) ||
-          c.contribution_categories?.name ||
-          ""
-        ).toLowerCase();
+        const categoryTitle = getWallOfferingTitle(c).toLowerCase();
         return displayName.includes(term) || flat.includes(term) || categoryTitle.includes(term);
       }
 
@@ -243,11 +249,13 @@ export default function WallOfHonorPage() {
     try {
       const devName = selectedMemento.is_name_visible ? selectedMemento.contributor_name : "Devout Well Wisher";
       const flat = selectedMemento.flat_number || "PBEL City";
-      const seva = (selectedMemento.category_id && categoriesMap[selectedMemento.category_id]) || selectedMemento.contribution_categories?.name || "Devotional Seva";
+      const seva = getWallOfferingTitle(selectedMemento);
       const cleanName = devName.replace(/[^a-zA-Z0-9]/g, "_");
       const fileName = `PBEL_Durgotsav_2026_Memento_${cleanName}.png`;
 
-      const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\n"Thank you for being part of PBEL Durgotsav 2026!" 🙏\n\nDevotional Keepsake Memento for *${devName}* (${flat}).\nSeva Offering: *${seva}*\n\nMay Maa Durga shower divine health, happiness, and peace upon your home!\n\nView Devotee Wall of Honor:\n👉 https://www.pbelcitydurgotsav.com/wall-of-honor\n\n_PBEL Sanskritik Samiti (PSS)_`;
+      const isAnanda = seva.includes("Anandamela");
+      const offeringLabel = isAnanda ? "Festival Offering" : "Seva Offering";
+      const shareText = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\n"Thank you for being part of PBEL Durgotsav 2026!" 🙏\n\nDevotional Keepsake Memento for *${devName}* (${flat}).\n${offeringLabel}: *${seva}*\n\nMay Maa Durga shower divine health, happiness, and peace upon your home!\n\nView Devotee Wall of Honor:\n👉 https://www.pbelcitydurgotsav.com/wall-of-honor\n\n_PBEL Sanskritik Samiti (PSS)_`;
 
       // 1. Generate Blob for native file sharing
       const blob = await toBlob(cardRef.current, {
@@ -532,10 +540,7 @@ export default function WallOfHonorPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredContributors.map((c, idx) => {
               const matched = matchTower(c.flat_number || "");
-              const sevaTitle = 
-                (c.category_id && categoriesMap[c.category_id]) ||
-                c.contribution_categories?.name ||
-                "General Pujo Fund";
+              const sevaTitle = getWallOfferingTitle(c);
 
               const formattedDate = c.created_at
                 ? new Date(c.created_at).toLocaleDateString("en-IN", {
@@ -848,10 +853,10 @@ export default function WallOfHonorPage() {
                 <div className="grid grid-cols-2 gap-2 my-3 text-xs">
                   <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-2.5 text-center">
                     <span className="block text-[9px] uppercase tracking-wider text-gray-400 font-bold mb-0.5">
-                      Devotional Offering
+                      {getWallOfferingTitle(selectedMemento).includes("Anandamela") ? "Festival Offering" : "Devotional Offering"}
                     </span>
-                    <span className="font-bold text-amber-950 truncate block">
-                      {(selectedMemento.category_id && categoriesMap[selectedMemento.category_id]) || selectedMemento.contribution_categories?.name || "General Pujo Fund"}
+                    <span className="font-bold text-amber-950 truncate block" title={getWallOfferingTitle(selectedMemento)}>
+                      {getWallOfferingTitle(selectedMemento)}
                     </span>
                   </div>
                   <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-2.5 text-center">

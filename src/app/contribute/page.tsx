@@ -609,6 +609,9 @@ function decodeCategoryDescription(desc?: string) {
 
   const filteredSevas = sevaList
     .filter((item) => {
+      // Strictly exclude auxiliary / stall registration categories from devotional puja sevas catalog
+      const titleLower = (item.title || "").toLowerCase();
+      if (titleLower.includes("anandamela") || titleLower.includes("stall")) return false;
       if (categoryFilter !== "all" && item.category !== categoryFilter) return false;
       return matchesDayFilter(item, dayFilter);
     })

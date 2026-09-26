@@ -149,6 +149,13 @@ export async function POST(request: Request) {
     // 3. Mirror into contributions table for accounting
     if (cleanPaymentRef || isAdmin) {
       try {
+        const { data: anandaCat } = await supabaseAdmin
+          .from('contribution_categories')
+          .select('id')
+          .ilike('name', '%Anandamela%')
+          .maybeSingle();
+        const catId = anandaCat?.id || 'af82fca7-b267-422b-a4e0-3dedfdf916d5';
+
         const { data: existingContrib } = await supabaseAdmin
           .from('contributions')
           .select('id')
@@ -161,7 +168,7 @@ export async function POST(request: Request) {
             phone: cleanPhone,
             flat_number: `${tower || ''} - ${flatNumber || ''}`.trim().replace(/^-\s*|\s*-$/g, '') || 'PBEL City',
             amount: Number(totalAmount) || (Number(tablesCount) || 1) * 1000,
-            category_id: null,
+            category_id: catId,
             status: isAdmin ? 'Success' : 'Pending',
             payment_id: cleanPaymentRef ? `UTR_${cleanPaymentRef}` : `MANUAL_${Date.now()}`,
             pg_bank_ref_no: cleanPaymentRef || null,

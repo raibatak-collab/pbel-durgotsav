@@ -153,12 +153,15 @@ export function HomeQuickContribute() {
           };
         });
 
-        // Filter explicitly featured categories by Admin, or fallback to active categories
-        const featured = allParsed.filter((c: any) => c.isFeatured && c.isActive);
+        // Filter explicitly featured categories by Admin, or fallback to active categories (strictly excluding non-devotional / stall registrations)
+        const devotionalParsed = allParsed.filter(
+          (c: any) => !c.name?.toLowerCase().includes("anandamela") && !c.name?.toLowerCase().includes("stall")
+        );
+        const featured = devotionalParsed.filter((c: any) => c.isFeatured && c.isActive);
         if (featured.length > 0) {
           setFeaturedSevas(featured);
         } else {
-          const topActive = allParsed.filter((c: any) => c.isActive && c.fixed_amount >= 1500).slice(0, 4);
+          const topActive = devotionalParsed.filter((c: any) => c.isActive && c.fixed_amount >= 1500).slice(0, 4);
           if (topActive.length > 0) {
             setFeaturedSevas(topActive);
           }

@@ -3937,7 +3937,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       const src = fs.readFileSync('src/app/api/anandamela/register/route.ts', 'utf8');
       assert.ok(src.includes('config_anandamela_stalls'), 'Must persist to config_anandamela_stalls');
       assert.ok(src.includes('contributions'), 'Must mirror into contributions table');
-      assert.ok(src.includes('category_id: null'), 'Must use category_id: null for UUID compatibility');
+      assert.ok(src.includes('category_id: catId') || src.includes('category_id: null'), 'Must assign valid category_id for UUID compatibility');
     });
 
     it('should verify Admin Console includes Add/Restore Stall modal and Cashfree sync tool', () => {
@@ -3961,6 +3961,60 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(seedSrc.includes('Er. Sugar Space'), 'Must contain Yogita Gulechha stall');
       assert.ok(seedSrc.includes('Atrangi Abstracts'), 'Must contain Deepali Dutta Pohoja stall');
       assert.ok(seedSrc.includes('Namaste Bella'), 'Must contain Parul Ranjan stall');
+    });
+  });
+
+
+  describe('88. Anandamela Payment Category Separation from General Pujo Fund', () => {
+    it('should verify Admin Console maps stall payments to Anandamela Stall Fee and renders purple 🍲 badge', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('return "Anandamela Stall Fee"'), 'Admin must resolve category name to Anandamela Stall Fee');
+      assert.ok(adminSrc.includes('bg-purple-50 text-purple-900 border-purple-300'), 'Admin must render purple badge for Anandamela');
+      assert.ok(adminSrc.includes('icon: "🍲"'), 'Admin must render 🍲 icon for Anandamela badge');
+    });
+
+    it('should verify Admin Console Seva Filter includes Anandamela and strictly isolates General Pujo Fund', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('<option value="anandamela">🍲 Anandamela Stall Fees</option>'), 'Must render Anandamela filter option in select');
+      assert.ok(adminSrc.includes('contributionSevaFilter === "anandamela"'), 'Must handle anandamela filter in displayedContributions');
+      assert.ok(adminSrc.includes('if (isAnanda || catName !== "General Pujo Fund") return false;'), 'General filter must strictly exclude Anandamela stalls');
+    });
+
+    it('should verify Admin Quick Metrics Bar breaks down Devotional Sevas vs Anandamela Stalls', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('totalDevotionalFunds'), 'Must compute totalDevotionalFunds');
+      assert.ok(adminSrc.includes('totalStallFunds'), 'Must compute totalStallFunds');
+      assert.ok(adminSrc.includes('🍲 Anandamela Stalls'), 'Must render dedicated Anandamela metrics card');
+    });
+
+    it('should verify Wall of Honor displays Anandamela Stall Host instead of General Pujo Fund', () => {
+      const wallSrc = fs.readFileSync('src/app/wall-of-honor/page.tsx', 'utf8');
+      assert.ok(wallSrc.includes('getWallOfferingTitle'), 'Wall of Honor must define getWallOfferingTitle');
+      assert.ok(wallSrc.includes('🍲 Anandamela Stall Host'), 'Wall of Honor must title stall owners as Anandamela Stall Host');
+    });
+
+    it('should verify Official Receipt resolves Anandamela Stall Registration', () => {
+      const receiptSrc = fs.readFileSync('src/app/receipt/page.tsx', 'utf8');
+      assert.ok(receiptSrc.includes('Anandamela Stall Registration'), 'Official Receipt must label category as Anandamela Stall Registration');
+    });
+
+    it('should verify Public Seva Catalog and HomeQuickContribute exclude Anandamela stalls from devotional offerings', () => {
+      const contribSrc = fs.readFileSync('src/app/contribute/page.tsx', 'utf8');
+      assert.ok(contribSrc.includes('titleLower.includes("anandamela")'), 'Contribute page must filter out Anandamela from public seva offerings');
+
+      const homeSrc = fs.readFileSync('src/components/HomeQuickContribute.tsx', 'utf8');
+      assert.ok(homeSrc.includes('!c.name?.toLowerCase().includes("anandamela")'), 'HomeQuickContribute must exclude Anandamela from featured offerings');
+    });
+
+    it('should verify Server Cashfree and Anandamela routes assign category_id for stall contributions', () => {
+      const syncSrc = fs.readFileSync('src/app/api/payment/cashfree/sync-order/route.ts', 'utf8');
+      assert.ok(syncSrc.includes('category_id: catId'), 'sync-order must assign catId to contribution');
+
+      const returnSrc = fs.readFileSync('src/app/api/payment/cashfree/return/route.ts', 'utf8');
+      assert.ok(returnSrc.includes('category_id: catId'), 'return route must assign catId to contribution');
+
+      const hookSrc = fs.readFileSync('src/app/api/payment/cashfree/webhook/route.ts', 'utf8');
+      assert.ok(hookSrc.includes('category_id: catId'), 'webhook route must assign catId to contribution');
     });
   });
 

@@ -58,12 +58,20 @@ export async function POST(request: Request) {
         if (isAnandamela) {
           // If no contribution row was found, insert one
           if (!updatedRows || updatedRows.length === 0) {
+            const { data: anandaCat } = await supabaseAdmin
+              .from('contribution_categories')
+              .select('id')
+              .ilike('name', '%Anandamela%')
+              .maybeSingle();
+            const catId = anandaCat?.id || 'af82fca7-b267-422b-a4e0-3dedfdf916d5';
+
             await supabaseAdmin.from('contributions').insert({
               contributor_name: orderData.customer_details?.customer_name || 'Resident Chef',
               phone: (orderData.customer_details?.customer_phone || '').slice(-10),
               email: orderData.customer_details?.customer_email || null,
               flat_number: orderTags.flat_number || 'PBEL City',
               amount: orderData.order_amount || 1000,
+              category_id: catId,
               status: 'Success',
               payment_id: orderId,
               pg_bank_ref_no: bankRef || null,

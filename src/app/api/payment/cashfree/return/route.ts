@@ -40,6 +40,13 @@ export async function GET(request: Request) {
       // 1. If this was an Anandamela stall booking: sync to database directly on server
       if (orderType === 'anandamela') {
         try {
+          const { data: anandaCat } = await supabaseAdmin
+            .from('contribution_categories')
+            .select('id')
+            .ilike('name', '%Anandamela%')
+            .maybeSingle();
+          const catId = anandaCat?.id || 'af82fca7-b267-422b-a4e0-3dedfdf916d5';
+
           // Record in contributions table
           await supabaseAdmin.from('contributions').insert({
             contributor_name: order.customer_details?.customer_name || 'Resident Chef',
@@ -47,6 +54,7 @@ export async function GET(request: Request) {
             email: order.customer_details?.customer_email || null,
             flat_number: order.order_tags?.flat_number || 'PBEL City',
             amount: order.order_amount || 1000,
+            category_id: catId,
             status: 'Success',
             payment_id: orderId,
             pg_bank_ref_no: bankReference,

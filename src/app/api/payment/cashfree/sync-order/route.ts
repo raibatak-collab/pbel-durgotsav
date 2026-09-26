@@ -53,6 +53,13 @@ export async function POST(request: Request) {
 
     // 1. Record / update in contributions table
     try {
+      const { data: anandaCat } = await supabaseAdmin
+        .from('contribution_categories')
+        .select('id')
+        .ilike('name', '%Anandamela%')
+        .maybeSingle();
+      const catId = anandaCat?.id || 'af82fca7-b267-422b-a4e0-3dedfdf916d5';
+
       const { data: existingContrib } = await supabaseAdmin
         .from('contributions')
         .select('id')
@@ -66,6 +73,7 @@ export async function POST(request: Request) {
             status: 'Success',
             pg_bank_ref_no: bankRef,
             flat_number: `${tower} - ${flatNumber}`,
+            category_id: catId,
           })
           .eq('id', existingContrib.id);
       } else {
@@ -75,7 +83,7 @@ export async function POST(request: Request) {
           email: order.customer_details?.customer_email || null,
           flat_number: `${tower} - ${flatNumber}`,
           amount: order.order_amount || 1000,
-          category_id: null,
+          category_id: catId,
           status: 'Success',
           payment_id: orderId,
           pg_bank_ref_no: bankRef,

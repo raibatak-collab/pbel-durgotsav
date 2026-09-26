@@ -2209,17 +2209,48 @@ function decodeCategoryDescription(desc?: string) {
 
   const getContributionCategoryName = (c: any) => {
     if (c.contribution_categories && c.contribution_categories.name) {
-      return c.contribution_categories.name;
+      const n = c.contribution_categories.name;
+      if (n.toLowerCase().includes("anandamela")) return "Anandamela Stall Fee";
+      return n;
     }
     if (c.category_id) {
       const matched = categoriesList.find((cat: any) => cat.id === c.category_id);
-      if (matched && matched.name) return matched.name;
+      if (matched && matched.name) {
+        if (matched.name.toLowerCase().includes("anandamela")) return "Anandamela Stall Fee";
+        return matched.name;
+      }
+    }
+    // Direct check if it's an Anandamela stall contribution
+    if (
+      c.payment_id?.startsWith("STALL_") ||
+      (anandamelaStalls && anandamelaStalls.some((s: any) =>
+        s.paymentRef === c.payment_id ||
+        s.paymentRef === c.pg_bank_ref_no ||
+        `UTR_${s.paymentRef}` === c.payment_id ||
+        s.id === c.payment_id
+      ))
+    ) {
+      return "Anandamela Stall Fee";
     }
     return "General Pujo Fund";
   };
 
+  const verifiedDevotionalContribs = verifiedContributions.filter((c) => {
+    const name = getContributionCategoryName(c).toLowerCase();
+    return !name.includes("anandamela") && !name.includes("stall");
+  });
+  const verifiedStallContribs = verifiedContributions.filter((c) => {
+    const name = getContributionCategoryName(c).toLowerCase();
+    return name.includes("anandamela") || name.includes("stall");
+  });
+  const totalDevotionalFunds = verifiedDevotionalContribs.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+  const totalStallFunds = verifiedStallContribs.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
+
   const getSevaBadge = (categoryName: string) => {
     const lower = (categoryName || "").toLowerCase();
+    if (lower.includes("anandamela") || lower.includes("stall")) {
+      return { icon: "🍲", badge: "bg-purple-50 text-purple-900 border-purple-300" };
+    }
     if (lower.includes("general")) {
       return { icon: "👑", badge: "bg-amber-50 text-amber-900 border-amber-300" };
     }
@@ -2271,7 +2302,13 @@ function decodeCategoryDescription(desc?: string) {
     const receiptIdentifier = encodeURIComponent(contrib.payment_id || contrib.id || "");
     const receiptUrl = `https://www.pbelcitydurgotsav.com/receipt?id=${receiptIdentifier}`;
     
-    const message = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nDear ${r.name},\nThank you for your pious devotional offering for PBEL City Durgotsav.\n\nContributor: *${r.name}* (${r.flatNumber})\nSeva Offering: *${r.category}*\nAmount Received: *₹${Number(r.amount).toLocaleString("en-IN")}*\nOfficial Receipt No: *PSS-2026-${receiptRef}*\nPayment Ref / UTR: *${contrib.payment_id || "Verified"}*\n\n🧾 *View & Download Official Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga shower divine health, happiness, and prosperity upon you and your family! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
+    const isAnanda = r.category.toLowerCase().includes("anandamela") || r.category.toLowerCase().includes("stall");
+    const offeringLabel = isAnanda ? "Stall Registration Fee" : "Seva Offering";
+    const thankYouText = isAnanda
+      ? "Thank you for registering your food / artisan stall for Anandamela • PBEL City Durgotsav 2026."
+      : "Thank you for your pious devotional offering for PBEL City Durgotsav.";
+
+    const message = `🌺 *শুভ শারদীয়া • PBEL City Durgotsav 2026* 🌺\nJoy Maa Durga!\n\nDear ${r.name},\n${thankYouText}\n\nContributor: *${r.name}* (${r.flatNumber})\n${offeringLabel}: *${r.category}*\nAmount Received: *₹${Number(r.amount).toLocaleString("en-IN")}*\nOfficial Receipt No: *PSS-2026-${receiptRef}*\nPayment Ref / UTR: *${contrib.payment_id || "Verified"}*\n\n🧾 *View & Download Official Receipt:*\n👉 ${receiptUrl}\n\nMay Maa Durga shower divine health, happiness, and prosperity upon you and your family! 🙏\n_PBEL Sanskritik Samiti (PSS)_`;
 
     // Attempt to capture and attach the receipt image if modal is mounted
     const receiptEl = document.getElementById("pbel-official-receipt");
@@ -2329,12 +2366,28 @@ function decodeCategoryDescription(desc?: string) {
     if (sponsorCopyCategory !== "all") {
       filtered = filtered.filter((c) => {
         const catName = getContributionCategoryName(c);
+        const isAnanda = catName.toLowerCase().includes("anandamela") || catName.toLowerCase().includes("stall");
+        if (sponsorCopyCategory === "anandamela") return isAnanda;
         if (sponsorCopyCategory === "bhog") return catName.toLowerCase().includes("bhog");
         if (sponsorCopyCategory === "sweets") return catName.toLowerCase().includes("sweet") || catName.toLowerCase().includes("prasad") || catName.toLowerCase().includes("mishti");
-        if (sponsorCopyCategory === "general") return catName === "General Pujo Fund";
+        if (sponsorCopyCategory === "general") return catName === "General Pujo Fund" && !isAnanda;
         return catName === sponsorCopyCategory;
       });
-      categoryLabel = sponsorCopyCategory === "bhog" ? "Maha Bhog Sponsors" : sponsorCopyCategory === "sweets" ? "Sweets & Prasad Sponsors" : sponsorCopyCategory;
+      categoryLabel = sponsorCopyCategory === "anandamela"
+        ? "Anandamela Stall Hosts"
+        : sponsorCopyCategory === "bhog"
+        ? "Maha Bhog Sponsors"
+        : sponsorCopyCategory === "sweets"
+        ? "Sweets & Prasad Sponsors"
+        : sponsorCopyCategory === "general"
+        ? "General Pujo Fund Donors"
+        : sponsorCopyCategory;
+    } else {
+      // By default for devotional sponsor announcements, exclude stall bookings unless specifically requested
+      filtered = filtered.filter((c) => {
+        const catName = getContributionCategoryName(c);
+        return !catName.toLowerCase().includes("anandamela") && !catName.toLowerCase().includes("stall");
+      });
     }
 
     if (filtered.length === 0) {
@@ -2373,13 +2426,22 @@ function decodeCategoryDescription(desc?: string) {
     if (contributionStatusFilter === "rejected" && c.status !== "Failed" && c.status !== "Rejected" && c.status !== "Cancelled") return false;
 
     const catName = getContributionCategoryName(c);
+    const catLower = catName.toLowerCase();
+    const isAnanda = catLower.includes("anandamela") || catLower.includes("stall");
+
     if (contributionSevaFilter !== "all") {
-      if (contributionSevaFilter === "general" && catName !== "General Pujo Fund") return false;
-      if (contributionSevaFilter === "bhog" && !catName.toLowerCase().includes("bhog")) return false;
-      if (contributionSevaFilter === "sweets" && !catName.toLowerCase().includes("sweet") && !catName.toLowerCase().includes("prasad") && !catName.toLowerCase().includes("mishti")) return false;
-      if (contributionSevaFilter === "flowers" && !catName.toLowerCase().includes("flower") && !catName.toLowerCase().includes("pushpa") && !catName.toLowerCase().includes("samagri")) return false;
-      if (contributionSevaFilter !== "general" && contributionSevaFilter !== "bhog" && contributionSevaFilter !== "sweets" && contributionSevaFilter !== "flowers") {
-        if (catName !== contributionSevaFilter) return false;
+      if (contributionSevaFilter === "anandamela") {
+        if (!isAnanda) return false;
+      } else if (contributionSevaFilter === "general") {
+        if (isAnanda || catName !== "General Pujo Fund") return false;
+      } else if (contributionSevaFilter === "bhog") {
+        if (!catLower.includes("bhog")) return false;
+      } else if (contributionSevaFilter === "sweets") {
+        if (!catLower.includes("sweet") && !catLower.includes("prasad") && !catLower.includes("mishti")) return false;
+      } else if (contributionSevaFilter === "flowers") {
+        if (!catLower.includes("flower") && !catLower.includes("pushpa") && !catLower.includes("samagri")) return false;
+      } else {
+        if (catName !== contributionSevaFilter && !catLower.includes(contributionSevaFilter.toLowerCase())) return false;
       }
     }
 
@@ -3856,15 +3918,39 @@ function decodeCategoryDescription(desc?: string) {
               </div>
 
               {/* Quick Metrics Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="bg-green-50/80 border border-green-200 p-3 rounded-xl flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-green-800 uppercase block">Verified Pujo Fund</span>
+                    <span className="text-[11px] font-bold text-green-800 uppercase block">Total Verified Fund</span>
                     <span className="text-xl font-bold text-green-700 font-mono">₹{totalFunds.toLocaleString("en-IN")}</span>
+                    <span className="text-[10px] text-green-800 block mt-0.5 font-medium">
+                      Devotional Sevas: ₹{totalDevotionalFunds.toLocaleString("en-IN")}
+                    </span>
                   </div>
                   <span className="text-xs bg-green-200 text-green-900 px-2 py-0.5 rounded-full font-bold">
                     {verifiedContributions.length} Verified
                   </span>
+                </div>
+
+                <div className="bg-purple-50/80 border border-purple-200 p-3 rounded-xl flex items-center justify-between">
+                  <div>
+                    <span className="text-[11px] font-bold text-purple-800 uppercase block">🍲 Anandamela Stalls</span>
+                    <span className="text-xl font-bold text-purple-700 font-mono">₹{totalStallFunds.toLocaleString("en-IN")}</span>
+                    <span className="text-[10px] text-purple-700 block mt-0.5 font-medium">
+                      {verifiedStallContribs.length} Stalls Booked
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setContributionSevaFilter(contributionSevaFilter === "anandamela" ? "all" : "anandamela")}
+                    className={`text-[10px] px-2 py-1 rounded-lg font-bold transition cursor-pointer ${
+                      contributionSevaFilter === "anandamela"
+                        ? "bg-purple-600 text-white"
+                        : "bg-purple-200 hover:bg-purple-300 text-purple-900"
+                    }`}
+                  >
+                    {contributionSevaFilter === "anandamela" ? "✓ Filtered" : "View Stalls"}
+                  </button>
                 </div>
 
                 <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl flex items-center justify-between">
@@ -3879,7 +3965,7 @@ function decodeCategoryDescription(desc?: string) {
 
                 <div className="bg-gray-100/80 border border-gray-200 p-3 rounded-xl flex items-center justify-between">
                   <div>
-                    <span className="text-[11px] font-bold text-gray-700 uppercase block">Total Devotee Submissions</span>
+                    <span className="text-[11px] font-bold text-gray-700 uppercase block">Total Submissions</span>
                     <span className="text-xl font-bold text-gray-900 font-mono">{contributions.length}</span>
                   </div>
                   <span className="text-xs bg-gray-200 text-gray-800 px-2 py-0.5 rounded-full font-bold">
@@ -3935,12 +4021,13 @@ function decodeCategoryDescription(desc?: string) {
                       className="border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-700 bg-white outline-none cursor-pointer max-w-[200px]"
                     >
                       <option value="all">All Sevas &amp; Offerings</option>
-                      <option value="general">👑 General Pujo Fund</option>
+                      <option value="general">👑 General Pujo Fund (Devotional)</option>
+                      <option value="anandamela">🍲 Anandamela Stall Fees</option>
                       <option value="bhog">🍚 Maha Bhog Offerings</option>
                       <option value="sweets">🍬 Sweets &amp; Prasad</option>
                       <option value="flowers">🌺 Flowers &amp; Samagri</option>
                       {categoriesList
-                        .filter((cat) => cat.name !== "General Pujo Fund")
+                        .filter((cat) => cat.name !== "General Pujo Fund" && !cat.name.toLowerCase().includes("anandamela"))
                         .map((cat) => (
                           <option key={cat.id} value={cat.name}>
                             {cat.name}
