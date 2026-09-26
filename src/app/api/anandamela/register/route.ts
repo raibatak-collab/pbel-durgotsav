@@ -122,16 +122,28 @@ export async function POST(request: Request) {
     }
 
     // 2. Atomically save back to campaigns table
-    const { error: upsertErr } = await supabaseAdmin.from('campaigns').upsert({
-      title: 'config_anandamela_stalls',
-      image_url: 'config',
-      redirect_link: JSON.stringify(currentStalls),
-      is_active: true,
-    });
-
-    if (upsertErr) {
-      console.error('[Anandamela Register] Error saving stalls to campaigns:', upsertErr);
-      return NextResponse.json({ success: false, error: 'Database save failed.' }, { status: 500 });
+    if (campData?.id) {
+      const { error: updErr } = await supabaseAdmin
+        .from('campaigns')
+        .update({ redirect_link: JSON.stringify(currentStalls), is_active: true })
+        .eq('id', campData.id);
+      if (updErr) {
+        console.error('[Anandamela Register] Error updating campaigns:', updErr);
+        return NextResponse.json({ success: false, error: 'Database update failed.' }, { status: 500 });
+      }
+    } else {
+      const { error: insErr } = await supabaseAdmin
+        .from('campaigns')
+        .insert({
+          title: 'config_anandamela_stalls',
+          image_url: 'config',
+          redirect_link: JSON.stringify(currentStalls),
+          is_active: true,
+        });
+      if (insErr) {
+        console.error('[Anandamela Register] Error inserting campaigns:', insErr);
+        return NextResponse.json({ success: false, error: 'Database insert failed.' }, { status: 500 });
+      }
     }
 
     // 3. Mirror into contributions table for accounting

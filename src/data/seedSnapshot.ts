@@ -1290,7 +1290,7 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
   anandamela_stalls: [
   {
     "id": "stall-1790392877117",
-    "stallNumber": "Stall #11",
+    "stallNumber": "Stall #12",
     "stallName": "Namaste Bella",
     "chefName": "Parul Ranjan",
     "stallType": "Non-Food",
@@ -1308,6 +1308,25 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
     "paymentRef": "626998108247",
     "paymentStatus": "Payment Verified",
     "createdAt": "2026-09-26T03:21:17.118Z"
+  },
+  {
+    "id": "stall-1790392838763",
+    "stallNumber": "Stall #11",
+    "stallName": "Siya Souvenirs",
+    "chefName": "Jalpa Shah",
+    "stallType": "Non-Food",
+    "tower": "Tower C (Aurum)",
+    "flatNumber": "1305",
+    "phone": "8886322004",
+    "category": "Handicrafts & Art",
+    "description": "Festive items, curated souvenirs and community creations curated with passion by PBEL City residents.",
+    "emoji": "🎁",
+    "status": "Approved",
+    "tablesCount": 1,
+    "totalAmount": 1000,
+    "paymentRef": "663545931081",
+    "paymentStatus": "Payment Verified",
+    "createdAt": "2026-09-26T03:20:39.000Z"
   },
   {
     "id": "stall-1790337073537",

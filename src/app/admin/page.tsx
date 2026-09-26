@@ -1474,7 +1474,12 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success && data.stall) {
         setCashfreeSyncResult({ success: true, message: data.message });
-        await handleRefreshAnandamelaStalls();
+        if (Array.isArray(data.stalls)) {
+          setAnandamelaStalls(data.stalls);
+          localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(data.stalls));
+        } else {
+          await handleRefreshAnandamelaStalls();
+        }
         setRestoreCashfreeOrderId("");
       } else {
         setCashfreeSyncResult({ success: false, message: data.error || "Failed to sync order" });

@@ -87,11 +87,19 @@ export async function GET(request: Request) {
               createdAt: new Date().toISOString(),
             };
             const updated = [newStallEntry, ...currentStalls];
-            await supabaseAdmin.from('campaigns').upsert({
-              title: 'config_anandamela_stalls',
-              redirect_link: JSON.stringify(updated),
-              is_active: true,
-            });
+            if (campData?.id) {
+              await supabaseAdmin
+                .from('campaigns')
+                .update({ redirect_link: JSON.stringify(updated), is_active: true })
+                .eq('id', campData.id);
+            } else {
+              await supabaseAdmin.from('campaigns').insert({
+                title: 'config_anandamela_stalls',
+                image_url: 'config',
+                redirect_link: JSON.stringify(updated),
+                is_active: true,
+              });
+            }
           }
         } catch (stallSyncErr) {
           console.error('[Cashfree Return] Error syncing Anandamela stall to Supabase:', stallSyncErr);
