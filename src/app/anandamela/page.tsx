@@ -160,14 +160,17 @@ export default function AnandamelaPage() {
               pendingStall.paymentStatus = "Paid Online (Cashfree)";
               pendingStall.status = "Pending";
 
-              const existingStallsRaw = localStorage.getItem("pbel_anandamela_stalls");
-              const existingStalls: FoodStall[] = existingStallsRaw ? JSON.parse(existingStallsRaw) : [];
-              if (!existingStalls.some((s: FoodStall) => s.id === pendingStall.id)) {
-                const updated = [pendingStall, ...existingStalls];
-                setStalls(updated);
-                localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(updated));
-                saveCloudConfig("anandamela_stalls", updated);
-              }
+              fetch("/api/anandamela/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(pendingStall),
+              }).then(async (res) => {
+                const data = await res.json();
+                if (data.success && Array.isArray(data.stalls)) {
+                  setStalls(data.stalls);
+                  localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(data.stalls));
+                }
+              }).catch((e) => console.error("Error registering return stall:", e));
               setSubmittedStallInfo({
                 stallName: pendingStall.stallName,
                 chefName: pendingStall.chefName,
@@ -360,7 +363,7 @@ export default function AnandamelaPage() {
     }
   };
 
-  const handleRegisterStall = (e: React.FormEvent) => {
+  const handleRegisterStall = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isDetailsFilled) {
       if (isFood) {
@@ -436,10 +439,28 @@ export default function AnandamelaPage() {
       createdAt: new Date().toISOString(),
     };
 
-    const updated = [newStall, ...stalls];
-    setStalls(updated);
-    localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(updated));
-    saveCloudConfig("anandamela_stalls", updated);
+    try {
+      const regRes = await fetch("/api/anandamela/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newStall),
+      });
+      const regData = await regRes.json();
+      if (regData.success && Array.isArray(regData.stalls)) {
+        setStalls(regData.stalls);
+        localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(regData.stalls));
+      } else {
+        const updated = [newStall, ...stalls];
+        setStalls(updated);
+        localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(updated));
+        saveCloudConfig("anandamela_stalls", updated);
+      }
+    } catch (_) {
+      const updated = [newStall, ...stalls];
+      setStalls(updated);
+      localStorage.setItem("pbel_anandamela_stalls", JSON.stringify(updated));
+      saveCloudConfig("anandamela_stalls", updated);
+    }
 
     // Close registration drawer
     setIsRegisterOpen(false);

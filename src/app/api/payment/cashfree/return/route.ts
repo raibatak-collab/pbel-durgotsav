@@ -37,8 +37,66 @@ export async function GET(request: Request) {
         console.warn('[Cashfree Return] Failed to fetch specific payments list:', payErr);
       }
 
-      // 1. If this was an Anandamela stall booking
+      // 1. If this was an Anandamela stall booking: sync to database directly on server
       if (orderType === 'anandamela') {
+        try {
+          // Record in contributions table
+          await supabaseAdmin.from('contributions').insert({
+            contributor_name: order.customer_details?.customer_name || 'Resident Chef',
+            phone: (order.customer_details?.customer_phone || '').slice(-10),
+            email: order.customer_details?.customer_email || null,
+            flat_number: order.order_tags?.flat_number || 'PBEL City',
+            amount: order.order_amount || 1000,
+            status: 'Success',
+            payment_id: orderId,
+            pg_bank_ref_no: bankReference,
+            is_name_visible: true,
+          });
+
+          // Also record in config_anandamela_stalls in campaigns table
+          const { data: campData } = await supabaseAdmin
+            .from('campaigns')
+            .select('id, redirect_link')
+            .eq('title', 'config_anandamela_stalls')
+            .maybeSingle();
+
+          let currentStalls: any[] = [];
+          if (campData?.redirect_link) {
+            try { currentStalls = JSON.parse(campData.redirect_link); } catch (_) {}
+          }
+
+          if (!currentStalls.some((s: any) => s.paymentRef === bankReference || s.paymentRef === orderId || s.id === orderId)) {
+            const nextStallNum = `Stall #${String(currentStalls.length + 1).padStart(2, '0')}`;
+            const newStallEntry = {
+              id: `stall-${Date.now()}`,
+              stallNumber: nextStallNum,
+              stallName: order.order_tags?.stall_name || order.order_note || 'Resident Food Stall',
+              chefName: order.customer_details?.customer_name || 'Resident Home Chef',
+              stallType: (order.order_tags?.stall_type || 'Food') as any,
+              tower: order.order_tags?.tower || 'PBEL City',
+              flatNumber: order.order_tags?.flat_number || 'PBEL City',
+              phone: order.customer_details?.customer_phone || '',
+              category: order.order_tags?.category || 'Festive Specialty',
+              description: 'Home-cooked festive specialty prepared with love by PBEL City residents.',
+              emoji: '🍲',
+              status: 'Approved',
+              tablesCount: Number(order.order_tags?.tables_count) || 1,
+              totalAmount: order.order_amount || 1000,
+              paymentRef: bankReference || orderId,
+              paymentStatus: 'Payment Verified',
+              createdAt: new Date().toISOString(),
+            };
+            const updated = [newStallEntry, ...currentStalls];
+            await supabaseAdmin.from('campaigns').upsert({
+              title: 'config_anandamela_stalls',
+              redirect_link: JSON.stringify(updated),
+              is_active: true,
+            });
+          }
+        } catch (stallSyncErr) {
+          console.error('[Cashfree Return] Error syncing Anandamela stall to Supabase:', stallSyncErr);
+        }
+
         return NextResponse.redirect(
           new URL(`/anandamela?status=success&order_id=${encodeURIComponent(orderId)}&ref=${encodeURIComponent(bankReference)}`, request.url),
           303

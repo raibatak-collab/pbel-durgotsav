@@ -52,22 +52,20 @@ export async function POST(request: Request) {
     const baseUrl = `${protocol}://${host}`;
 
     // Save pending record in Supabase for tracking before redirecting to PG
-    if (orderType === 'contribution') {
-      try {
-        await supabaseAdmin.from('contributions').insert({
-          contributor_name: cleanName,
-          email: cleanEmail,
-          phone: cleanPhone,
-          flat_number: cleanFlat,
-          amount: numAmount,
-          category_id: categoryId || null,
-          status: 'Pending',
-          is_name_visible: Boolean(isNameVisible),
-          payment_id: orderId,
-        });
-      } catch (dbErr) {
-        console.warn('[Cashfree Initiate] Supabase pending insert notice:', dbErr);
-      }
+    try {
+      await supabaseAdmin.from('contributions').insert({
+        contributor_name: cleanName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        flat_number: cleanFlat,
+        amount: numAmount,
+        category_id: categoryId || null,
+        status: 'Pending',
+        is_name_visible: Boolean(isNameVisible),
+        payment_id: orderId,
+      });
+    } catch (dbErr) {
+      console.warn('[Cashfree Initiate] Supabase pending insert notice:', dbErr);
     }
 
     // Call Cashfree API to create order session

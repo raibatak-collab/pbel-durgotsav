@@ -3923,6 +3923,47 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('87. Anandamela Payment Restoration, Cashfree PG Sync & Atomic Registration Resilience', () => {
+    it('should verify /api/payment/cashfree/sync-order route exists and validates Cashfree orders', () => {
+      assert.ok(fs.existsSync('src/app/api/payment/cashfree/sync-order/route.ts'), 'sync-order route must exist');
+      const src = fs.readFileSync('src/app/api/payment/cashfree/sync-order/route.ts', 'utf8');
+      assert.ok(src.includes('fetchCashfreeOrder'), 'Must verify order using fetchCashfreeOrder');
+      assert.ok(src.includes('config_anandamela_stalls'), 'Must sync into config_anandamela_stalls');
+      assert.ok(src.includes('contributions'), 'Must mirror into contributions table');
+    });
+
+    it('should verify /api/anandamela/register route exists for safe server-side registration', () => {
+      assert.ok(fs.existsSync('src/app/api/anandamela/register/route.ts'), 'register route must exist');
+      const src = fs.readFileSync('src/app/api/anandamela/register/route.ts', 'utf8');
+      assert.ok(src.includes('config_anandamela_stalls'), 'Must persist to config_anandamela_stalls');
+      assert.ok(src.includes('contributions'), 'Must mirror into contributions table');
+      assert.ok(src.includes('category_id: null'), 'Must use category_id: null for UUID compatibility');
+    });
+
+    it('should verify Admin Console includes Add/Restore Stall modal and Cashfree sync tool', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('+ Add / Restore Stall'), 'Must render Add / Restore Stall button in Admin header');
+      assert.ok(adminSrc.includes('handleSyncCashfreeOrder'), 'Must define handleSyncCashfreeOrder handler');
+      assert.ok(adminSrc.includes('handleRefreshAnandamelaStalls'), 'Must define handleRefreshAnandamelaStalls handler');
+      assert.ok(adminSrc.includes('handleResequenceStalls'), 'Must define handleResequenceStalls handler');
+      assert.ok(adminSrc.includes('isRestoreStallModalOpen'), 'Must render restore modal');
+    });
+
+    it('should verify Anandamela client uses atomic server registration endpoint', () => {
+      const anandamelaSrc = fs.readFileSync('src/app/anandamela/page.tsx', 'utf8');
+      assert.ok(anandamelaSrc.includes('/api/anandamela/register'), 'Must call /api/anandamela/register');
+      assert.ok(anandamelaSrc.includes('handleRegisterStall'), 'Must have handleRegisterStall');
+    });
+
+    it('should verify seedSnapshot includes all 11 synchronized Anandamela stalls', () => {
+      const seedSrc = fs.readFileSync('src/data/seedSnapshot.ts', 'utf8');
+      assert.ok(seedSrc.includes('Handful _of_aroma bakes'), 'Must contain Archana Rath stall');
+      assert.ok(seedSrc.includes('Er. Sugar Space'), 'Must contain Yogita Gulechha stall');
+      assert.ok(seedSrc.includes('Atrangi Abstracts'), 'Must contain Deepali Dutta Pohoja stall');
+      assert.ok(seedSrc.includes('Namaste Bella'), 'Must contain Parul Ranjan stall');
+    });
+  });
+
 });
 
 

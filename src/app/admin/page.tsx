@@ -52,7 +52,8 @@ import {
   Play,
   ExternalLink,
   Share2,
-  Check
+  Check,
+  RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { GalleryVideo, extractYouTubeVideoId, getStoredGalleryVideos, saveStoredGalleryVideos, fetchStoredGalleryVideos } from "@/config/gallery";
@@ -510,6 +511,26 @@ export default function AdminDashboard() {
 
   const [bhogPasses, setBhogPasses] = useState<any[]>([]);
   const [anandamelaStalls, setAnandamelaStalls] = useState<any[]>([]);
+  const [isRestoreStallModalOpen, setIsRestoreStallModalOpen] = useState(false);
+  const [restoreTab, setRestoreTab] = useState<"cashfree" | "manual">("cashfree");
+  const [restoreCashfreeOrderId, setRestoreCashfreeOrderId] = useState("");
+  const [isSyncingCashfree, setIsSyncingCashfree] = useState(false);
+  const [cashfreeSyncResult, setCashfreeSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [manualStallForm, setManualStallForm] = useState({
+    chefName: "",
+    stallName: "",
+    stallType: "Food",
+    tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
+    flatNumber: "",
+    phone: "",
+    tablesCount: 1,
+    totalAmount: 1000,
+    category: "Festive Specialty",
+    description: "",
+    paymentRef: "",
+  });
+  const [isSubmittingManualStall, setIsSubmittingManualStall] = useState(false);
+  const [isRefreshingStalls, setIsRefreshingStalls] = useState(false);
 
   // PSS Members Roster State - Initialized empty until Admin uploads CSV or adds members
   const [pssMembers, setPssMembers] = useState<any[]>([]);
@@ -1405,6 +1426,110 @@ export default function AdminDashboard() {
     });
 
     downloadCsv(`PBEL_Durgotsav_2026_Anandamela_Stalls_${dateStr}.csv`, headers, rows);
+  };
+
+  const handleRefreshAnandamelaStalls = async () => {
+    setIsRefreshingStalls(true);
+    try {
+      const freshStalls = await fetchCloudConfig<any[]>("anandamela_stalls", [], { forceRefresh: true });
+      if (freshStalls && Array.isArray(freshStalls)) {
+        setAnandamelaStalls(freshStalls);
+      }
+    } catch (err) {
+      console.error("Error refreshing stalls:", err);
+    } finally {
+      setIsRefreshingStalls(false);
+    }
+  };
+
+  const handleResequenceStalls = async () => {
+    if (!confirm("This will sort all registered stalls chronologically and assign consecutive stall numbers (Stall #01, Stall #02, etc.). Proceed?")) return;
+    const sorted = [...anandamelaStalls].sort(
+      (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()
+    );
+    const resequenced = sorted.map((s, idx) => ({
+      ...s,
+      stallNumber: `Stall #${String(idx + 1).padStart(2, "0")}`,
+    }));
+    // Reverse to show newest first in table
+    const displayList = [...resequenced].reverse();
+    setAnandamelaStalls(displayList);
+    await saveCloudConfig("anandamela_stalls", displayList);
+    alert("Stalls have been successfully renumbered sequentially!");
+  };
+
+  const handleSyncCashfreeOrder = async () => {
+    if (!restoreCashfreeOrderId.trim()) {
+      alert("Please enter a valid Cashfree Order ID (e.g. PSS26_...)");
+      return;
+    }
+    setIsSyncingCashfree(true);
+    setCashfreeSyncResult(null);
+    try {
+      const res = await fetch("/api/payment/cashfree/sync-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: restoreCashfreeOrderId.trim() }),
+      });
+      const data = await res.json();
+      if (data.success && data.stall) {
+        setCashfreeSyncResult({ success: true, message: data.message });
+        await handleRefreshAnandamelaStalls();
+        setRestoreCashfreeOrderId("");
+      } else {
+        setCashfreeSyncResult({ success: false, message: data.error || "Failed to sync order" });
+      }
+    } catch (err: any) {
+      setCashfreeSyncResult({ success: false, message: err?.message || "Network error while syncing order" });
+    } finally {
+      setIsSyncingCashfree(false);
+    }
+  };
+
+  const handleCreateManualStall = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualStallForm.chefName.trim() || !manualStallForm.stallName.trim() || !manualStallForm.phone.trim()) {
+      alert("Please provide Chef Name, Stall Name, and Phone Number.");
+      return;
+    }
+    setIsSubmittingManualStall(true);
+    try {
+      const res = await fetch("/api/anandamela/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...manualStallForm,
+          isAdmin: true,
+          status: "Approved",
+          paymentStatus: "Payment Verified",
+        }),
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.stalls)) {
+        setAnandamelaStalls(data.stalls);
+        alert(`Successfully registered and approved "${manualStallForm.stallName}" for ${manualStallForm.chefName}!`);
+        setIsRestoreStallModalOpen(false);
+        setManualStallForm({
+          chefName: "",
+          stallName: "",
+          stallType: "Food",
+          tower: PBEL_TOWER_NAMES[0] || "Tower A (Emerald)",
+          flatNumber: "",
+          phone: "",
+          tablesCount: 1,
+          totalAmount: 1000,
+          category: "Festive Specialty",
+          description: "",
+          paymentRef: "",
+        });
+      } else {
+        alert(data.error || "Failed to register stall.");
+      }
+    } catch (err: any) {
+      alert(err?.message || "Network error while saving stall.");
+    } finally {
+      setIsSubmittingManualStall(false);
+    }
   };
 
   const handleExportMembersCsv = () => {
@@ -5886,7 +6011,32 @@ function decodeCategoryDescription(desc?: string) {
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsRestoreStallModalOpen(true)}
+                className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                title="Add manual stall or sync missing Cashfree payment"
+              >
+                <PlusCircle size={14} /> + Add / Restore Stall
+              </button>
+              <button
+                type="button"
+                onClick={handleRefreshAnandamelaStalls}
+                disabled={isRefreshingStalls}
+                className="px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Force refresh stalls directly from Supabase"
+              >
+                <RefreshCw size={14} className={isRefreshingStalls ? "animate-spin" : ""} /> Refresh
+              </button>
+              <button
+                type="button"
+                onClick={handleResequenceStalls}
+                className="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                title="Sort stalls chronologically and renumber Stall #01 to #11 sequentially"
+              >
+                🔢 Re-sequence Numbers
+              </button>
               <button
                 type="button"
                 onClick={handleExportAnandamelaCsv}
@@ -5901,7 +6051,7 @@ function decodeCategoryDescription(desc?: string) {
                   setAnandamelaStalls([]);
                   await saveCloudConfig("anandamela_stalls", []);
                 }}
-                className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 size={14} /> Clear All Stalls
               </button>
@@ -6094,15 +6244,16 @@ function decodeCategoryDescription(desc?: string) {
                               {!isFeeVerified && (
                                 <button
                                   onClick={async () => {
-                                    const updated = anandamelaStalls.map((s: any) =>
-                                      (s.id === stall.id || s.stallName === stall.stallName)
+                                    const freshStalls = await fetchCloudConfig<any[]>("anandamela_stalls", anandamelaStalls, { forceRefresh: true });
+                                    const updated = freshStalls.map((s: any) =>
+                                      (s.id === stall.id || s.stallName === stall.stallName || s.paymentRef === stall.paymentRef)
                                         ? { ...s, paymentStatus: "Payment Verified" }
                                         : s
                                     );
                                     setAnandamelaStalls(updated);
                                     await saveCloudConfig("anandamela_stalls", updated);
                                   }}
-                                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] transition shadow-2xs"
+                                  className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] transition shadow-2xs cursor-pointer"
                                   title="Confirm table payment received"
                                 >
                                   Verify Fee ✓
@@ -6112,30 +6263,32 @@ function decodeCategoryDescription(desc?: string) {
                               {!isApproved ? (
                                 <button
                                   onClick={async () => {
-                                    const updated = anandamelaStalls.map((s: any) =>
-                                      (s.id === stall.id || s.stallName === stall.stallName)
+                                    const freshStalls = await fetchCloudConfig<any[]>("anandamela_stalls", anandamelaStalls, { forceRefresh: true });
+                                    const updated = freshStalls.map((s: any) =>
+                                      (s.id === stall.id || s.stallName === stall.stallName || s.paymentRef === stall.paymentRef)
                                         ? { ...s, status: "Approved", paymentStatus: "Payment Verified" }
                                         : s
                                     );
                                     setAnandamelaStalls(updated);
                                     await saveCloudConfig("anandamela_stalls", updated);
                                   }}
-                                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-[11px] transition shadow-2xs"
+                                  className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold text-[11px] transition shadow-2xs cursor-pointer"
                                 >
                                   Approve &amp; Publish ✓
                                 </button>
                               ) : (
                                 <button
                                   onClick={async () => {
-                                    const updated = anandamelaStalls.map((s: any) =>
-                                      (s.id === stall.id || s.stallName === stall.stallName)
+                                    const freshStalls = await fetchCloudConfig<any[]>("anandamela_stalls", anandamelaStalls, { forceRefresh: true });
+                                    const updated = freshStalls.map((s: any) =>
+                                      (s.id === stall.id || s.stallName === stall.stallName || s.paymentRef === stall.paymentRef)
                                         ? { ...s, status: "Pending" }
                                         : s
                                     );
                                     setAnandamelaStalls(updated);
                                     await saveCloudConfig("anandamela_stalls", updated);
                                   }}
-                                  className="px-2.5 py-1 bg-gray-100 hover:bg-amber-50 hover:text-amber-800 text-gray-700 rounded-lg font-bold text-[11px] transition"
+                                  className="px-2.5 py-1 bg-gray-100 hover:bg-amber-50 hover:text-amber-800 text-gray-700 rounded-lg font-bold text-[11px] transition cursor-pointer"
                                 >
                                   Unpublish
                                 </button>
@@ -6144,13 +6297,14 @@ function decodeCategoryDescription(desc?: string) {
                               <button
                                 onClick={async () => {
                                   if (!confirm(`Delete stall "${stall.stallName}"?`)) return;
-                                  const updated = anandamelaStalls.filter((s: any) =>
+                                  const freshStalls = await fetchCloudConfig<any[]>("anandamela_stalls", anandamelaStalls, { forceRefresh: true });
+                                  const updated = freshStalls.filter((s: any) =>
                                     s.id ? s.id !== stall.id : s.stallName !== stall.stallName
                                   );
                                   setAnandamelaStalls(updated);
                                   await saveCloudConfig("anandamela_stalls", updated);
                                 }}
-                                className="px-2.5 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-600 rounded-lg font-bold text-[11px] transition"
+                                className="px-2.5 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 text-gray-600 rounded-lg font-bold text-[11px] transition cursor-pointer"
                               >
                                 Delete
                               </button>
@@ -6170,6 +6324,304 @@ function decodeCategoryDescription(desc?: string) {
               </table>
             </div>
           </div>
+
+          {/* Add / Restore Missing Stall Modal */}
+          {isRestoreStallModalOpen && (
+            <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+                  <div>
+                    <h3 className="text-xl font-bold font-heading text-gray-900 flex items-center gap-2">
+                      <Utensils size={20} className="text-primary" />
+                      Add / Restore Anandamela Stall
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Restore missing Cashfree payments or register manual/offline stalls directly into the live directory.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setIsRestoreStallModalOpen(false);
+                      setCashfreeSyncResult(null);
+                    }}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 rounded-xl hover:bg-gray-100 transition cursor-pointer"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Tab switch */}
+                <div className="flex items-center gap-2 mt-4 bg-gray-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setRestoreTab("cashfree")}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                      restoreTab === "cashfree"
+                        ? "bg-white text-primary shadow-xs"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <CreditCard size={14} /> Sync from Cashfree PG
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRestoreTab("manual")}
+                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition flex items-center justify-center gap-1.5 ${
+                      restoreTab === "manual"
+                        ? "bg-white text-primary shadow-xs"
+                        : "text-gray-600 hover:text-gray-900"
+                    }`}
+                  >
+                    <Edit3 size={14} /> Manual / UPI Registration
+                  </button>
+                </div>
+
+                {/* Tab 1: Sync Cashfree */}
+                {restoreTab === "cashfree" && (
+                  <div className="mt-5 space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-xs text-amber-900">
+                      <p className="font-semibold mb-1 flex items-center gap-1.5">
+                        <AlertCircle size={14} className="text-amber-700" />
+                        How Cashfree PG Order Sync Works:
+                      </p>
+                      <p>
+                        If a resident paid on Cashfree yesterday but their stall dropped due to a network glitch or Supabase quota lock, grab their <strong>Order ID</strong> (starts with <code className="bg-amber-100 px-1 rounded font-mono">PSS26_...</code>) from your Cashfree Merchant Dashboard (<a href="https://merchant.cashfree.com" target="_blank" rel="noreferrer" className="underline font-bold text-amber-950">merchant.cashfree.com</a>) and paste it below.
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">
+                        Cashfree Order ID <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={restoreCashfreeOrderId}
+                        onChange={(e) => setRestoreCashfreeOrderId(e.target.value)}
+                        placeholder="e.g. PSS26_1789797575031_0B7NH"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm font-mono focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+
+                    {cashfreeSyncResult && (
+                      <div
+                        className={`p-3.5 rounded-xl text-xs font-medium ${
+                          cashfreeSyncResult.success
+                            ? "bg-green-50 text-green-800 border border-green-200"
+                            : "bg-red-50 text-red-800 border border-red-200"
+                        }`}
+                      >
+                        {cashfreeSyncResult.message}
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsRestoreStallModalOpen(false);
+                          setCashfreeSyncResult(null);
+                        }}
+                        className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSyncCashfreeOrder}
+                        disabled={isSyncingCashfree || !restoreCashfreeOrderId.trim()}
+                        className="px-5 py-2.5 bg-primary hover:bg-primary-dark text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSyncingCashfree ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" /> Verifying with Cashfree...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={14} /> Verify &amp; Restore Stall
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab 2: Manual Registration */}
+                {restoreTab === "manual" && (
+                  <form onSubmit={handleCreateManualStall} className="mt-5 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Chef / Owner Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={manualStallForm.chefName}
+                          onChange={(e) => setManualStallForm({ ...manualStallForm, chefName: e.target.value })}
+                          placeholder="e.g. Ananya Mukherjee"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Phone Number (10 digits) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          value={manualStallForm.phone}
+                          onChange={(e) => setManualStallForm({ ...manualStallForm, phone: e.target.value })}
+                          placeholder="9876543210"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Stall Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={manualStallForm.stallName}
+                          onChange={(e) => setManualStallForm({ ...manualStallForm, stallName: e.target.value })}
+                          placeholder="e.g. Kolkata Kathi Rolls"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                          Stall Type
+                        </label>
+                        <select
+                          value={manualStallForm.stallType}
+                          onChange={(e) => setManualStallForm({ ...manualStallForm, stallType: e.target.value as any })}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                        >
+                          <option value="Food">Food &amp; Snacks Stall</option>
+                          <option value="Non-Food">Non-Food (Apparel, Jewellery, Crafts)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Tower</label>
+                        <select
+                          value={manualStallForm.tower}
+                          onChange={(e) => setManualStallForm({ ...manualStallForm, tower: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                        >
+                          {PBEL_TOWER_NAMES.map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Flat Number</label>
+                        <input
+                          type="text"
+                          value={manualStallForm.flatNumber}
+                          onChange={(e) => setManualStallForm({ ...manualStallForm, flatNumber: e.target.value })}
+                          placeholder="e.g. 1104"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Number of Tables</label>
+                        <select
+                          value={manualStallForm.tablesCount}
+                          onChange={(e) => {
+                            const tables = Number(e.target.value);
+                            setManualStallForm({
+                              ...manualStallForm,
+                              tablesCount: tables,
+                              totalAmount: tables * 1000,
+                            });
+                          }}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white"
+                        >
+                          <option value={1}>1 Table (₹1,000)</option>
+                          <option value={2}>2 Tables (₹2,000)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">Total Fee (₹)</label>
+                        <input
+                          type="number"
+                          value={manualStallForm.totalAmount}
+                          onChange={(e) => setManualStallForm({ ...manualStallForm, totalAmount: Number(e.target.value) })}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-700 mb-1">UPI UTR / Bank Ref</label>
+                        <input
+                          type="text"
+                          value={manualStallForm.paymentRef}
+                          onChange={(e) => setManualStallForm({ ...manualStallForm, paymentRef: e.target.value })}
+                          placeholder="12-digit UTR"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Category / Specialty</label>
+                      <input
+                        type="text"
+                        value={manualStallForm.category}
+                        onChange={(e) => setManualStallForm({ ...manualStallForm, category: e.target.value })}
+                        placeholder="e.g. Sweets & Pithe, Rolls & Mughlai, Apparel, etc."
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-gray-700 mb-1">Description / Signature Dishes</label>
+                      <textarea
+                        rows={2}
+                        value={manualStallForm.description}
+                        onChange={(e) => setManualStallForm({ ...manualStallForm, description: e.target.value })}
+                        placeholder="Signature festive dishes or items offered..."
+                        className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                      />
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={() => setIsRestoreStallModalOpen(false)}
+                        className="px-4 py-2 text-xs font-bold text-gray-600 hover:text-gray-800 rounded-xl hover:bg-gray-100 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmittingManualStall}
+                        className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSubmittingManualStall ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" /> Saving Stall...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={14} /> Register &amp; Approve Stall
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
