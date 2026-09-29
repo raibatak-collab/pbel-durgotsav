@@ -177,6 +177,44 @@ export const CULTURAL_REGISTRATIONS_STORAGE_KEY = "pbel_cultural_event_registrat
 /**
  * Returns locally cached or default cultural events configuration.
  */
+function mergeCulturalEvents(defaults: CulturalEventConfig[], sources: CulturalEventConfig[]): CulturalEventConfig[] {
+  return defaults.map((def) => {
+    const matched = sources.find((p) => p.id === def.id);
+    if (!matched) return def;
+    if (def.id === "flash_mob") {
+      // Strictly enforce Sundowner Fitness Party details regardless of legacy cloud or local cache
+      return {
+        ...def,
+        isOpen: matched.isOpen ?? def.isOpen,
+        isVisible: matched.isVisible ?? def.isVisible,
+        status: matched.status || def.status,
+        maxLimit: matched.maxLimit || def.maxLimit,
+      };
+    }
+    return { ...def, ...matched };
+  });
+}
+
+function normalizeRegistrations(regs: CulturalRegistrationEntry[]): CulturalRegistrationEntry[] {
+  return regs.map((r) => {
+    if (
+      r.eventId === "flash_mob" || 
+      (r.eventTitle && (r.eventTitle.toLowerCase().includes("flash") || r.eventTitle.toLowerCase().includes("community")))
+    ) {
+      return {
+        ...r,
+        eventId: "flash_mob",
+        eventTitle: "Sundowner Fitness Party",
+        notes: r.notes ? r.notes.replace(/flash mob/gi, "Sundowner Fitness Party") : r.notes,
+      };
+    }
+    return r;
+  });
+}
+
+/**
+ * Returns locally cached or default cultural events configuration.
+ */
 export function getStoredCulturalEvents(): CulturalEventConfig[] {
   if (typeof window === "undefined") return DEFAULT_CULTURAL_EVENTS;
   try {
@@ -184,14 +222,7 @@ export function getStoredCulturalEvents(): CulturalEventConfig[] {
     if (cached) {
       const parsed = JSON.parse(cached);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Merge with defaults to ensure all 5 events are present
-        return DEFAULT_CULTURAL_EVENTS.map((def) => {
-          const matched = parsed.find((p) => p.id === def.id);
-          if (!matched) return def;
-          const title = (matched.title === "One Community. One Beat." || matched.title === "Flash Mob") ? def.title : (matched.title || def.title);
-          const subtitle = matched.title === "One Community. One Beat." ? def.subtitle : (matched.subtitle || def.subtitle);
-          return { ...def, ...matched, title, subtitle };
-        });
+        return mergeCulturalEvents(DEFAULT_CULTURAL_EVENTS, parsed);
       }
     }
   } catch (_) {}
@@ -208,13 +239,7 @@ export async function fetchStoredCulturalEvents(): Promise<CulturalEventConfig[]
       DEFAULT_CULTURAL_EVENTS
     );
     if (Array.isArray(cloud) && cloud.length > 0) {
-      const merged = DEFAULT_CULTURAL_EVENTS.map((def) => {
-        const matched = cloud.find((c) => c.id === def.id);
-        if (!matched) return def;
-        const title = (matched.title === "One Community. One Beat." || matched.title === "Flash Mob") ? def.title : (matched.title || def.title);
-        const subtitle = matched.title === "One Community. One Beat." ? def.subtitle : (matched.subtitle || def.subtitle);
-        return { ...def, ...matched, title, subtitle };
-      });
+      const merged = mergeCulturalEvents(DEFAULT_CULTURAL_EVENTS, cloud);
       if (typeof window !== "undefined") {
         try {
           localStorage.setItem(CULTURAL_EVENTS_STORAGE_KEY, JSON.stringify(merged));
@@ -250,7 +275,7 @@ export function getStoredCulturalRegistrations(): CulturalRegistrationEntry[] {
     const cached = localStorage.getItem(CULTURAL_REGISTRATIONS_STORAGE_KEY);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed)) return normalizeRegistrations(parsed);
     }
   } catch (_) {}
   return [];
@@ -266,12 +291,13 @@ export async function fetchStoredCulturalRegistrations(): Promise<CulturalRegist
       []
     );
     if (Array.isArray(cloud)) {
+      const normalized = normalizeRegistrations(cloud);
       if (typeof window !== "undefined") {
         try {
-          localStorage.setItem(CULTURAL_REGISTRATIONS_STORAGE_KEY, JSON.stringify(cloud));
+          localStorage.setItem(CULTURAL_REGISTRATIONS_STORAGE_KEY, JSON.stringify(normalized));
         } catch (_) {}
       }
-      return cloud;
+      return normalized;
     }
   } catch (err) {
     console.error("Error fetching cultural registrations:", err);
