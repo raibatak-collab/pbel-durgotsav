@@ -3847,20 +3847,26 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
         'Must render correct tab status badge');
     });
 
-    it('should verify SevaDonationNudgeModal integration on registration with Payment Gateway and cancellation button', () => {
+    it('should verify SevaDonationNudgeModal integration on registration with dynamic Payment Gateway check and cancellation button', () => {
       const compSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
       assert.ok(compSrc.includes('setShowNudgeModal(true)'),
         'CulturalEventsRegistration must open SevaDonationNudgeModal upon submission');
       assert.ok(compSrc.includes('<SevaDonationNudgeModal'),
         'Must render SevaDonationNudgeModal in CulturalEventsRegistration');
+      assert.ok(compSrc.includes('enablePaymentGateway={isPgEnabled}'),
+        'Must pass dynamic isPgEnabled to SevaDonationNudgeModal');
 
       const modalSrc = fs.readFileSync('src/components/SevaDonationNudgeModal.tsx', 'utf8');
       assert.ok(modalSrc.includes('I am not interested in donating for a seva'),
         'Must provide explicit button: I am not interested in donating for a seva');
       assert.ok(modalSrc.includes('Your event registration is 100% confirmed and accepted regardless of your decision'),
         'Must reassure resident that registration remains accepted even if they cancel');
+      assert.ok(modalSrc.includes('cashfree_gateway_live'),
+        'Must verify cashfree_gateway_live in SevaDonationNudgeModal');
       assert.ok(modalSrc.includes('loadCashfreeSDK'),
-        'Must support Cashfree Payment Gateway checkout');
+        'Must support Cashfree Payment Gateway checkout when PG is active');
+      assert.ok(modalSrc.includes('isPgActive'),
+        'Must condition Payment Gateway rendering on isPgActive');
       assert.ok(modalSrc.includes('/api/payment/cashfree/initiate'),
         'Must connect to Payment Gateway initiation endpoint');
       assert.ok(modalSrc.includes('PRESET_AMOUNTS') && modalSrc.includes('SEVA_PURPOSES'),
@@ -3869,7 +3875,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
   });
 
 
-  describe('Suite 86: Offline Resiliency & Seed Snapshot, Supabase 402 Fallback, Edge Caching, and Flashmob "One Community. One Beat." on Oct 3', () => {
+  describe('Suite 86: Offline Resiliency & Seed Snapshot, Supabase 402 Fallback, Edge Caching, and "Sundowner Fitness Party" on Oct 3', () => {
     it('should verify Resilient Supabase Client Wrapper and Master Seed Snapshot exist and intercept 402 errors', () => {
       const clientSrc = fs.readFileSync('src/utils/supabase/client.ts', 'utf8');
       assert.ok(clientSrc.includes('isRestrictedResult'), 'client.ts must define isRestrictedResult error detector');
@@ -3889,22 +3895,22 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(cloudConfigSrc.includes('getSnapshotData'), 'cloudConfig.ts must use getSnapshotData fallback');
     });
 
-    it('should verify Flashmob is titled "One Community. One Beat." scheduled on Oct 3 without Anandamela tag or rehearsals', () => {
+    it('should verify Flashmob is titled "Sundowner Fitness Party" scheduled on Oct 3 without Anandamela tag or rehearsals', () => {
       const cultSrc = fs.readFileSync('src/config/culturalEvents.ts', 'utf8');
-      assert.ok(cultSrc.includes('One Community. One Beat.'), 'Flashmob must be titled "One Community. One Beat."');
-      assert.ok(cultSrc.includes('03 Oct 2026'), 'Flashmob must be scheduled on Oct 3, 2026');
+      assert.ok(cultSrc.includes('Sundowner Fitness Party'), 'Event must be titled "Sundowner Fitness Party"');
+      assert.ok(cultSrc.includes('03 Oct 2026'), 'Event must be scheduled on Oct 3, 2026');
       assert.ok(cultSrc.includes('No prior rehearsals required!'), 'Must state no prior rehearsals required');
-      assert.strictEqual(cultSrc.includes('Anandamela Gala'), false, 'Flashmob must not have Anandamela tag');
+      assert.strictEqual(cultSrc.includes('Anandamela Gala'), false, 'Event must not have Anandamela tag');
       assert.strictEqual(cultSrc.includes('Showcase: Anandamela'), false, 'Must not reference Showcase: Anandamela');
 
       const regSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
-      assert.ok(regSrc.includes('ONE COMMUNITY. ONE BEAT.'), 'Registration form must reference ONE COMMUNITY. ONE BEAT.');
+      assert.ok(regSrc.includes('SUNDOWNER FITNESS PARTY') || regSrc.includes('Sundowner Fitness Party'), 'Registration form must reference SUNDOWNER FITNESS PARTY');
       assert.ok(regSrc.includes('No prior rehearsals needed!'), 'Must state no prior rehearsals needed in UI');
       assert.strictEqual(regSrc.includes('flashMobAvailability'), false, 'Must not have flashMobAvailability rehearsal state');
       assert.strictEqual(regSrc.includes('Rehearsal Availability *'), false, 'Must not render rehearsal availability dropdown');
 
       const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
-      assert.ok(adminSrc.includes('One Community. One Beat. (Oct 3)'), 'Admin must reference One Community. One Beat. (Oct 3)');
+      assert.ok(adminSrc.includes('Sundowner Fitness Party (Oct 3)'), 'Admin must reference Sundowner Fitness Party (Oct 3)');
     });
 
     it('should verify Next.js Edge route and Supabase Edge Function exist for Cached Egress', () => {
@@ -4015,6 +4021,47 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
 
       const hookSrc = fs.readFileSync('src/app/api/payment/cashfree/webhook/route.ts', 'utf8');
       assert.ok(hookSrc.includes('category_id: catId'), 'webhook route must assign catId to contribution');
+    });
+  });
+
+  describe('Suite 89: Sundowner Fitness Party Renaming & Seva Nudge Payment Gateway Disablement', () => {
+    it('should verify Flash mob is renamed to Sundowner Fitness Party across all cultural configs and admin options', () => {
+      const cultSrc = fs.readFileSync('src/config/culturalEvents.ts', 'utf8');
+      assert.ok(cultSrc.includes('title: "Sundowner Fitness Party"'), 'DEFAULT_CULTURAL_EVENTS must have title: Sundowner Fitness Party');
+      assert.ok(cultSrc.includes('High-Energy Festive Township Fitness & Dance Showcase'), 'Must have updated fitness & dance showcase subtitle');
+      assert.ok(cultSrc.includes('id: "flash_mob"'), 'Must maintain backwards-compatible id: flash_mob');
+
+      const seedSrc = fs.readFileSync('src/data/seedSnapshot.ts', 'utf8');
+      assert.ok(seedSrc.includes('"title": "Sundowner Fitness Party"'), 'seedSnapshot must have title: Sundowner Fitness Party');
+
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('Sundowner Fitness Party (Oct 3)'), 'Admin header must reference Sundowner Fitness Party');
+      assert.ok(adminSrc.includes('"Sundowner Fitness Party" (Oct 3)'), 'Admin dropdown option must reference Sundowner Fitness Party');
+
+      const regSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
+      assert.ok(regSrc.includes('SUNDOWNER FITNESS PARTY'), 'Registration form must reference SUNDOWNER FITNESS PARTY');
+    });
+
+    it('should verify SevaDonationNudgeModal safely isolates Cashfree checkout and falls back to clean UPI when PG is disabled', () => {
+      const modalSrc = fs.readFileSync('src/components/SevaDonationNudgeModal.tsx', 'utf8');
+      assert.ok(modalSrc.includes('enablePaymentGateway = false'), 'enablePaymentGateway prop must safely default to false');
+      assert.ok(modalSrc.includes('fetchCloudConfig<boolean>("cashfree_gateway_live"'), 'Modal must dynamically check cashfree_gateway_live');
+      assert.ok(modalSrc.includes('isPgActive ? ('), 'Must conditionally render Cashfree form only when isPgActive is true');
+      assert.ok(modalSrc.includes('OFFICIAL_BANK_UPI.pa'), 'Must display official society UPI when PG is disabled');
+      assert.ok(modalSrc.includes('1-Tap Copy'), 'Must provide 1-tap copy button for official UPI');
+      assert.ok(modalSrc.includes('View All Sevas &amp; Contribute on Portal'), 'Must direct residents to /contribute when PG is disabled');
+
+      const compSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
+      assert.ok(compSrc.includes('enablePaymentGateway={isPgEnabled}'), 'CulturalEventsRegistration must pass dynamic isPgEnabled to modal');
+      assert.ok(compSrc.includes('fetchCloudConfig<boolean>("cashfree_gateway_live"'), 'CulturalEventsRegistration must fetch cashfree_gateway_live');
+
+      const anandamelaSrc = fs.readFileSync('src/app/anandamela/page.tsx', 'utf8');
+      assert.ok(anandamelaSrc.includes('paymentMode, setPaymentMode] = useState<"cashfree" | "manual_upi">("manual_upi")'),
+        'Anandamela must default paymentMode to manual_upi');
+      assert.ok(anandamelaSrc.includes('enablePaymentGateway={isPgEnabled}'),
+        'Anandamela must pass dynamic isPgEnabled to SevaDonationNudgeModal');
+      assert.ok(anandamelaSrc.includes('{isPgEnabled && ('),
+        'Anandamela must only show PG tabs when isPgEnabled is true');
     });
   });
 

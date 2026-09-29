@@ -93,7 +93,7 @@ export default function AnandamelaPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dietaryFilter, setDietaryFilter] = useState<"all" | "veg" | "non-veg">("all");
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
-  const [paymentMode, setPaymentMode] = useState<"cashfree" | "manual_upi">("cashfree");
+  const [paymentMode, setPaymentMode] = useState<"cashfree" | "manual_upi">("manual_upi");
   const [isSubmittingPg, setIsSubmittingPg] = useState(false);
   const [isPgEnabled, setIsPgEnabled] = useState(false);
   const [copiedUpi, setCopiedUpi] = useState(false);
@@ -145,6 +145,36 @@ export default function AnandamelaPage() {
       const stored = localStorage.getItem("pbel_anandamela_stalls");
       if (stored) {
         setStalls(JSON.parse(stored));
+      }
+
+      // Check Payment Gateway status from cloud config and URL params
+      if (typeof window !== "undefined") {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasTestPg = urlParams.get("test_pg") === "cashfree" || urlParams.get("pg") === "1" || urlParams.get("test") === "1";
+        const savedPg = localStorage.getItem("pbel_cashfree_gateway_live");
+        let initialPg = false;
+        if (savedPg !== null) {
+          try {
+            initialPg = Boolean(JSON.parse(savedPg));
+          } catch (_) {}
+        }
+        if (hasTestPg) initialPg = true;
+        setIsPgEnabled(initialPg);
+        if (initialPg) {
+          setPaymentMode("cashfree");
+        } else {
+          setPaymentMode("manual_upi");
+        }
+
+        fetchCloudConfig<boolean>("cashfree_gateway_live", false).then((isLive) => {
+          const activePg = Boolean(isLive || hasTestPg);
+          setIsPgEnabled(activePg);
+          if (activePg) {
+            setPaymentMode("cashfree");
+          } else {
+            setPaymentMode("manual_upi");
+          }
+        });
       }
 
       // Check for returning successful Cashfree stall payment
@@ -1270,8 +1300,8 @@ export default function AnandamelaPage() {
                       </span>
                     </div>
 
-                    {/* Payment Mode Selector Tabs (Manual QR only shown when PG is disabled) */}
-                    {!isPgEnabled && (
+                    {/* Payment Mode Selector Tabs (Shown only when PG is enabled so resident has a choice) */}
+                    {isPgEnabled && (
                       <div className="grid grid-cols-2 gap-2 bg-amber-100/60 p-1 rounded-xl">
                         <button
                           type="button"
@@ -1300,7 +1330,7 @@ export default function AnandamelaPage() {
                       </div>
                     )}
 
-                    {paymentMode === "cashfree" ? (
+                    {isPgEnabled && paymentMode === "cashfree" ? (
                       /* Online Cashfree Checkout Option */
                       <div className="bg-white p-4 rounded-xl border border-amber-200 space-y-3">
                         <div className="flex items-start gap-3">
@@ -1418,6 +1448,9 @@ export default function AnandamelaPage() {
         activityName={submittedStallInfo?.stallType === "Non-Food" ? "Anandamela Non-Food Stall Registration" : "Anandamela Food Stall Registration"}
         residentName={submittedStallInfo?.chefName}
         stallOrEventName={submittedStallInfo?.stallName}
+        phone={regForm.phone}
+        flatNumber={regForm.flatNumber}
+        enablePaymentGateway={isPgEnabled}
         note="The Anandamela Committee and Finance Team will verify your table payment and confirm your stall allocation in the festival directory."
       />
 

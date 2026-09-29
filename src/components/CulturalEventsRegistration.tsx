@@ -28,6 +28,7 @@ import {
   getStoredCulturalRegistrations,
 } from "@/config/culturalEvents";
 import { getStoredTowers, TowerDefinition } from "@/config/towers";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
 import SevaDonationNudgeModal from "@/components/SevaDonationNudgeModal";
 
 const EVENT_ICONS: Record<CulturalEventId, React.ReactNode> = {
@@ -74,6 +75,7 @@ export function CulturalEventsRegistration() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successEntry, setSuccessEntry] = useState<CulturalRegistrationEntry | null>(null);
   const [showNudgeModal, setShowNudgeModal] = useState(false);
+  const [isPgEnabled, setIsPgEnabled] = useState(false);
 
   useEffect(() => {
     try {
@@ -90,6 +92,20 @@ export function CulturalEventsRegistration() {
       fetchStoredCulturalRegistrations().then((cloudRegs) => {
         if (cloudRegs) setRegistrations(cloudRegs);
       });
+
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const hasTestPg = params.get("test_pg") === "cashfree" || params.get("pg") === "1" || params.get("test") === "1";
+        const savedPg = localStorage.getItem("pbel_cashfree_gateway_live");
+        if (savedPg !== null) {
+          try {
+            setIsPgEnabled(Boolean(JSON.parse(savedPg) || hasTestPg));
+          } catch (_) {}
+        }
+        fetchCloudConfig<boolean>("cashfree_gateway_live", false).then((isLive: boolean) => {
+          setIsPgEnabled(Boolean(isLive || hasTestPg));
+        });
+      }
     } catch (_) {}
 
     const handleEventsUpdate = () => {
@@ -952,7 +968,7 @@ export function CulturalEventsRegistration() {
                 </div>
               )}
 
-              {/* 5. FLASH MOB / "ONE COMMUNITY. ONE BEAT." (OPEN REGISTRATION) */}
+              {/* 5. SUNDOWNER FITNESS PARTY (OPEN REGISTRATION) */}
               {activeEvent.id === "flash_mob" && (
                 <div className="space-y-4 pt-2">
                   <div>
@@ -1073,7 +1089,7 @@ export function CulturalEventsRegistration() {
           stallOrEventName={successEntry.teamName || successEntry.eventTitle}
           phone={successEntry.phone}
           flatNumber={successEntry.flat}
-          enablePaymentGateway={true}
+          enablePaymentGateway={isPgEnabled}
           note={"Your entry for " + successEntry.eventTitle + " (" + successEntry.flat + ") has been officially recorded and accepted! Registration ID: " + successEntry.id}
         />
       )}

@@ -1844,8 +1844,8 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
   },
   {
     "id": "flash_mob",
-    "title": "One Community. One Beat.",
-    "subtitle": "High-Energy Festive Township Dance Showcase",
+    "title": "Sundowner Fitness Party",
+    "subtitle": "High-Energy Festive Township Fitness & Dance Showcase",
     "day": "Saturday • 03 Oct 2026",
     "time": "06:30 PM - 07:15 PM",
     "location": "PBEL City Central Arena",

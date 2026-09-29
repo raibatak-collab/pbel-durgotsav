@@ -2,7 +2,7 @@
  * PBEL City Durgotsav 2026 - Cultural Competitions & Event Registrations
  * -----------------------------------------------------------------------
  * Covers:
- * 1. Flash Mob (Open resident dance)
+ * 1. Sundowner Fitness Party (Open resident dance & fitness)
  * 2. Mini Kumartuli (10 teams max, 3 members each)
  * 3. Sit and Draw "Indradhanush" (120 total entries across 3 age groups)
  * 4. Junior Discovery Quiz (6 teams max, 5 members each, Grade 4-10)
@@ -150,8 +150,8 @@ export const DEFAULT_CULTURAL_EVENTS: CulturalEventConfig[] = [
   },
   {
     id: "flash_mob",
-    title: "One Community. One Beat.",
-    subtitle: "High-Energy Festive Township Dance Showcase",
+    title: "Sundowner Fitness Party",
+    subtitle: "High-Energy Festive Township Fitness & Dance Showcase",
     day: "Saturday • 03 Oct 2026",
     time: "06:30 PM - 07:15 PM",
     location: "PBEL City Central Arena",
@@ -187,7 +187,10 @@ export function getStoredCulturalEvents(): CulturalEventConfig[] {
         // Merge with defaults to ensure all 5 events are present
         return DEFAULT_CULTURAL_EVENTS.map((def) => {
           const matched = parsed.find((p) => p.id === def.id);
-          return matched ? { ...def, ...matched } : def;
+          if (!matched) return def;
+          const title = (matched.title === "One Community. One Beat." || matched.title === "Flash Mob") ? def.title : (matched.title || def.title);
+          const subtitle = matched.title === "One Community. One Beat." ? def.subtitle : (matched.subtitle || def.subtitle);
+          return { ...def, ...matched, title, subtitle };
         });
       }
     }
@@ -207,7 +210,10 @@ export async function fetchStoredCulturalEvents(): Promise<CulturalEventConfig[]
     if (Array.isArray(cloud) && cloud.length > 0) {
       const merged = DEFAULT_CULTURAL_EVENTS.map((def) => {
         const matched = cloud.find((c) => c.id === def.id);
-        return matched ? { ...def, ...matched } : def;
+        if (!matched) return def;
+        const title = (matched.title === "One Community. One Beat." || matched.title === "Flash Mob") ? def.title : (matched.title || def.title);
+        const subtitle = matched.title === "One Community. One Beat." ? def.subtitle : (matched.subtitle || def.subtitle);
+        return { ...def, ...matched, title, subtitle };
       });
       if (typeof window !== "undefined") {
         try {

@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Sparkles, Heart, CheckCircle2, ArrowRight, X, Flame, CreditCard, Loader2 } from "lucide-react";
+import { Sparkles, Heart, CheckCircle2, ArrowRight, X, Flame, CreditCard, Loader2, Copy } from "lucide-react";
 import { loadCashfreeSDK } from "@/utils/cashfree";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
+import { OFFICIAL_BANK_UPI } from "@/utils/security";
 
 interface SevaDonationNudgeModalProps {
   isOpen: boolean;
@@ -40,7 +42,7 @@ export default function SevaDonationNudgeModal({
   note,
   phone = "",
   flatNumber = "",
-  enablePaymentGateway = true,
+  enablePaymentGateway = false,
 }: SevaDonationNudgeModalProps) {
   const [selectedAmount, setSelectedAmount] = useState<number>(1001);
   const [customAmount, setCustomAmount] = useState<string>("");
@@ -51,6 +53,28 @@ export default function SevaDonationNudgeModal({
   const [donorFlat, setDonorFlat] = useState(flatNumber || "");
   const [isSubmittingPg, setIsSubmittingPg] = useState(false);
   const [pgError, setPgError] = useState<string | null>(null);
+  const [isPgActive, setIsPgActive] = useState<boolean>(false);
+  const [copiedUpi, setCopiedUpi] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const hasTestPg = params.get("test_pg") === "cashfree" || params.get("pg") === "1" || params.get("test") === "1";
+      const savedPg = localStorage.getItem("pbel_cashfree_gateway_live");
+      let initialLive = false;
+      if (savedPg !== null) {
+        try {
+          initialLive = Boolean(JSON.parse(savedPg));
+        } catch (_) {}
+      }
+      if (hasTestPg) initialLive = true;
+      setIsPgActive(Boolean(enablePaymentGateway && initialLive));
+
+      fetchCloudConfig<boolean>("cashfree_gateway_live", false).then((isLive: boolean) => {
+        setIsPgActive(Boolean(enablePaymentGateway && (isLive || hasTestPg)));
+      });
+    }
+  }, [enablePaymentGateway]);
 
   if (!isOpen) return null;
 
@@ -210,7 +234,7 @@ export default function SevaDonationNudgeModal({
             PBEL City Durgotsav is organized solely through the voluntary contributions and pious seva of our resident families. Would you like to offer a seva for Maa Durga’s festival?
           </p>
 
-          {enablePaymentGateway && (
+          {isPgActive ? (
             <form onSubmit={handleCashfreePayment} className="space-y-3 pt-1">
               
               {/* Preset Amounts Grid */}
@@ -338,19 +362,73 @@ export default function SevaDonationNudgeModal({
                 )}
               </button>
             </form>
+          ) : (
+            /* Direct UPI Seva Contribution Card (When PG is disabled) */
+            <div className="space-y-3 pt-1">
+              {/* Preset Seva suggestions */}
+              <div className="grid grid-cols-2 gap-2">
+                {PRESET_AMOUNTS.map((p) => (
+                  <div
+                    key={p.amount}
+                    className="p-2 rounded-xl border bg-white/90 border-amber-200 text-left flex flex-col justify-center text-xs"
+                  >
+                    <span className="font-heading font-bold text-sm text-gray-900">{p.label}</span>
+                    <span className="text-[10px] text-gray-500">{p.subtitle}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* UPI ID Quick Copy Box */}
+              <div className="bg-white p-3 rounded-xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-2.5">
+                <div className="text-left">
+                  <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">
+                    Official Samiti UPI ID
+                  </span>
+                  <span className="font-mono text-xs font-bold text-amber-950 select-all">
+                    {OFFICIAL_BANK_UPI.pa}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof navigator !== "undefined" && navigator.clipboard) {
+                      navigator.clipboard.writeText(OFFICIAL_BANK_UPI.pa);
+                      setCopiedUpi(true);
+                      setTimeout(() => setCopiedUpi(false), 2000);
+                    }
+                  }}
+                  className="w-full sm:w-auto px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition flex items-center justify-center gap-1.5"
+                >
+                  {copiedUpi ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                  <span>{copiedUpi ? "UPI ID Copied!" : "1-Tap Copy"}</span>
+                </button>
+              </div>
+
+              {/* Action Link to Contribute Page */}
+              <Link
+                href="/contribute"
+                onClick={onClose}
+                className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-2.5 px-4 rounded-xl transition shadow-xs flex items-center justify-center gap-2 text-xs"
+              >
+                <span>View All Sevas &amp; Contribute on Portal</span>
+                <ArrowRight size={14} />
+              </Link>
+            </div>
           )}
 
-          {/* Secondary Link to Contribution Page */}
-          <div className="text-center pt-2.5">
-            <Link
-              href="/contribute"
-              onClick={onClose}
-              className="text-[11px] font-semibold text-amber-900 hover:text-amber-950 underline inline-flex items-center gap-1"
-            >
-              <span>Explore all Seva Offerings &amp; 80G Tax Exemption on /contribute</span>
-              <ArrowRight size={11} />
-            </Link>
-          </div>
+          {/* Secondary Link to Contribution Page (only when PG is active) */}
+          {isPgActive && (
+            <div className="text-center pt-2.5">
+              <Link
+                href="/contribute"
+                onClick={onClose}
+                className="text-[11px] font-semibold text-amber-900 hover:text-amber-950 underline inline-flex items-center gap-1"
+              >
+                <span>Explore all Seva Offerings &amp; 80G Tax Exemption on /contribute</span>
+                <ArrowRight size={11} />
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* Cancellation / Dismiss Button */}
