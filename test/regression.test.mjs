@@ -4065,6 +4065,47 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 90: Interactive Preset Seva Amounts & Direct Dynamic Bank UPI QR Payment in Nudge Modal', () => {
+    it('should verify preset amounts are clickable interactive buttons that update state', () => {
+      const modalSrc = fs.readFileSync('src/components/SevaDonationNudgeModal.tsx', 'utf8');
+      // Verify PRESET_AMOUNTS mapped into interactive button elements
+      assert.ok(modalSrc.includes('PRESET_AMOUNTS.map((p) => {'), 'Modal must map over PRESET_AMOUNTS');
+      assert.ok(modalSrc.includes('<button'), 'Must render button elements for presets');
+      assert.ok(modalSrc.includes('onClick={() => {'), 'Must have onClick handlers for preset amount selection');
+      assert.ok(modalSrc.includes('setSelectedAmount(p.amount)'), 'Must update selectedAmount state on click');
+      assert.ok(modalSrc.includes('setIsCustom(false)'), 'Must reset isCustom when preset button is clicked');
+      assert.ok(modalSrc.includes('setCustomAmount("")'), 'Must clear custom amount when preset button is clicked');
+    });
+
+    it('should verify Seva categories automatically link to clicked preset amounts and custom amounts are supported', () => {
+      const modalSrc = fs.readFileSync('src/components/SevaDonationNudgeModal.tsx', 'utf8');
+      // Category auto-matching
+      assert.ok(modalSrc.includes('setSelectedPurpose("Evening Aarti & Cultural Dhunuchi Seva")'), 'Preset 501 must select Aarti & Dhunuchi');
+      assert.ok(modalSrc.includes('setSelectedPurpose("Pushpanjali & Flower Samagri")'), 'Preset 1001 must select Pushpanjali');
+      assert.ok(modalSrc.includes('setSelectedPurpose("Maha Bhog & Prasad Seva")'), 'Preset 2501 must select Maha Bhog');
+      assert.ok(modalSrc.includes('setSelectedPurpose("General Pujo Fund")'), 'Preset 5001 must select General Pujo Fund');
+
+      // Custom amount and dropdown
+      assert.ok(modalSrc.includes('onClick={() => setIsCustom(true)}'), 'Must allow activating custom amount');
+      assert.ok(modalSrc.includes('SEVA_PURPOSES.map((purp)'), 'Must render Seva Offering Category dropdown');
+    });
+
+    it('should verify dynamic in-modal Bank UPI QR code and deep links render with accurate amount and purpose', () => {
+      const modalSrc = fs.readFileSync('src/components/SevaDonationNudgeModal.tsx', 'utf8');
+      // Dynamic QR code generation
+      assert.ok(modalSrc.includes('api.qrserver.com/v1/create-qr-code'), 'Must render QR code via qrserver API');
+      assert.ok(modalSrc.includes('buildUpiPayUri({'), 'Must use buildUpiPayUri to construct standard UPI URI');
+      assert.ok(modalSrc.includes('pa: OFFICIAL_BANK_UPI.pa'), 'Must use OFFICIAL_BANK_UPI.pa');
+      assert.ok(modalSrc.includes('am: effectiveAmount'), 'Must encode effectiveAmount into UPI QR');
+      assert.ok(modalSrc.includes('tn: `PBEL Pujo Seva - ${selectedPurpose.slice(0, 30)}`'), 'Must specify transaction note with purpose');
+
+      // Deep link and 1-tap copy
+      assert.ok(modalSrc.includes('Open in UPI App'), 'Must provide direct Open in UPI App link');
+      assert.ok(modalSrc.includes('1-Tap Copy UPI ID'), 'Must provide 1-Tap Copy UPI ID button');
+      assert.ok(modalSrc.includes('navigator.clipboard.writeText(OFFICIAL_BANK_UPI.pa)'), 'Must copy official UPI ID to clipboard');
+    });
+  });
+
 });
 
 

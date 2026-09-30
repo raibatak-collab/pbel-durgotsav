@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { Sparkles, Heart, CheckCircle2, ArrowRight, X, Flame, CreditCard, Loader2, Copy } from "lucide-react";
+import { Sparkles, Heart, CheckCircle2, ArrowRight, X, Flame, CreditCard, Loader2, Copy, QrCode, ExternalLink } from "lucide-react";
 import { loadCashfreeSDK } from "@/utils/cashfree";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
-import { OFFICIAL_BANK_UPI } from "@/utils/security";
+import { OFFICIAL_BANK_UPI, buildUpiPayUri } from "@/utils/security";
 
 interface SevaDonationNudgeModalProps {
   isOpen: boolean;
@@ -365,54 +365,175 @@ export default function SevaDonationNudgeModal({
           ) : (
             /* Direct UPI Seva Contribution Card (When PG is disabled) */
             <div className="space-y-3 pt-1">
-              {/* Preset Seva suggestions */}
-              <div className="grid grid-cols-2 gap-2">
-                {PRESET_AMOUNTS.map((p) => (
-                  <div
-                    key={p.amount}
-                    className="p-2 rounded-xl border bg-white/90 border-amber-200 text-left flex flex-col justify-center text-xs"
-                  >
-                    <span className="font-heading font-bold text-sm text-gray-900">{p.label}</span>
-                    <span className="text-[10px] text-gray-500">{p.subtitle}</span>
-                  </div>
-                ))}
+              {/* Preset Amounts Grid (Interactive Clickable Buttons) */}
+              <div>
+                <label className="block text-[11px] font-bold text-gray-700 mb-1.5">
+                  Select Seva Contribution Amount:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {PRESET_AMOUNTS.map((p) => {
+                    const isSelected = !isCustom && selectedAmount === p.amount;
+                    return (
+                      <button
+                        key={p.amount}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAmount(p.amount);
+                          setIsCustom(false);
+                          setCustomAmount("");
+                          if (p.amount === 501) setSelectedPurpose("Evening Aarti & Cultural Dhunuchi Seva");
+                          else if (p.amount === 1001) setSelectedPurpose("Pushpanjali & Flower Samagri");
+                          else if (p.amount === 2501) setSelectedPurpose("Maha Bhog & Prasad Seva");
+                          else if (p.amount === 5001) setSelectedPurpose("General Pujo Fund");
+                        }}
+                        className={
+                          "p-2.5 rounded-xl border text-left transition flex flex-col justify-center text-xs cursor-pointer " +
+                          (isSelected
+                            ? "bg-amber-100 border-amber-500 ring-2 ring-amber-400 font-bold text-amber-950 shadow-xs"
+                            : "bg-white border-amber-200 text-gray-700 hover:bg-amber-50/80")
+                        }
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-heading font-bold text-sm text-gray-900">{p.label}</span>
+                          {isSelected && <CheckCircle2 size={13} className="text-amber-800" />}
+                        </div>
+                        <span className="text-[10px] text-gray-500">{p.subtitle}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* UPI ID Quick Copy Box */}
-              <div className="bg-white p-3 rounded-xl border border-amber-200 flex flex-col sm:flex-row items-center justify-between gap-2.5">
-                <div className="text-left">
-                  <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">
-                    Official Samiti UPI ID
-                  </span>
-                  <span className="font-mono text-xs font-bold text-amber-950 select-all">
-                    {OFFICIAL_BANK_UPI.pa}
-                  </span>
-                </div>
+              {/* Custom Amount Option */}
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    if (typeof navigator !== "undefined" && navigator.clipboard) {
-                      navigator.clipboard.writeText(OFFICIAL_BANK_UPI.pa);
-                      setCopiedUpi(true);
-                      setTimeout(() => setCopiedUpi(false), 2000);
-                    }
-                  }}
-                  className="w-full sm:w-auto px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-bold transition flex items-center justify-center gap-1.5"
+                  onClick={() => setIsCustom(true)}
+                  className={
+                    "text-xs px-3 py-1.5 rounded-xl border transition " +
+                    (isCustom
+                      ? "bg-amber-100 border-amber-500 font-bold text-amber-950 ring-1 ring-amber-400"
+                      : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50")
+                  }
                 >
-                  {copiedUpi ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Copy size={13} />}
-                  <span>{copiedUpi ? "UPI ID Copied!" : "1-Tap Copy"}</span>
+                  Custom Amount
                 </button>
+                {isCustom && (
+                  <div className="relative flex-1">
+                    <span className="absolute left-3 top-2 text-xs font-bold text-gray-500">₹</span>
+                    <input
+                      type="number"
+                      min={100}
+                      step={50}
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      placeholder="e.g. 1500"
+                      className="w-full pl-7 pr-3 py-1.5 text-xs border border-amber-400 rounded-xl bg-white outline-none focus:ring-2 focus:ring-amber-500 font-bold"
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Action Link to Contribute Page */}
-              <Link
-                href="/contribute"
-                onClick={onClose}
-                className="w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-600 hover:from-amber-700 hover:to-yellow-700 text-white font-bold py-2.5 px-4 rounded-xl transition shadow-xs flex items-center justify-center gap-2 text-xs"
-              >
-                <span>View All Sevas &amp; Contribute on Portal</span>
-                <ArrowRight size={14} />
-              </Link>
+              {/* Seva Offering Category Dropdown */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-600 mb-1">
+                  Seva Offering Category:
+                </label>
+                <select
+                  value={selectedPurpose}
+                  onChange={(e) => setSelectedPurpose(e.target.value)}
+                  className="w-full p-2 text-xs border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-amber-400 outline-none text-gray-800"
+                >
+                  {SEVA_PURPOSES.map((purp) => (
+                    <option key={purp} value={purp}>
+                      {purp}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Dynamic In-Modal Bank UPI QR Payment Box */}
+              {effectiveAmount > 0 && (
+                <div className="bg-white rounded-2xl border-2 border-amber-300 p-4 shadow-sm text-center space-y-3">
+                  <div className="flex items-center justify-between border-b border-amber-100 pb-2">
+                    <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wide flex items-center gap-1.5">
+                      <QrCode size={14} className="text-primary" />
+                      <span>Scan &amp; Pay via Any UPI App</span>
+                    </span>
+                    <span className="font-heading font-extrabold text-sm text-primary">
+                      ₹{effectiveAmount.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+
+                  <div className="bg-amber-50/60 p-2.5 rounded-xl border border-amber-200 inline-block mx-auto shadow-2xs">
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                        buildUpiPayUri({
+                          pa: OFFICIAL_BANK_UPI.pa,
+                          pn: OFFICIAL_BANK_UPI.pn,
+                          am: effectiveAmount,
+                          tn: `PBEL Pujo Seva - ${selectedPurpose.slice(0, 30)}`,
+                          appScheme: "generic",
+                        })
+                      )}`}
+                      alt={`UPI QR for ₹${effectiveAmount}`}
+                      className="w-36 h-36 sm:w-40 sm:h-40 object-contain mx-auto rounded-lg"
+                    />
+                  </div>
+
+                  <p className="text-[11px] text-gray-600 font-medium">
+                    Scan with Google Pay, PhonePe, Paytm, BHIM, or any banking UPI App
+                  </p>
+
+                  {/* 1-Tap Copy UPI ID & Mobile Deep Link */}
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof navigator !== "undefined" && navigator.clipboard) {
+                          navigator.clipboard.writeText(OFFICIAL_BANK_UPI.pa);
+                          setCopiedUpi(true);
+                          setTimeout(() => setCopiedUpi(false), 2000);
+                        }
+                      }}
+                      className="bg-amber-100 hover:bg-amber-200 text-amber-950 text-xs font-bold px-3 py-1.5 rounded-xl border border-amber-300 transition flex items-center gap-1.5 shadow-2xs"
+                    >
+                      {copiedUpi ? <CheckCircle2 size={13} className="text-emerald-600" /> : <Copy size={13} />}
+                      <span>{copiedUpi ? "UPI ID Copied!" : "1-Tap Copy UPI ID"}</span>
+                    </button>
+
+                    <a
+                      href={buildUpiPayUri({
+                        pa: OFFICIAL_BANK_UPI.pa,
+                        pn: OFFICIAL_BANK_UPI.pn,
+                        am: effectiveAmount,
+                        tn: `PBEL Pujo Seva - ${selectedPurpose.slice(0, 30)}`,
+                        appScheme: "generic",
+                      })}
+                      className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+                    >
+                      <span>Open in UPI App</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  </div>
+
+                  <div className="text-[10px] text-gray-500 font-mono">
+                    Official Society VPA: <strong className="text-amber-950">{OFFICIAL_BANK_UPI.pa}</strong>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Link to Full Contribution Page */}
+              <div className="text-center pt-1">
+                <Link
+                  href="/contribute"
+                  onClick={onClose}
+                  className="text-[11px] font-semibold text-amber-900 hover:text-amber-950 underline inline-flex items-center gap-1"
+                >
+                  <span>View All Sevas &amp; Contribute on Portal (80G Tax Exemption Available)</span>
+                  <ArrowRight size={11} />
+                </Link>
+              </div>
             </div>
           )}
 
