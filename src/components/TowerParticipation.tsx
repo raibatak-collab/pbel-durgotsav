@@ -175,6 +175,9 @@ export function TowerParticipation({
     // If server provided initial data, don't execute immediate Supabase query on mount
     if (!initialContribs) {
       loadLiveTowerData();
+    } else {
+      // In background, refresh live data so any contributions after static build are hydrated
+      loadLiveTowerData();
     }
 
     const handleTowersUpdate = () => {

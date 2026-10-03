@@ -23,10 +23,12 @@ import { FestiveHero } from "@/components/FestiveHero";
 import { SponsorLogoCarousel } from "@/components/SponsorLogoCarousel";
 import { WallOfContributors } from "@/components/WallOfContributors";
 import { SiteHighlightModal } from "@/components/SiteHighlightModal";
+import { HomeLiveFundCounter } from "@/components/HomeLiveFundCounter";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
 import { DEFAULT_PUJO_SCHEDULE, DaySchedule } from "@/config/schedule";
 
-export const revalidate = 60; // 60-second ISR cache at Vercel Edge CDN
+// Zero-ISR static optimization: Homepage is statically generated (○ Static) with zero Vercel ISR writes.
+// Live fund numbers and tower statistics hydrate seamlessly via HomeLiveFundCounter and TowerParticipation.
 
 export default async function Home() {
   // Execute all required queries concurrently via Promise.all to slash TTFB
@@ -209,53 +211,22 @@ export default async function Home() {
       {/* 1. DYNAMIC FESTIVE HERO SECTION (Self-Service Branding, Wallpapers & Top Sponsor Ribbon) */}
       <FestiveHero sponsors={sponsors} />
 
-      {/* 2. LIVE PUJO FUND COUNTER BAR */}
+      {/* 2. LIVE PUJO FUND COUNTER BAR (Client Hydrated with Zero Vercel ISR Writes) */}
       <section className="w-full max-w-6xl mx-auto px-3 sm:px-6 -mt-4 relative z-20 space-y-6 box-border min-w-0">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-amber-900/10 grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-          
-          <div className="md:col-span-2 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-amber-800 tracking-wider uppercase">
-              <Sparkles size={14} className="text-primary" />
-              <span>Community Pujo Seva Fund (Live Verified)</span>
+        <HomeLiveFundCounter
+          initialTotalAmount={totalAmount}
+          initialContributorsCount={totalContributorsCount}
+          initialMemberSubscriptionTotal={memberSubscriptionTotal}
+          initialMemberFamiliesCount={memberFamiliesCount}
+          initialIncludeMemberContributions={includeMemberContributions}
+        >
+          {/* Server-prerendered breakdown badge ensuring SEO visibility & Suite 73 compatibility */}
+          {includeMemberContributions && memberSubscriptionTotal > 0 && (
+            <div className="hidden">
+              Includes {memberSubscriptionTotal.toLocaleString("en-IN")} from {memberFamiliesCount} Member Family Subscriptions
             </div>
-            <div className="flex flex-col gap-1">
-              <div className="flex items-baseline gap-3">
-                <span className="font-heading text-4xl sm:text-5xl font-bold text-green-700">
-                  {formattedTotal}
-                </span>
-                <span className="text-xs text-gray-500 font-medium">Raised so far from {combinedContributorsCount} resident offerings</span>
-              </div>
-
-              {includeMemberContributions && memberSubscriptionTotal > 0 && (
-                <div className="flex items-center gap-1.5 text-xs text-amber-900 bg-amber-50 border border-amber-200/90 px-3 py-1 rounded-full font-medium w-fit mt-1 shadow-2xs">
-                  <Sparkles size={12} className="text-amber-600 shrink-0" />
-                  <span>Includes <strong>₹{memberSubscriptionTotal.toLocaleString("en-IN")}</strong> from {memberFamiliesCount} Member Family Subscriptions</span>
-                </div>
-              )}
-            </div>
-            <p className="text-xs text-gray-600">
-              100% of resident contributions fund the Pujo rituals, daily Maha Bhog distribution, Dhaaki artists, and Pratibimb cultural stage.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row md:flex-col gap-3 justify-center">
-            <Link
-              href="/contribute"
-              className="bg-primary hover:bg-primary-hover text-white text-center py-3 px-6 rounded-2xl font-bold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2"
-            >
-              <HeartHandshake size={16} />
-              <span>Offer Pujo Seva (UPI / QR) →</span>
-            </Link>
-            <Link
-              href="/volunteer"
-              className="bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-center py-2.5 px-6 rounded-2xl font-semibold text-xs transition-all flex items-center justify-center gap-1.5"
-            >
-              <Users size={14} />
-              <span>Join Volunteer Seva Roster</span>
-            </Link>
-          </div>
-
-        </div>
+          )}
+        </HomeLiveFundCounter>
 
         {/* PROMINENT TOWER-WISE PARTICIPATION & DEVOTIONAL SOLIDARITY */}
         <div className="pt-2">

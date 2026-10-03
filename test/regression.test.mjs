@@ -3641,9 +3641,9 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(cloudConfigSrc.includes('pbel_config_updated'), 'saveCloudConfig must dispatch pbel_config_updated event');
     });
 
-    it('should verify homepage implements 60-second ISR and concurrent query execution', () => {
+    it('should verify homepage implements zero-ISR static optimization and concurrent query execution', () => {
       const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
-      assert.ok(homeSrc.includes('export const revalidate = 60'), 'Homepage must specify 60-second ISR revalidation');
+      assert.ok(!homeSrc.includes('export const revalidate = 60'), 'Homepage must NOT specify 60-second ISR to protect Vercel Free Tier quota');
       assert.ok(homeSrc.includes('Promise.all(['), 'Homepage must parallelize queries using Promise.all');
       assert.ok(homeSrc.includes('initialContribs={contributionsData}'), 'Homepage must pass initialContribs to TowerParticipation');
     });
@@ -4103,6 +4103,29 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(modalSrc.includes('Open in UPI App'), 'Must provide direct Open in UPI App link');
       assert.ok(modalSrc.includes('1-Tap Copy UPI ID'), 'Must provide 1-Tap Copy UPI ID button');
       assert.ok(modalSrc.includes('navigator.clipboard.writeText(OFFICIAL_BANK_UPI.pa)'), 'Must copy official UPI ID to clipboard');
+    });
+  });
+
+  describe('Suite 91: Vercel Free Tier Zero-ISR Optimization & Real-Time Client Hydration', () => {
+    it('should verify homepage is statically generated without ISR writes', () => {
+      const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(!homeSrc.includes('export const revalidate'), 'Homepage must not have time-based revalidate export');
+      assert.ok(homeSrc.includes('HomeLiveFundCounter'), 'Homepage must use HomeLiveFundCounter for client hydration');
+    });
+
+    it('should verify HomeLiveFundCounter component hydrates live data and handles real-time updates', () => {
+      assert.ok(fs.existsSync('src/components/HomeLiveFundCounter.tsx'), 'HomeLiveFundCounter component must exist');
+      const counterSrc = fs.readFileSync('src/components/HomeLiveFundCounter.tsx', 'utf8');
+      assert.ok(counterSrc.includes('"use client"'), 'HomeLiveFundCounter must be a client component');
+      assert.ok(counterSrc.includes('initialTotalAmount'), 'HomeLiveFundCounter must accept initialTotalAmount prop');
+      assert.ok(counterSrc.includes('supabase'), 'HomeLiveFundCounter must fetch live contributions from Supabase');
+      assert.ok(counterSrc.includes('pbel_config_updated'), 'HomeLiveFundCounter must listen for config updates');
+    });
+
+    it('should verify TowerParticipation maintains client-side background hydration', () => {
+      const towerSrc = fs.readFileSync('src/components/TowerParticipation.tsx', 'utf8');
+      assert.ok(towerSrc.includes('loadLiveTowerData'), 'TowerParticipation must implement loadLiveTowerData');
+      assert.ok(towerSrc.includes('if (!initialContribs)'), 'TowerParticipation must check initialContribs');
     });
   });
 
