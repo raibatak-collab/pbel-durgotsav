@@ -3498,7 +3498,7 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(headerSrc.includes('primaryLinks'), 'Header primaryLinks must include Anandamela');
 
       const heroSrc = fs.readFileSync('src/components/FestiveHero.tsx', 'utf8');
-      assert.ok(heroSrc.includes('href="/anandamela"'), 'FestiveHero must have Anandamela secondary pill');
+      assert.ok(!heroSrc.includes('Anandamela Stalls (Open)'), 'FestiveHero must not have open Anandamela registration pill once registration is complete');
 
       const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
       assert.ok(homeSrc.includes('Anandamela Home Chef Stalls'), 'Homepage must feature Anandamela spotlight card');
@@ -4126,6 +4126,25 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       const towerSrc = fs.readFileSync('src/components/TowerParticipation.tsx', 'utf8');
       assert.ok(towerSrc.includes('loadLiveTowerData'), 'TowerParticipation must implement loadLiveTowerData');
       assert.ok(towerSrc.includes('if (!initialContribs)'), 'TowerParticipation must check initialContribs');
+    });
+  });
+
+  describe('Suite 92: Anandamela Registration Completion & Hero Banner Streamlining', () => {
+    it('should verify FestiveHero no longer displays Anandamela registration CTA pill', () => {
+      const heroSrc = fs.readFileSync('src/components/FestiveHero.tsx', 'utf8');
+      assert.ok(!heroSrc.includes('Anandamela Stalls (Open)'), 'Hero banner must not show open registration pill');
+      assert.ok(!heroSrc.includes('href="/anandamela"'), 'Hero banner secondary nav must not link to registration');
+    });
+
+    it('should verify Homepage spotlight card reflects that Anandamela registrations are complete', () => {
+      const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(homeSrc.includes('Resident Stall Registrations are now Complete &amp; Full'), 'Spotlight card must declare registrations complete and full');
+      assert.ok(homeSrc.includes('href="/anandamela#stalls-directory"'), 'Spotlight card must direct residents to the stalls directory');
+    });
+
+    it('should verify Header navigation still preserves link to Anandamela for visitor exploration', () => {
+      const headerSrc = fs.readFileSync('src/components/Header.tsx', 'utf8');
+      assert.ok(headerSrc.includes('href="/anandamela"'), 'Header navigation must still link to /anandamela');
     });
   });
 

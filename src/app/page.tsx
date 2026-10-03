@@ -409,22 +409,22 @@ export default async function Home() {
             <p className="text-amber-100 text-sm sm:text-base leading-relaxed mb-6">
               Taste authentic homemade Bengali heritage cuisine, rolls &amp; sweets, or explore handmade jewellery, handicrafts, festive apparel, and games hosted by PBEL City residents!
               <br />
-              <strong className="text-white">Resident Stall Registrations are now OPEN</strong> — strictly 15 stalls limit (₹1,000 / table).
+              <strong className="text-white">Resident Stall Registrations are now Complete &amp; Full</strong> — all 15 stalls allocated! Join us on Maha Panchami evening to relish the authentic dishes &amp; crafts.
             </p>
 
             <div className="flex flex-wrap items-center gap-3">
               <Link
-                href="/anandamela"
+                href="/anandamela#stalls-directory"
                 className="bg-white hover:bg-amber-50 text-amber-950 font-bold px-6 py-3 rounded-2xl text-xs sm:text-sm transition shadow-lg flex items-center gap-2"
               >
                 <Utensils size={16} className="text-amber-700" />
-                <span>Register Your Stall (15 Stalls Limit) →</span>
+                <span>Explore Stalls &amp; Offerings Directory →</span>
               </Link>
               <Link
-                href="/anandamela#stalls-directory"
+                href="/anandamela"
                 className="bg-black/20 hover:bg-black/30 text-white border border-white/30 font-semibold px-6 py-3 rounded-2xl text-xs sm:text-sm transition flex items-center gap-2 backdrop-blur-xs"
               >
-                <span>Explore Stalls &amp; Offerings</span>
+                <span>View Event Details</span>
                 <ArrowRight size={15} />
               </Link>
             </div>
