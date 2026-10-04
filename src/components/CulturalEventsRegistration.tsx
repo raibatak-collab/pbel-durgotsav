@@ -105,6 +105,16 @@ export function CulturalEventsRegistration() {
         fetchCloudConfig<boolean>("cashfree_gateway_live", false).then((isLive: boolean) => {
           setIsPgEnabled(Boolean(isLive || hasTestPg));
         });
+
+        // Ensure smooth scroll to #competitions when navigating via direct link
+        if (window.location.hash === "#competitions") {
+          setTimeout(() => {
+            const el = document.getElementById("competitions");
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+            }
+          }, 300);
+        }
       }
     } catch (_) {}
 
@@ -279,7 +289,7 @@ export function CulturalEventsRegistration() {
   };
 
   return (
-    <div id="competitions" className="w-full max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-8 scroll-mt-20">
+    <div id="competitions" className="w-full max-w-5xl mx-auto py-8 px-4 sm:px-6 space-y-8 scroll-mt-24 sm:scroll-mt-28">
       
       {/* SECTION HEADER */}
       <div className="text-center space-y-2.5">
@@ -484,7 +494,7 @@ export function CulturalEventsRegistration() {
                         successEntry.eventTitle +
                         " at PBEL City Durgotsav 2026 (" +
                         successEntry.flat +
-                        ")! Register your team / entry now at https://pbeldurgotsav.in/programs#competitions"
+                        ")! Register your team / entry now at https://www.pbelcitydurgotsav.com/programs#competitions"
                     )
                   }
                   target="_blank"
@@ -599,7 +609,7 @@ export function CulturalEventsRegistration() {
 
               <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <a
-                  href={"https://api.whatsapp.com/send?text=" + encodeURIComponent("🎉 Hey neighbors! " + activeEvent.title + " registrations are opening soon at PBEL City Durgotsav 2026. Check the rules and get your team ready: https://pbeldurgotsav.in/programs#competitions")}
+                  href={"https://api.whatsapp.com/send?text=" + encodeURIComponent("🎉 Hey neighbors! " + activeEvent.title + " registrations are opening soon at PBEL City Durgotsav 2026. Check the rules and get your team ready: https://www.pbelcitydurgotsav.com/programs#competitions")}
                   target="_blank"
                   rel="noreferrer"
                   className="inline-flex items-center gap-2 bg-[#25D366] hover:bg-[#1EBE5D] text-white px-5 py-2.5 rounded-full text-xs font-bold transition shadow-sm"

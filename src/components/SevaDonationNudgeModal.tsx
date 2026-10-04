@@ -107,7 +107,7 @@ export default function SevaDonationNudgeModal({
         body: JSON.stringify({
           amount: effectiveAmount,
           customerName: cleanName,
-          email: "devotee@pbeldurgotsav.in",
+          email: "devotee@pbelcitydurgotsav.com",
           phone: cleanPhone,
           flatNumber: cleanFlat,
           purpose: selectedPurpose,

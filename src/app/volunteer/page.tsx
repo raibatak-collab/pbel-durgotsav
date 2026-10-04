@@ -183,7 +183,7 @@ export default function VolunteerPage() {
 
   if (isSuccess) {
     const waShareText = encodeURIComponent(
-      `🌺 Jai Maa Durga! I have registered for Seva at PBEL City Durgotsav 2026 for ${formData.category} on ${formData.date} (${formData.shiftTime}). Join the volunteer team at https://pbeldurgotsav.in/volunteer`
+      `🌺 Jai Maa Durga! I have registered for Seva at PBEL City Durgotsav 2026 for ${formData.category} on ${formData.date} (${formData.shiftTime}). Join the volunteer team at https://www.pbelcitydurgotsav.com/volunteer`
     );
 
     return (

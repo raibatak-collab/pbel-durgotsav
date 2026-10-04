@@ -4148,6 +4148,39 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 93: WhatsApp Competition Share Links & Anchor Scroll Integrity', () => {
+    it('should verify Admin WhatsApp broadcaster generates live production URL and never uses pbeldurgotsav.in', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(!adminSrc.includes('pbeldurgotsav.in'), 'Admin page must not contain dead pbeldurgotsav.in domain');
+      assert.ok(adminSrc.includes('https://www.pbelcitydurgotsav.com'), 'Admin page must use production domain');
+      assert.ok(adminSrc.includes('/programs#competitions'), 'Admin broadcaster must link to /programs#competitions');
+    });
+
+    it('should verify CulturalEventsRegistration and public share links use production domain', () => {
+      const regSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
+      assert.ok(!regSrc.includes('pbeldurgotsav.in'), 'CulturalEventsRegistration must not contain pbeldurgotsav.in');
+      assert.ok(regSrc.includes('https://www.pbelcitydurgotsav.com/programs#competitions'), 'Must use live production URL for competitions share');
+
+      const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
+      assert.ok(!progSrc.includes('pbeldurgotsav.in'), 'programs page must not contain pbeldurgotsav.in');
+      assert.ok(progSrc.includes('https://www.pbelcitydurgotsav.com/programs'), 'programs page must use production domain');
+
+      const volSrc = fs.readFileSync('src/app/volunteer/page.tsx', 'utf8');
+      assert.ok(!volSrc.includes('pbeldurgotsav.in'), 'volunteer page must not contain pbeldurgotsav.in');
+      assert.ok(volSrc.includes('https://www.pbelcitydurgotsav.com/volunteer'), 'volunteer page must use production domain');
+    });
+
+    it('should verify smooth scroll handling to #competitions on direct link navigation', () => {
+      const regSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
+      assert.ok(regSrc.includes('window.location.hash === "#competitions"'), 'CulturalEventsRegistration must check for #competitions hash');
+      assert.ok(regSrc.includes('scrollIntoView'), 'CulturalEventsRegistration must trigger smooth scrollIntoView');
+
+      const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
+      assert.ok(progSrc.includes('window.location.hash'), 'programs page must check for hash on load');
+      assert.ok(progSrc.includes('scrollIntoView'), 'programs page must trigger scrollIntoView on hash');
+    });
+  });
+
 });
 
 

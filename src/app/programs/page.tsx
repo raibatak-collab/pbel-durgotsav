@@ -143,6 +143,17 @@ export default function ProgramsPage() {
           eveningDate: dayDates[dayParam] || "2026-10-16",
         }));
       }
+
+      // Handle hash anchor scroll on initial load (e.g. #competitions or #register-performance)
+      const hash = window.location.hash;
+      if (hash) {
+        setTimeout(() => {
+          const target = document.querySelector(hash);
+          if (target) {
+            target.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 350);
+      }
     }
 
     return () => {
@@ -706,7 +717,7 @@ export default function ProgramsPage() {
               <div className="flex flex-col gap-2.5">
                 <a
                   href={`https://api.whatsapp.com/send?text=${encodeURIComponent(
-                    `🎭 Jai Maa Durga! I have registered a stage act for Pratibimb 2026 at PBEL City Durgotsav: ${formData.performanceType} - ${formData.songName || "Cultural Performance"} on ${formData.eveningDate}. Join the cultural stage at https://pbeldurgotsav.in/programs`
+                    `🎭 Jai Maa Durga! I have registered a stage act for Pratibimb 2026 at PBEL City Durgotsav: ${formData.performanceType} - ${formData.songName || "Cultural Performance"} on ${formData.eveningDate}. Join the cultural stage at https://www.pbelcitydurgotsav.com/programs`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"

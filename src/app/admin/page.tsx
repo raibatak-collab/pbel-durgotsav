@@ -283,6 +283,10 @@ export default function AdminDashboard() {
       return details.join("\n");
     }).join("\n\n");
 
+    const siteUrl = typeof window !== "undefined" && window.location.origin && !window.location.origin.includes("localhost")
+      ? window.location.origin
+      : "https://www.pbelcitydurgotsav.com";
+
     const text = [
       "*PBEL City Durgotsav 2026 • Cultural Competitions Registrations Open!* 🎭",
       "",
@@ -292,7 +296,7 @@ export default function AdminDashboard() {
       eventDetails,
       "",
       "⚡ Slots are strictly limited on a first-come, first-registered basis!",
-      "👉 Register your team / entry here: https://pbeldurgotsav.in/programs#competitions",
+      `👉 Register your team / entry here: ${siteUrl}/programs#competitions`,
       "",
       "— PBEL Sanskritik Samiti (PSS)"
     ].join("\n");
