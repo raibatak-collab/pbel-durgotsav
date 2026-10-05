@@ -426,6 +426,8 @@ export default function AdminDashboard() {
   const [isUpdatingMemberToggle, setIsUpdatingMemberToggle] = useState<boolean>(false);
   const [cashfreeLiveEnabled, setCashfreeLiveEnabled] = useState<boolean>(false);
   const [isUpdatingCashfreeToggle, setIsUpdatingCashfreeToggle] = useState<boolean>(false);
+  const [pratibimbStageOpen, setPratibimbStageOpen] = useState<boolean>(true);
+  const [isUpdatingPratibimbToggle, setIsUpdatingPratibimbToggle] = useState<boolean>(false);
   const [eveningsConfig, setEveningsConfig] = useState<any[]>(initialEveningsConfig);
   const [sponsorsList, setSponsorsList] = useState<any[]>([]);
   const [galleryList, setGalleryList] = useState<any[]>([
@@ -669,8 +671,10 @@ export default function AdminDashboard() {
       // 5c. Fetch Member Contribution Public Toggle from Cloud
       const incMem = await fetchCloudConfig<boolean>("include_member_contributions", true);
       const pgLive = await fetchCloudConfig<boolean>("cashfree_gateway_live", false);
+      const stageOpen = await fetchCloudConfig<boolean>("pratibimb_stage_open", true);
       setCashfreeLiveEnabled(Boolean(pgLive));
       setIncludeMemberContributions(incMem !== false);
+      setPratibimbStageOpen(stageOpen !== false);
 
       // 5d. Fetch Sponsorship Tier Packages from Cloud
       const cloudTiers = await fetchStoredSponsorshipTiers();
@@ -760,14 +764,21 @@ export default function AdminDashboard() {
 
       const savedIncMem = localStorage.getItem("pbel_include_member_contributions");
       const savedPgLive = localStorage.getItem("pbel_cashfree_gateway_live");
+      const savedStageOpen = localStorage.getItem("pbel_pratibimb_stage_open");
       if (savedPgLive !== null) {
         try { setCashfreeLiveEnabled(JSON.parse(savedPgLive)); } catch (e) {}
       }
       if (savedIncMem !== null) {
         setIncludeMemberContributions(JSON.parse(savedIncMem) !== false);
       }
+      if (savedStageOpen !== null) {
+        try { setPratibimbStageOpen(JSON.parse(savedStageOpen) !== false); } catch (e) {}
+      }
       fetchCloudConfig<boolean>("include_member_contributions", true).then((inc) => {
         setIncludeMemberContributions(inc !== false);
+      });
+      fetchCloudConfig<boolean>("pratibimb_stage_open", true).then((open) => {
+        setPratibimbStageOpen(open !== false);
       });
 
       setBranding(getStoredBranding());
@@ -1702,6 +1713,30 @@ export default function AdminDashboard() {
       alert("Failed to update toggle. Please check your connection.");
     } finally {
       setIsUpdatingMemberToggle(false);
+    }
+  };
+
+  // PRATIBIMB STAGE REGISTRATION TOGGLE HANDLER
+  const handleTogglePratibimbStage = async () => {
+    setIsUpdatingPratibimbToggle(true);
+    const nextVal = !pratibimbStageOpen;
+    setPratibimbStageOpen(nextVal);
+    try {
+      await saveCloudConfig("pratibimb_stage_open", nextVal);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("pbel_pratibimb_stage_open", JSON.stringify(nextVal));
+        window.dispatchEvent(new Event("pbel_config_updated"));
+      }
+      alert(
+        nextVal
+          ? "🎭 Pratibimb Cultural Stage Registrations are now OPEN! Residents can submit acts on /programs#register-performance."
+          : "🔒 Pratibimb Cultural Stage Registrations are now CLOSED (Opening Soon message displayed)."
+      );
+    } catch (err) {
+      console.error("Error updating Pratibimb stage registration status:", err);
+      alert("Failed to update status. Please check your connection.");
+    } finally {
+      setIsUpdatingPratibimbToggle(false);
     }
   };
 
@@ -5349,7 +5384,7 @@ function decodeCategoryDescription(desc?: string) {
               
               {/* Pratibimb Timing & Slots Config */}
               <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-4 mb-6">
                   <div>
                     <h3 className="font-heading text-xl font-bold text-primary">
                       Pratibimb Evening Slots &amp; Timings Configuration
@@ -5357,6 +5392,39 @@ function decodeCategoryDescription(desc?: string) {
                     <p className="text-xs text-gray-500 mt-0.5">
                       Set daily evening start/end timings, maximum resident slot capacities, and manage PSS Flagship Headliners.
                     </p>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 bg-amber-50/70 border border-amber-200/80 p-2 rounded-2xl">
+                    <div className="text-right">
+                      <div className="text-xs font-bold text-gray-900">
+                        Resident Registration Form
+                      </div>
+                      <div className="text-[10px] text-gray-500">
+                        {pratibimbStageOpen ? "Public form is LIVE" : "Locked (Opening Soon)"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleTogglePratibimbStage}
+                      disabled={isUpdatingPratibimbToggle}
+                      className={`text-xs font-bold px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                        pratibimbStageOpen
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white ring-2 ring-emerald-400/40"
+                          : "bg-gray-800 hover:bg-gray-900 text-white"
+                      }`}
+                      title="Toggle resident stage registrations between Open and Closed"
+                    >
+                      {pratibimbStageOpen ? (
+                        <>
+                          <CheckCircle2 size={14} />
+                          <span>Status: Open &amp; Active</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={14} />
+                          <span>Status: Closed</span>
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
 
@@ -5442,6 +5510,29 @@ function decodeCategoryDescription(desc?: string) {
                     Registered Resident Stage Performers ({performances.length})
                   </h3>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleTogglePratibimbStage}
+                      disabled={isUpdatingPratibimbToggle}
+                      className={`text-xs font-bold px-3 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 ${
+                        pratibimbStageOpen
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                          : "bg-gray-800 hover:bg-gray-900 text-white"
+                      }`}
+                      title="Toggle resident stage registrations between Open and Closed"
+                    >
+                      {pratibimbStageOpen ? (
+                        <>
+                          <CheckCircle2 size={13} />
+                          <span>Public Slots: LIVE</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock size={13} />
+                          <span>Public Slots: CLOSED</span>
+                        </>
+                      )}
+                    </button>
                     <button 
                       onClick={() => setIsEmceeModalOpen(true)} 
                       className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition"

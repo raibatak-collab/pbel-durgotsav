@@ -214,11 +214,11 @@ export function FestiveHero({ sponsors }: { sponsors?: TopSponsorItem[] | null }
               <span>Competitions (Open)</span>
             </Link>
             <Link
-              href="/programs"
-              className="inline-flex items-center gap-1.5 bg-amber-400/20 hover:bg-amber-400/30 border border-amber-400/40 text-amber-200 hover:text-white px-3 py-1.5 rounded-full text-xs font-semibold transition backdrop-blur-md shrink-0 whitespace-nowrap"
+              href="/programs#register-performance"
+              className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-400/20 to-orange-400/20 hover:bg-amber-400/30 border border-amber-400/50 text-amber-200 hover:text-white px-3.5 py-1.5 rounded-full text-xs font-bold transition backdrop-blur-md shrink-0 whitespace-nowrap shadow-xs"
             >
               <Drama size={12} className="text-amber-300 shrink-0" />
-              <span>Pratibimb Stage</span>
+              <span>Pratibimb Stage (Open)</span>
             </Link>
             <Link
               href="/volunteer"

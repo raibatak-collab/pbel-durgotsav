@@ -386,9 +386,13 @@ export default async function Home() {
                 <Music size={17} />
                 <span>Explore Stage Schedule &amp; Line-Up →</span>
               </Link>
-              <span className="inline-flex items-center gap-1.5 bg-amber-400/20 text-amber-200 border border-amber-400/30 text-xs font-semibold px-4 py-2.5 rounded-full backdrop-blur-xs">
-                <span>⏳ Slot Registrations Opening Soon</span>
-              </span>
+              <Link
+                href="/programs#register-performance"
+                className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs sm:text-sm px-6 py-3 rounded-full transition shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+              >
+                <Sparkles size={15} />
+                <span>Register Stage Act (Open Now) →</span>
+              </Link>
             </div>
           </div>
         </div>

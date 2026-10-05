@@ -4220,6 +4220,45 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 95: Pratibimb Cultural Stage Live Public Registrations & Admin Control', () => {
+    it('should verify programs page implements dynamic isPratibimbStageOpen state with cloud hydration and event listener', () => {
+      const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
+      assert.ok(progSrc.includes('isPratibimbStageOpen'), 'Must declare isPratibimbStageOpen state');
+      assert.ok(progSrc.includes('fetchCloudConfig<boolean>("pratibimb_stage_open", true)'), 'Must hydrate pratibimb_stage_open from cloud config');
+      assert.ok(progSrc.includes('pbel_config_updated'), 'Must listen for pbel_config_updated events');
+      assert.ok(progSrc.includes('Pratibimb 2026 Stage Registrations are LIVE!'), 'Must display live banner when open');
+      assert.ok(progSrc.includes('Review & Submit Performance Slot →'), 'Must offer active submission button when open');
+      assert.ok(progSrc.includes('disabled={!isPratibimbStageOpen}'), 'Form inputs must be conditionally enabled by stage open state');
+      assert.ok(progSrc.includes('id="register-performance"'), 'Must have target anchor id register-performance');
+      assert.ok(progSrc.includes('scroll-mt-24 sm:scroll-mt-28'), 'Must include scroll offset for header clearance');
+    });
+
+    it('should verify homepage Section 5 directs residents to active stage registration', () => {
+      const homeSrc = fs.readFileSync('src/app/page.tsx', 'utf8');
+      assert.ok(homeSrc.includes('href="/programs#register-performance"'), 'Homepage must link directly to #register-performance');
+      assert.ok(homeSrc.includes('Register Stage Act (Open Now) →'), 'Homepage CTA must indicate registration is open now');
+    });
+
+    it('should verify FestiveHero secondary nav pills include Pratibimb Stage (Open) link', () => {
+      const heroSrc = fs.readFileSync('src/components/FestiveHero.tsx', 'utf8');
+      assert.ok(heroSrc.includes('href="/programs#register-performance"'), 'FestiveHero must link to #register-performance');
+      assert.ok(heroSrc.includes('Pratibimb Stage (Open)'), 'Hero pill must display Pratibimb Stage (Open)');
+    });
+
+    it('should verify Admin Console provides 1-click toggle for Pratibimb Stage registrations', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('pratibimbStageOpen'), 'Admin console must maintain pratibimbStageOpen state');
+      assert.ok(adminSrc.includes('handleTogglePratibimbStage'), 'Admin console must provide handleTogglePratibimbStage handler');
+      assert.ok(adminSrc.includes('saveCloudConfig("pratibimb_stage_open"'), 'Must persist toggle state to cloud config');
+      assert.ok(adminSrc.includes('pbel_config_updated'), 'Must broadcast pbel_config_updated on toggle');
+    });
+
+    it('should verify SEED_SNAPSHOT contains pratibimb_stage_open: true for offline fallback', () => {
+      const seedSrc = fs.readFileSync('src/data/seedSnapshot.ts', 'utf8');
+      assert.ok(seedSrc.includes('pratibimb_stage_open: true'), 'Seed snapshot must have pratibimb_stage_open initialized to true');
+    });
+  });
+
 });
 
 

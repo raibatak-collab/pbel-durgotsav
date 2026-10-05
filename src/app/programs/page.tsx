@@ -33,6 +33,7 @@ import { generateGoogleCalendarUrl, generateIcsContent, buildUpiPayUri } from "@
 import { getStoredTowers, fetchStoredTowers, TowerDefinition } from "@/config/towers";
 import { getStoredSchedule, fetchStoredSchedule, DaySchedule, getStoredHeroChips, fetchStoredHeroChips, HeroHighlightChip } from "@/config/schedule";
 import { CulturalEventsRegistration } from "@/components/CulturalEventsRegistration";
+import { fetchCloudConfig } from "@/utils/cloudConfig";
 
 export default function ProgramsPage() {
   const [selectedDay, setSelectedDay] = useState<string>("sashti");
@@ -54,6 +55,7 @@ export default function ProgramsPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isPratibimbStageOpen, setIsPratibimbStageOpen] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showDonationPromptModal, setShowDonationPromptModal] = useState(false);
   const [donationModalStep, setDonationModalStep] = useState<"prompt" | "qr_code">("prompt");
@@ -107,6 +109,11 @@ export default function ProgramsPage() {
           setHeroChips(cloudChips);
         }
       });
+
+      // Hydrate Pratibimb Cultural Stage registration status from Cloud Config
+      fetchCloudConfig<boolean>("pratibimb_stage_open", true).then((open: boolean) => {
+        setIsPratibimbStageOpen(open !== false);
+      });
     } catch (_) {}
 
     const handleTowerUpdate = () => {
@@ -121,9 +128,21 @@ export default function ProgramsPage() {
       setHeroChips(getStoredHeroChips());
     };
 
+    const handleConfigUpdate = (e: Event) => {
+      const custom = e as CustomEvent;
+      if (custom.detail?.key === "pratibimb_stage_open") {
+        setIsPratibimbStageOpen(custom.detail.value !== false);
+      } else {
+        fetchCloudConfig<boolean>("pratibimb_stage_open", true).then((open: boolean) => {
+          setIsPratibimbStageOpen(open !== false);
+        });
+      }
+    };
+
     window.addEventListener("pbel_towers_updated", handleTowerUpdate);
     window.addEventListener("pbel_schedule_updated", handleScheduleUpdate);
     window.addEventListener("pbel_schedule_chips_updated", handleChipsUpdate);
+    window.addEventListener("pbel_config_updated", handleConfigUpdate);
 
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -160,6 +179,7 @@ export default function ProgramsPage() {
       window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
       window.removeEventListener("pbel_schedule_updated", handleScheduleUpdate);
       window.removeEventListener("pbel_schedule_chips_updated", handleChipsUpdate);
+      window.removeEventListener("pbel_config_updated", handleConfigUpdate);
     };
   }, []);
 
@@ -380,7 +400,7 @@ export default function ProgramsPage() {
               className="inline-flex items-center justify-center gap-1.5 bg-gradient-to-r from-[#8B1024] to-[#680A1A] hover:from-[#A5132B] hover:to-[#8B1024] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm self-stretch sm:self-auto"
             >
               <Music size={14} className="text-amber-300" />
-              <span>🎤 Stage Acts ↓</span>
+              <span>🎤 Stage Acts {isPratibimbStageOpen ? "(Open)" : ""} ↓</span>
             </a>
           </div>
 
@@ -658,13 +678,23 @@ export default function ProgramsPage() {
                   <Palette size={15} />
                   <span>Register for Cultural Competitions (5 Events Open)</span>
                 </a>
-                <a
-                  href="#register-performance"
-                  className="w-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 py-2.5 rounded-2xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-2"
-                >
-                  <Clock size={14} className="text-primary" />
-                  <span>Stage Slot Bookings Opening Soon</span>
-                </a>
+                {isPratibimbStageOpen ? (
+                  <a
+                    href="#register-performance"
+                    className="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white py-2.5 rounded-2xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-2"
+                  >
+                    <Music size={14} />
+                    <span>Register for Stage Acts (Slots Open)</span>
+                  </a>
+                ) : (
+                  <a
+                    href="#register-performance"
+                    className="w-full bg-amber-100 hover:bg-amber-200 text-amber-950 border border-amber-300 py-2.5 rounded-2xl font-bold text-xs transition shadow-xs flex items-center justify-center gap-2"
+                  >
+                    <Clock size={14} className="text-primary" />
+                    <span>Stage Slot Bookings Opening Soon</span>
+                  </a>
+                )}
               </div>
 
             </div>
@@ -677,22 +707,37 @@ export default function ProgramsPage() {
         {/* 3.5. PRATIBIMB CULTURAL COMPETITIONS REGISTRATION HUB */}
         <CulturalEventsRegistration />
 
-        {/* 4. PRATIBIMB PERFORMANCE REGISTRATION FORM (CURRENTLY DISABLED - OPENING SOON) */}
-        <div id="register-performance" className="mt-8 bg-white rounded-3xl p-6 sm:p-10 border border-amber-900/15 shadow-xl">
+        {/* 4. PRATIBIMB PERFORMANCE REGISTRATION FORM */}
+        <div id="register-performance" className="mt-8 bg-white rounded-3xl p-6 sm:p-10 border border-amber-900/15 shadow-xl scroll-mt-24 sm:scroll-mt-28">
           
-          {/* Opening Soon Notification Banner */}
-          <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/25 to-amber-500/15 border-2 border-amber-400/80 rounded-3xl p-6 text-center space-y-2.5 shadow-sm backdrop-blur-xs mb-8">
-            <div className="inline-flex items-center gap-2 bg-amber-400/30 text-amber-900 text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider border border-amber-300">
-              <Clock size={14} className="text-primary animate-pulse" />
-              <span>Status: Registrations Opening Soon</span>
+          {/* Registration Status Banner */}
+          {isPratibimbStageOpen ? (
+            <div className="bg-gradient-to-r from-emerald-50 via-amber-50 to-emerald-50 border-2 border-emerald-400/80 rounded-3xl p-6 text-center space-y-2.5 shadow-sm backdrop-blur-xs mb-8">
+              <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-800 text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider border border-emerald-300">
+                <Sparkles size={14} className="text-emerald-700 animate-pulse" />
+                <span>Status: Registrations Open &amp; Active</span>
+              </div>
+              <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900">
+                Pratibimb 2026 Stage Registrations are LIVE! 🎭
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600 max-w-xl mx-auto leading-relaxed">
+                Performance slot booking for Solo &amp; Group Dance, Classical/Bollywood Vocals, Drama (Natok), and Instrumental acts is now officially open for PBEL City residents! Reserve your stage slot below.
+              </p>
             </div>
-            <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900">
-              Pratibimb 2026 Stage Registrations Opening Soon!
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-600 max-w-xl mx-auto leading-relaxed">
-              Performance slot booking for Solo &amp; Group Dance, Classical/Bollywood Vocals, Drama, and Instrumental acts will open shortly. Please check back soon or review the 6-day cultural evening themes above!
-            </p>
-          </div>
+          ) : (
+            <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/25 to-amber-500/15 border-2 border-amber-400/80 rounded-3xl p-6 text-center space-y-2.5 shadow-sm backdrop-blur-xs mb-8">
+              <div className="inline-flex items-center gap-2 bg-amber-400/30 text-amber-900 text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider border border-amber-300">
+                <Clock size={14} className="text-primary animate-pulse" />
+                <span>Status: Registrations Opening Soon</span>
+              </div>
+              <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900">
+                Pratibimb 2026 Stage Registrations Opening Soon!
+              </h3>
+              <p className="text-xs sm:text-sm text-gray-600 max-w-xl mx-auto leading-relaxed">
+                Performance slot booking for Solo &amp; Group Dance, Classical/Bollywood Vocals, Drama, and Instrumental acts will open shortly. Please check back soon or review the 6-day cultural evening themes above!
+              </p>
+            </div>
+          )}
 
           <div className="text-center max-w-2xl mx-auto mb-8">
             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 bg-amber-100/60 px-3 py-1 rounded-full uppercase tracking-wider mb-2">
@@ -744,7 +789,7 @@ export default function ProgramsPage() {
               </div>
             </div>
           ) : (
-            <form onSubmit={handlePreRegister} className="max-w-3xl mx-auto space-y-6 text-xs sm:text-sm opacity-75">
+            <form onSubmit={handlePreRegister} className={`max-w-3xl mx-auto space-y-6 text-xs sm:text-sm ${isPratibimbStageOpen ? "" : "opacity-75"}`}>
               {errorMessage && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-2xl text-xs sm:text-sm font-medium flex items-center gap-2">
                   <span>⚠️</span>
@@ -756,26 +801,30 @@ export default function ProgramsPage() {
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Preferred Cultural Evening *</label>
                   <select
-                    disabled
+                    disabled={!isPratibimbStageOpen}
                     value={formData.eveningDate}
                     onChange={(e) => setFormData({ ...formData, eveningDate: e.target.value })}
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
+                    className={`w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none ${
+                      isPratibimbStageOpen ? "bg-white cursor-pointer" : "bg-gray-50 cursor-not-allowed"
+                    }`}
                   >
                     <option value="2026-10-15">15 Oct (Panchami Evening - Agomoni)</option>
                     <option value="2026-10-16">16 Oct (Sashti Evening - Retro Rock Night)</option>
                     <option value="2026-10-17">17 Oct (Saptami Evening - Dance Drama)</option>
                     <option value="2026-10-18">18 Oct (Ashtami Evening - Grand Drama)</option>
-                    <option value="2026-10-19">19 Oct (Nabami Evening - Finale & Awards)</option>
+                    <option value="2026-10-19">19 Oct (Nabami Evening - Finale &amp; Awards)</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Performance Genre *</label>
                   <select
-                    disabled
+                    disabled={!isPratibimbStageOpen}
                     value={formData.performanceType}
                     onChange={(e) => setFormData({ ...formData, performanceType: e.target.value })}
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
+                    className={`w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none ${
+                      isPratibimbStageOpen ? "bg-white cursor-pointer" : "bg-gray-50 cursor-not-allowed"
+                    }`}
                   >
                     <option value="Song">Song / Vocals (Classical / Folk / Bollywood)</option>
                     <option value="Dance">Dance (Classical / Contemporary / Fusion)</option>
@@ -788,12 +837,14 @@ export default function ProgramsPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Format & Slot Duration *</label>
+                  <label className="block font-semibold text-gray-700 mb-1">Format &amp; Slot Duration *</label>
                   <select
-                    disabled
+                    disabled={!isPratibimbStageOpen}
                     value={formData.format}
                     onChange={(e) => setFormData({ ...formData, format: e.target.value })}
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
+                    className={`w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none ${
+                      isPratibimbStageOpen ? "bg-white cursor-pointer" : "bg-gray-50 cursor-not-allowed"
+                    }`}
                   >
                     <option value="Solo (3-5 mins)">Solo Performance (3-5 mins)</option>
                     <option value="Duet (4-6 mins)">Duet Performance (4-6 mins)</option>
@@ -805,25 +856,30 @@ export default function ProgramsPage() {
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Song / Track / Act Name</label>
                   <input
-                    disabled
+                    disabled={!isPratibimbStageOpen}
                     type="text"
                     value={formData.songName}
                     onChange={(e) => setFormData({ ...formData, songName: e.target.value })}
                     placeholder="e.g. Dhitang Dhitang Bole / Kathak Fusion"
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
+                    className={`w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none ${
+                      isPratibimbStageOpen ? "bg-white" : "bg-gray-50 cursor-not-allowed"
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-gray-700 mb-1">Participant Names & Age Groups *</label>
+                <label className="block font-semibold text-gray-700 mb-1">Participant Names &amp; Age Groups *</label>
                 <textarea
-                  disabled
+                  disabled={!isPratibimbStageOpen}
+                  required
                   rows={2}
                   value={formData.participantNames}
                   onChange={(e) => setFormData({ ...formData, participantNames: e.target.value })}
                   placeholder="e.g. Suman (Adult), Rahul (10 yrs), Ananya (8 yrs)"
-                  className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
+                  className={`w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none ${
+                    isPratibimbStageOpen ? "bg-white" : "bg-gray-50 cursor-not-allowed"
+                  }`}
                 />
               </div>
 
@@ -831,20 +887,24 @@ export default function ProgramsPage() {
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">Contact Lead Person *</label>
                   <input
-                    disabled
+                    disabled={!isPratibimbStageOpen}
                     type="text"
+                    required
                     value={formData.contactName}
                     onChange={(e) => setFormData({ ...formData, contactName: e.target.value })}
                     placeholder="Your Full Name"
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none cursor-not-allowed"
+                    className={`w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none ${
+                      isPratibimbStageOpen ? "bg-white" : "bg-gray-50 cursor-not-allowed"
+                    }`}
                   />
                 </div>
 
                 <div>
                   <label className="block font-semibold text-gray-700 mb-1">WhatsApp Phone (10 Digits) *</label>
                   <input
-                    disabled
+                    disabled={!isPratibimbStageOpen}
                     type="tel"
+                    required
                     inputMode="numeric"
                     maxLength={10}
                     value={formData.phone}
@@ -853,7 +913,9 @@ export default function ProgramsPage() {
                       setFormData({ ...formData, phone: val });
                     }}
                     placeholder="10-digit mobile number"
-                    className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none font-mono cursor-not-allowed"
+                    className={`w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-mono ${
+                      isPratibimbStageOpen ? "bg-white" : "bg-gray-50 cursor-not-allowed"
+                    }`}
                   />
                 </div>
               </div>
@@ -865,10 +927,12 @@ export default function ProgramsPage() {
                     <Building size={13} className="text-primary" /> Select PBEL Tower *
                   </label>
                   <select
-                    disabled
+                    disabled={!isPratibimbStageOpen}
                     value={selectedTower}
                     onChange={(e) => setSelectedTower(e.target.value)}
-                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold text-gray-900 cursor-not-allowed"
+                    className={`w-full p-2.5 border border-amber-300/80 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-semibold text-gray-900 ${
+                      isPratibimbStageOpen ? "bg-white cursor-pointer" : "bg-gray-50 cursor-not-allowed"
+                    }`}
                   >
                     {towersList.map((t) => (
                       <option key={t.id} value={t.fullName || `${t.tower} (${t.name})`}>
@@ -884,8 +948,9 @@ export default function ProgramsPage() {
                     Flat / Unit Number (e.g. 402, 1204, or G01) *
                   </label>
                   <input
-                    disabled
+                    disabled={!isPratibimbStageOpen}
                     type="text"
+                    required
                     maxLength={8}
                     value={flatUnit}
                     onChange={(e) => {
@@ -893,18 +958,31 @@ export default function ProgramsPage() {
                       setFlatUnit(val);
                     }}
                     placeholder="e.g. 402, 1204, or G01"
-                    className="w-full p-2.5 border border-amber-300/80 rounded-xl bg-gray-50 focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-bold font-mono cursor-not-allowed"
+                    className={`w-full p-2.5 border border-amber-300/80 rounded-xl focus:ring-2 focus:ring-primary outline-none text-xs sm:text-sm font-bold font-mono ${
+                      isPratibimbStageOpen ? "bg-white" : "bg-gray-50 cursor-not-allowed"
+                    }`}
                   />
                 </div>
               </div>
 
-              <button
-                type="button"
-                disabled
-                className="w-full bg-gray-200 text-gray-500 font-bold text-sm sm:text-base py-4 rounded-2xl cursor-not-allowed shadow-none flex items-center justify-center gap-2 border border-gray-300"
-              >
-                <span>🔒 Pratibimb Stage Registrations Opening Soon</span>
-              </button>
+              {isPratibimbStageOpen ? (
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] hover:from-[#E5A730] hover:to-[#A77317] text-white font-bold text-sm sm:text-base py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Music size={20} />
+                  <span>{isSubmitting ? "Submitting Registration..." : "Review & Submit Performance Slot →"}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className="w-full bg-gray-200 text-gray-500 font-bold text-sm sm:text-base py-4 rounded-2xl cursor-not-allowed shadow-none flex items-center justify-center gap-2 border border-gray-300"
+                >
+                  <span>🔒 Pratibimb Stage Registrations Opening Soon</span>
+                </button>
+              )}
 
             </form>
           )}

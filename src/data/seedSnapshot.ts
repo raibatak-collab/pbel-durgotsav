@@ -25,6 +25,7 @@ export interface SeedSnapshotData {
   announcement: string;
   cashfree_gateway_live: boolean;
   include_member_contributions: boolean;
+  pratibimb_stage_open?: boolean;
   schedule_hero_chips: any[];
   [key: string]: any;
 }
@@ -2215,6 +2216,7 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
   announcement: "🍲 Anandamela Stall Registrations are now OPEN! (Strictly 15 Stalls • ₹1,000/table) • Tap to Register →",
   cashfree_gateway_live: true,
   include_member_contributions: true,
+  pratibimb_stage_open: true,
   schedule_hero_chips: [
   {
     "id": "chip-1",
