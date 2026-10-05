@@ -38,27 +38,63 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
   useEffect(() => {
     let isMounted = true;
 
-    async function loadSponsors() {
+    // 1. Instant local cache hydration if available
+    try {
+      const saved = localStorage.getItem("pbel_sponsors_list");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
+          setSponsors(parsed);
+        }
+      }
+    } catch (_) {}
+
+    async function loadSponsors(forceRefresh = false) {
       try {
-        // 1. Try fetching from cloud config
-        const cloud = await fetchCloudConfig<TopSponsorItem[]>("sponsors", []);
+        const [cloud, dbResult] = await Promise.all([
+          fetchCloudConfig<TopSponsorItem[]>("sponsors", [], { forceRefresh }),
+          supabase
+            .from("sponsors")
+            .select("id, name, tier, logo_url, website, is_active")
+            .eq("is_active", true)
+            .order("created_at", { ascending: false }),
+        ]);
+
+        const dbSponsors = dbResult.data || [];
+        let merged: TopSponsorItem[] = [];
+
         if (cloud && Array.isArray(cloud) && cloud.length > 0) {
-          if (isMounted) {
-            setSponsors(cloud);
-            localStorage.setItem("pbel_sponsors_list", JSON.stringify(cloud));
+          merged = [...cloud];
+          if (dbSponsors && dbSponsors.length > 0) {
+            for (const dbItem of dbSponsors) {
+              const idx = merged.findIndex(
+                (c) => c.id === dbItem.id || c.name?.trim().toLowerCase() === dbItem.name?.trim().toLowerCase()
+              );
+              if (idx >= 0) {
+                merged[idx].id = dbItem.id;
+                if (!merged[idx].logo_url && dbItem.logo_url) {
+                  merged[idx].logo_url = dbItem.logo_url;
+                }
+                if (dbItem.website && !merged[idx].website) {
+                  merged[idx].website = dbItem.website;
+                }
+              } else {
+                merged.push(dbItem as any);
+              }
+            }
           }
-          return;
+        } else if (dbSponsors && dbSponsors.length > 0) {
+          merged = dbSponsors as any;
         }
 
-        // 2. Fallback to Supabase direct table query
-        const { data: dbSponsors } = await supabase
-          .from("sponsors")
-          .select("id, name, tier, logo_url, website, is_active")
-          .eq("is_active", true);
-
-        if (dbSponsors && dbSponsors.length > 0 && isMounted) {
-          setSponsors(dbSponsors);
-          localStorage.setItem("pbel_sponsors_list", JSON.stringify(dbSponsors));
+        if (isMounted) {
+          if (merged.length > 0) {
+            setSponsors(merged);
+            localStorage.setItem("pbel_sponsors_list", JSON.stringify(merged));
+          } else if (cloud && Array.isArray(cloud) && cloud.length === 0 && (!dbSponsors || dbSponsors.length === 0)) {
+            setSponsors([]);
+            localStorage.removeItem("pbel_sponsors_list");
+          }
         }
       } catch (err) {
         console.error("TopSponsorRibbon loading error:", err);
@@ -67,6 +103,10 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
 
     // Only fetch from Supabase if initial sponsors were not provided by SSR
     if (!initialSponsors || initialSponsors.length === 0) {
+      loadSponsors();
+    } else {
+      // Live background client hydration for Zero-ISR static build:
+      // Ensures real-time admin updates to sponsors reflect without waiting for a new deployment
       loadSponsors();
     }
 
@@ -80,14 +120,42 @@ export function TopSponsorRibbon({ initialSponsors }: { initialSponsors?: TopSpo
           }
         }
       } catch (_) {}
+      loadSponsors(true);
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "pbel_sponsors_list" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && isMounted) {
+            setSponsors(parsed);
+          }
+        } catch (_) {}
+      }
+    };
+
+    const handleConfigUpdate = (e: Event) => {
+      const custom = e as CustomEvent;
+      if (custom.detail?.key === "sponsors") {
+        if (Array.isArray(custom.detail.value) && isMounted) {
+          setSponsors(custom.detail.value);
+        } else {
+          loadSponsors(true);
+        }
+      }
     };
 
     window.addEventListener("pbel_sponsors_updated", handleUpdate);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("pbel_config_updated", handleConfigUpdate);
+
     return () => {
       isMounted = false;
       window.removeEventListener("pbel_sponsors_updated", handleUpdate);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("pbel_config_updated", handleConfigUpdate);
     };
-  }, []);
+  }, [initialSponsors]);
 
   const activeSponsors = sponsors
     .filter((s) => s.is_active !== false)

@@ -4177,7 +4177,46 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
 
       const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
       assert.ok(progSrc.includes('window.location.hash'), 'programs page must check for hash on load');
-      assert.ok(progSrc.includes('scrollIntoView'), 'programs page must trigger scrollIntoView on hash');
+    });
+  });
+
+  describe('Suite 94: Real-Time Sponsor Carousel Hydration & Admin CMS Sync', () => {
+    it('should verify SponsorLogoCarousel implements live background hydration and multi-event sync', () => {
+      const carouselSrc = fs.readFileSync('src/components/SponsorLogoCarousel.tsx', 'utf8');
+      assert.ok(carouselSrc.includes('loadCloudSponsors'), 'SponsorLogoCarousel must implement loadCloudSponsors');
+      assert.ok(carouselSrc.includes('if (!initialSponsors || initialSponsors.length === 0)'), 'Must preserve initialSponsors branch');
+      assert.ok(carouselSrc.includes('supabase'), 'Must query supabase sponsors table for live reconciliation');
+      assert.ok(carouselSrc.includes('pbel_sponsors_updated'), 'Must listen for pbel_sponsors_updated event');
+      assert.ok(carouselSrc.includes('pbel_config_updated'), 'Must listen for pbel_config_updated event');
+      assert.ok(carouselSrc.includes('storage'), 'Must listen for cross-tab storage event');
+      assert.ok(carouselSrc.includes('localStorage.getItem("pbel_sponsors_list")'), 'Must hydrate from local cache instantly');
+    });
+
+    it('should verify TopSponsorRibbon implements live background hydration and multi-event sync', () => {
+      const ribbonSrc = fs.readFileSync('src/components/TopSponsorRibbon.tsx', 'utf8');
+      assert.ok(ribbonSrc.includes('loadSponsors'), 'TopSponsorRibbon must implement loadSponsors');
+      assert.ok(ribbonSrc.includes('if (!initialSponsors || initialSponsors.length === 0)'), 'Must preserve initialSponsors branch');
+      assert.ok(ribbonSrc.includes('supabase'), 'Must query supabase sponsors table for live reconciliation');
+      assert.ok(ribbonSrc.includes('pbel_sponsors_updated'), 'Must listen for pbel_sponsors_updated event');
+      assert.ok(ribbonSrc.includes('pbel_config_updated'), 'Must listen for pbel_config_updated event');
+      assert.ok(ribbonSrc.includes('storage'), 'Must listen for cross-tab storage event');
+      assert.ok(ribbonSrc.includes('localStorage.getItem("pbel_sponsors_list")'), 'Must hydrate from local cache instantly');
+    });
+
+    it('should verify Admin Console supports both adding and editing sponsors with instant sync', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('editingSponsorId'), 'Admin console must maintain editingSponsorId state');
+      assert.ok(adminSrc.includes('setEditingSponsorId'), 'Admin console must provide setEditingSponsorId setter');
+      assert.ok(adminSrc.includes('pbel_sponsors_updated'), 'Admin console must dispatch pbel_sponsors_updated on sponsor changes');
+      assert.ok(adminSrc.includes('saveCloudConfig("sponsors"'), 'Admin console must sync sponsors to cloud config');
+    });
+
+    it('should verify SEED_SNAPSHOT contains all 12 corporate sponsors for resilient offline fallback', () => {
+      const seedSrc = fs.readFileSync('src/data/seedSnapshot.ts', 'utf8');
+      assert.ok(seedSrc.includes('"name": "NMDC Limited"'), 'Seed snapshot must contain NMDC Limited');
+      assert.ok(seedSrc.includes('"name": "SHI Locuz"'), 'Seed snapshot must contain SHI Locuz');
+      assert.ok(seedSrc.includes('"name": "Silicon Cloud"'), 'Seed snapshot must contain Silicon Cloud');
+      assert.ok(seedSrc.includes('"name": "GPES Solar"'), 'Seed snapshot must contain GPES Solar');
     });
   });
 

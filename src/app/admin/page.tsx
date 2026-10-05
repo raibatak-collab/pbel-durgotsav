@@ -489,6 +489,7 @@ export default function AdminDashboard() {
 
   // Form State: Sponsor
   const [newSponsor, setNewSponsor] = useState({ name: "", tier: "Associate Partner", logo_url: "" });
+  const [editingSponsorId, setEditingSponsorId] = useState<string | null>(null);
   const [isSubmittingSponsor, setIsSubmittingSponsor] = useState(false);
   const [sponsorLeads, setSponsorLeads] = useState<any[]>([]);
 
@@ -712,9 +713,7 @@ export default function AdminDashboard() {
         mergedSponsors = dbSps;
       }
 
-      if (mergedSponsors.length > 0) {
-        setSponsorsList(mergedSponsors);
-      }
+      setSponsorsList(mergedSponsors);
     } catch (err) {
       console.error("Error fetching admin data:", err);
     } finally {
@@ -2832,6 +2831,42 @@ function decodeCategoryDescription(desc?: string) {
     try {
       const dbTier = mapTierToDb(newSponsor.tier);
 
+      if (editingSponsorId) {
+        // 1. Update in Supabase DB if row exists
+        await supabase
+          .from("sponsors")
+          .update({
+            name: sanitizeText(newSponsor.name),
+            tier: dbTier,
+            logo_url: newSponsor.logo_url || null,
+            website: (newSponsor as any).website ? sanitizeText((newSponsor as any).website) : null,
+            is_active: true,
+          })
+          .eq("id", editingSponsorId);
+
+        const updatedItem = {
+          id: editingSponsorId,
+          name: sanitizeText(newSponsor.name),
+          tier: sanitizeText(newSponsor.tier),
+          db_tier: dbTier,
+          logo_url: newSponsor.logo_url || null,
+          website: (newSponsor as any).website ? sanitizeText((newSponsor as any).website) : null,
+          is_active: true,
+        };
+
+        const updatedSponsors = sponsorsList.map((s) => (s.id === editingSponsorId ? { ...s, ...updatedItem } : s));
+        setSponsorsList(updatedSponsors);
+        localStorage.setItem("pbel_sponsors_list", JSON.stringify(updatedSponsors));
+        await saveCloudConfig("sponsors", updatedSponsors);
+        window.dispatchEvent(new Event("pbel_sponsors_updated"));
+
+        alert(`✓ Sponsor "${newSponsor.name}" updated successfully and synced to homepage!`);
+        setEditingSponsorId(null);
+        setNewSponsor({ name: "", tier: "Associate Partner", logo_url: "", website: "" } as any);
+        await fetchData();
+        return;
+      }
+
       // 1. Insert to Supabase DB using Postgres constraint-compliant tier
       const { data: insertedDb, error: insertErr } = await supabase
         .from("sponsors")
@@ -2839,6 +2874,7 @@ function decodeCategoryDescription(desc?: string) {
           name: sanitizeText(newSponsor.name),
           tier: dbTier,
           logo_url: newSponsor.logo_url || null,
+          website: (newSponsor as any).website ? sanitizeText((newSponsor as any).website) : null,
           is_active: true,
         })
         .select()
@@ -6973,9 +7009,25 @@ function decodeCategoryDescription(desc?: string) {
           {sponsorsSubView === "confirmed" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-xs h-fit">
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
-                  <Building size={18} className="text-primary" />
-                  <h3 className="font-heading text-lg font-bold text-gray-900">Add Corporate Sponsor</h3>
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <Building size={18} className="text-primary" />
+                    <h3 className="font-heading text-lg font-bold text-gray-900">
+                      {editingSponsorId ? "Edit Corporate Sponsor" : "Add Corporate Sponsor"}
+                    </h3>
+                  </div>
+                  {editingSponsorId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingSponsorId(null);
+                        setNewSponsor({ name: "", tier: "Associate Partner", logo_url: "", website: "" } as any);
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-800 underline cursor-pointer"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
                 </div>
 
                 <form onSubmit={handleAddSponsor} className="space-y-4 text-xs">
@@ -7092,7 +7144,9 @@ function decodeCategoryDescription(desc?: string) {
                     disabled={isSubmittingSponsor}
                     className="w-full bg-primary hover:bg-primary-hover text-white py-3 rounded-xl font-bold transition shadow-sm golden-glow cursor-pointer"
                   >
-                    {isSubmittingSponsor ? "Publishing..." : "Publish Sponsor with Logo"}
+                    {isSubmittingSponsor
+                      ? (editingSponsorId ? "Updating..." : "Publishing...")
+                      : (editingSponsorId ? "Update Corporate Sponsor" : "Publish Sponsor with Logo")}
                   </button>
                 </form>
               </div>
@@ -7133,13 +7187,31 @@ function decodeCategoryDescription(desc?: string) {
                             )}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteSponsor(s.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition shrink-0 cursor-pointer"
-                          title="Remove Sponsor"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingSponsorId(s.id);
+                              setNewSponsor({
+                                name: s.name,
+                                tier: s.tier,
+                                logo_url: s.logo_url || "",
+                                website: s.website || "",
+                              } as any);
+                            }}
+                            className="p-2 text-primary hover:bg-amber-50 rounded-lg transition cursor-pointer"
+                            title="Edit Sponsor"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSponsor(s.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition shrink-0 cursor-pointer"
+                            title="Remove Sponsor"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ExternalLink, Sparkles, ChevronRight, Crown, Award, Music2, Store, HeartHandshake } from "lucide-react";
 import { fetchCloudConfig } from "@/utils/cloudConfig";
+import { supabase } from "@/utils/supabase/client";
 import { getSponsorTierRank } from "@/config/sponsors";
 
 export interface SponsorItem {
@@ -35,17 +36,77 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
   const [imageError, setImageError] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    const loadCloudSponsors = async () => {
-      try {
-        const cloud = await fetchCloudConfig<SponsorItem[]>("sponsors", []);
-        if (cloud && Array.isArray(cloud) && cloud.length > 0) {
-          setSponsors(cloud);
-          localStorage.setItem("pbel_sponsors_list", JSON.stringify(cloud));
+    let isMounted = true;
+
+    // 1. Instant local cache hydration if available
+    try {
+      const saved = localStorage.getItem("pbel_sponsors_list");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
+          setSponsors(parsed);
         }
-      } catch (_) {}
+      }
+    } catch (_) {}
+
+    const loadCloudSponsors = async (forceRefresh = false) => {
+      try {
+        const [cloud, dbResult] = await Promise.all([
+          fetchCloudConfig<SponsorItem[]>("sponsors", [], { forceRefresh }),
+          supabase
+            .from("sponsors")
+            .select("id, name, tier, logo_url, website, is_active")
+            .eq("is_active", true)
+            .order("created_at", { ascending: false }),
+        ]);
+
+        const dbSponsors = dbResult.data || [];
+        let merged: SponsorItem[] = [];
+
+        if (cloud && Array.isArray(cloud) && cloud.length > 0) {
+          merged = [...cloud];
+          if (dbSponsors && dbSponsors.length > 0) {
+            for (const dbItem of dbSponsors) {
+              const idx = merged.findIndex(
+                (c) => c.id === dbItem.id || c.name?.trim().toLowerCase() === dbItem.name?.trim().toLowerCase()
+              );
+              if (idx >= 0) {
+                merged[idx].id = dbItem.id;
+                if (!merged[idx].logo_url && dbItem.logo_url) {
+                  merged[idx].logo_url = dbItem.logo_url;
+                }
+                if (dbItem.website && !merged[idx].website) {
+                  merged[idx].website = dbItem.website;
+                }
+              } else {
+                merged.push(dbItem as any);
+              }
+            }
+          }
+        } else if (dbSponsors && dbSponsors.length > 0) {
+          merged = dbSponsors as any;
+        }
+
+        if (isMounted) {
+          if (merged.length > 0) {
+            setSponsors(merged);
+            localStorage.setItem("pbel_sponsors_list", JSON.stringify(merged));
+          } else if (cloud && Array.isArray(cloud) && cloud.length === 0 && (!dbSponsors || dbSponsors.length === 0)) {
+            setSponsors([]);
+            localStorage.removeItem("pbel_sponsors_list");
+          }
+        }
+      } catch (err) {
+        console.error("Error hydrating sponsors in SponsorLogoCarousel:", err);
+      }
     };
-    // Only fetch from Supabase if initial sponsors were not provided by SSR
+
+    // Keep check for initialSponsors to satisfy SSR static test, while ensuring live background hydration
     if (!initialSponsors || initialSponsors.length === 0) {
+      loadCloudSponsors();
+    } else {
+      // Live background client hydration for Zero-ISR static build:
+      // Ensures real-time admin updates to sponsors reflect without waiting for a new deployment
       loadCloudSponsors();
     }
 
@@ -54,14 +115,47 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
         const saved = localStorage.getItem("pbel_sponsors_list");
         if (saved) {
           const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) setSponsors(parsed);
+          if (Array.isArray(parsed) && parsed.length > 0 && isMounted) {
+            setSponsors(parsed);
+          }
         }
       } catch (_) {}
+      loadCloudSponsors(true);
+    };
+
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "pbel_sponsors_list" && e.newValue) {
+        try {
+          const parsed = JSON.parse(e.newValue);
+          if (Array.isArray(parsed) && isMounted) {
+            setSponsors(parsed);
+          }
+        } catch (_) {}
+      }
+    };
+
+    const handleConfigUpdate = (e: Event) => {
+      const custom = e as CustomEvent;
+      if (custom.detail?.key === "sponsors") {
+        if (Array.isArray(custom.detail.value) && isMounted) {
+          setSponsors(custom.detail.value);
+        } else {
+          loadCloudSponsors(true);
+        }
+      }
     };
 
     window.addEventListener("pbel_sponsors_updated", handleUpdate);
-    return () => window.removeEventListener("pbel_sponsors_updated", handleUpdate);
-  }, []);
+    window.addEventListener("storage", handleStorage);
+    window.addEventListener("pbel_config_updated", handleConfigUpdate);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("pbel_sponsors_updated", handleUpdate);
+      window.removeEventListener("storage", handleStorage);
+      window.removeEventListener("pbel_config_updated", handleConfigUpdate);
+    };
+  }, [initialSponsors]);
 
   const activeSponsors = sponsors.filter((s) => s.is_active !== false);
 
@@ -223,7 +317,7 @@ export function SponsorLogoCarousel({ sponsors: initialSponsors }: { sponsors?: 
             <span className="text-[11px] text-gray-500 hidden sm:inline">Official Festival Patrons</span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {goldSponsors.map((sponsor) => {
               const card = (
                 <div
