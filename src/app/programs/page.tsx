@@ -26,7 +26,8 @@ import {
   Download,
   Building,
   Heart,
-  Palette
+  Palette,
+  AlertCircle
 } from "lucide-react";
 import { supabase } from "@/utils/supabase/client";
 import { generateGoogleCalendarUrl, generateIcsContent, buildUpiPayUri } from "@/utils/security";
@@ -57,10 +58,32 @@ export default function ProgramsPage() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [isPratibimbStageOpen, setIsPratibimbStageOpen] = useState<boolean>(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [performanceCounts, setPerformanceCounts] = useState<Record<string, number>>({});
   const [showDonationPromptModal, setShowDonationPromptModal] = useState(false);
   const [donationModalStep, setDonationModalStep] = useState<"prompt" | "qr_code">("prompt");
   const [selectedOfferingAmount, setSelectedOfferingAmount] = useState<number>(1001);
   const [copiedUpi, setCopiedUpi] = useState(false);
+
+  // Load booked performances count per evening to adhere to admin slot capacity limits
+  const loadPerformanceCounts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("cultural_performances")
+        .select("id, performance_date, cultural_evenings(evening_date)");
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data || []).forEach((p: any) => {
+        const rawDate = p.performance_date || p.cultural_evenings?.evening_date;
+        if (rawDate) {
+          const iso = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
+          counts[iso] = (counts[iso] || 0) + 1;
+        }
+      });
+      setPerformanceCounts(counts);
+    } catch (err) {
+      console.error("Failed to load cultural performance slot counts:", err);
+    }
+  };
 
   const handleDownloadIcs = (event: {
     title: string;
@@ -114,6 +137,9 @@ export default function ProgramsPage() {
       fetchCloudConfig<boolean>("pratibimb_stage_open", true).then((open: boolean) => {
         setIsPratibimbStageOpen(open !== false);
       });
+
+      // Load initial slot counts
+      loadPerformanceCounts();
     } catch (_) {}
 
     const handleTowerUpdate = () => {
@@ -122,10 +148,19 @@ export default function ProgramsPage() {
 
     const handleScheduleUpdate = () => {
       setSchedule(getStoredSchedule());
+      fetchStoredSchedule().then((cloudSched) => {
+        if (cloudSched && cloudSched.length > 0) {
+          setSchedule(cloudSched);
+        }
+      });
     };
 
     const handleChipsUpdate = () => {
       setHeroChips(getStoredHeroChips());
+    };
+
+    const handlePerformancesUpdate = () => {
+      loadPerformanceCounts();
     };
 
     const handleConfigUpdate = (e: Event) => {
@@ -142,6 +177,7 @@ export default function ProgramsPage() {
     window.addEventListener("pbel_towers_updated", handleTowerUpdate);
     window.addEventListener("pbel_schedule_updated", handleScheduleUpdate);
     window.addEventListener("pbel_schedule_chips_updated", handleChipsUpdate);
+    window.addEventListener("pbel_performances_updated", handlePerformancesUpdate);
     window.addEventListener("pbel_config_updated", handleConfigUpdate);
 
     if (typeof window !== "undefined") {
@@ -179,16 +215,25 @@ export default function ProgramsPage() {
       window.removeEventListener("pbel_towers_updated", handleTowerUpdate);
       window.removeEventListener("pbel_schedule_updated", handleScheduleUpdate);
       window.removeEventListener("pbel_schedule_chips_updated", handleChipsUpdate);
+      window.removeEventListener("pbel_performances_updated", handlePerformancesUpdate);
       window.removeEventListener("pbel_config_updated", handleConfigUpdate);
     };
   }, []);
 
   const currentSchedule = schedule.find((s) => s.id === selectedDay) || schedule[1] || schedule[0];
 
-  // Pre-submission check: validate and open gentle donation prompt
+  // Pre-submission check: validate capacity and open gentle donation prompt
   const handlePreRegister = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
+
+    const targetSched = schedule.find((s) => s.isoDate === formData.eveningDate);
+    const maxLimit = targetSched?.culturalEvening.residentSlotsAvailable || 7;
+    const bookedNow = performanceCounts[formData.eveningDate] || 0;
+    if (bookedNow >= maxLimit) {
+      setErrorMessage(`Registration closed: All ${maxLimit} performance slots for ${targetSched?.dayName || formData.eveningDate} are already booked. Please choose another evening or contact the organizers.`);
+      return;
+    }
 
     if (!formData.contactName.trim() || !flatUnit.trim() || !formData.phone.trim()) {
       setErrorMessage("Please enter Contact Name, Flat Number, and 10-digit WhatsApp Phone Number.");
@@ -204,10 +249,13 @@ export default function ProgramsPage() {
     setShowDonationPromptModal(true);
   };
 
-  // Actual registration submission
+  // Actual registration submission with concurrency capacity protection
   const executeSubmitPerformance = async (withDevotionalOffering: boolean = false) => {
     setIsSubmitting(true);
     setErrorMessage(null);
+
+    const targetSched = schedule.find((s) => s.isoDate === formData.eveningDate);
+    const allowedLimit = targetSched?.culturalEvening.residentSlotsAvailable || 7;
 
     const formattedFlat = selectedTower === "Other"
       ? flatUnit.trim() || "Guest Devotee"
@@ -217,20 +265,35 @@ export default function ProgramsPage() {
       // 1. Get or create cultural evening
       let { data: eveningData } = await supabase
         .from("cultural_evenings")
-        .select("id")
+        .select("id, total_slots")
         .eq("evening_date", formData.eveningDate)
         .single();
 
       if (!eveningData) {
         const { data: newEvening } = await supabase
           .from("cultural_evenings")
-          .insert({ evening_date: formData.eveningDate, total_slots: 25 })
-          .select("id")
+          .insert({ evening_date: formData.eveningDate, total_slots: allowedLimit })
+          .select("id, total_slots")
           .single();
         eveningData = newEvening;
       }
 
-      // 2. Insert performance
+      // 2. Concurrency guard: Ensure live count in DB has not exceeded allowed capacity
+      const { count: liveCount } = await supabase
+        .from("cultural_performances")
+        .select("id", { count: "exact", head: true })
+        .eq("evening_id", eveningData?.id);
+
+      if (typeof liveCount === "number" && liveCount >= allowedLimit) {
+        setErrorMessage(
+          `Sorry! The last performance slot for ${targetSched?.dayName || formData.eveningDate} was just booked. No additional entries can be accepted for this evening.`
+        );
+        setShowDonationPromptModal(false);
+        await loadPerformanceCounts();
+        return;
+      }
+
+      // 3. Insert performance
       const { error } = await supabase.from("cultural_performances").insert({
         evening_id: eveningData?.id,
         performance_type: formData.performanceType,
@@ -245,6 +308,11 @@ export default function ProgramsPage() {
       if (error) throw error;
 
       setIsSuccess(true);
+      await loadPerformanceCounts();
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("pbel_performances_updated"));
+      }
 
       if (withDevotionalOffering) {
         // Smoothly transition inside the modal to the verified UPI QR payment screen
@@ -260,6 +328,11 @@ export default function ProgramsPage() {
       setIsSubmitting(false);
     }
   };
+
+  const selectedEveningSchedule = schedule.find((s) => s.isoDate === formData.eveningDate) || currentSchedule;
+  const selectedEveningMaxSlots = selectedEveningSchedule?.culturalEvening?.residentSlotsAvailable || 7;
+  const selectedEveningBooked = performanceCounts[formData.eveningDate] || 0;
+  const isCurrentEveningFull = selectedEveningBooked >= selectedEveningMaxSlots;
 
   return (
     <div className="flex flex-col items-center w-full min-h-screen">
@@ -328,10 +401,10 @@ export default function ProgramsPage() {
                 setSelectedDay(day.id);
                 setFormData((prev) => ({
                   ...prev,
-                  eveningDate: `2026-10-${day.id === "panchami" ? "15" : day.id === "sashti" ? "16" : day.id === "saptami" ? "17" : day.id === "ashtami" ? "18" : day.id === "nabami" ? "19" : "20"}`,
+                  eveningDate: day.isoDate || `2026-10-${day.id === "panchami" ? "15" : day.id === "sashti" ? "16" : day.id === "saptami" ? "17" : day.id === "ashtami" ? "18" : day.id === "nabami" ? "19" : "20"}`,
                 }));
               }}
-              className={`px-4 sm:px-6 py-3 rounded-2xl transition-all shrink-0 flex flex-col items-center border ${
+              className={`px-4 sm:px-6 py-3 rounded-2xl transition-all shrink-0 flex flex-col items-center border cursor-pointer ${
                 selectedDay === day.id
                   ? "bg-primary text-white border-amber-400 shadow-lg scale-105 golden-glow"
                   : "bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:bg-amber-50/50"
@@ -573,9 +646,27 @@ export default function ProgramsPage() {
                   <span className="text-xs font-bold text-amber-900 bg-amber-100 px-3 py-0.5 rounded-full uppercase">
                     Stage Time: {currentSchedule.culturalEvening.time}
                   </span>
-                  <span className="text-[11px] font-bold text-primary">
-                    {currentSchedule.culturalEvening.residentSlotsAvailable} Open Slots
-                  </span>
+                  {(() => {
+                    const maxSlots = currentSchedule.culturalEvening.residentSlotsAvailable || 7;
+                    const booked = performanceCounts[currentSchedule.isoDate] || 0;
+                    const remaining = Math.max(0, maxSlots - booked);
+                    const isFull = booked >= maxSlots;
+                    return (
+                      <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                        isFull
+                          ? "bg-red-100 text-red-700 border border-red-200"
+                          : booked > 0
+                          ? "bg-amber-100 text-amber-900 border border-amber-300"
+                          : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                      }`}>
+                        {isFull
+                          ? `⛔ Full (${booked}/${maxSlots} Booked)`
+                          : booked > 0
+                          ? `${booked} of ${maxSlots} Filled (${remaining} Left)`
+                          : `${maxSlots} Open Slots`}
+                      </span>
+                    );
+                  })()}
                 </div>
                 <h4 className="font-heading text-xl font-bold text-gray-900 mb-2">
                   {currentSchedule.culturalEvening.title}
@@ -799,21 +890,53 @@ export default function ProgramsPage() {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-gray-700 mb-1">Preferred Cultural Evening *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-gray-700">Preferred Cultural Evening *</label>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      isCurrentEveningFull ? "bg-red-100 text-red-700 font-mono" : "bg-emerald-50 text-emerald-700"
+                    }`}>
+                      {isCurrentEveningFull
+                        ? "⛔ Fully Booked"
+                        : `${Math.max(0, selectedEveningMaxSlots - selectedEveningBooked)} of ${selectedEveningMaxSlots} slots left`}
+                    </span>
+                  </div>
                   <select
                     disabled={!isPratibimbStageOpen}
                     value={formData.eveningDate}
                     onChange={(e) => setFormData({ ...formData, eveningDate: e.target.value })}
-                    className={`w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none ${
+                    className={`w-full p-3 border rounded-xl focus:ring-2 focus:ring-primary outline-none transition ${
+                      isCurrentEveningFull ? "border-red-300 bg-red-50/25" : "border-gray-200"
+                    } ${
                       isPratibimbStageOpen ? "bg-white cursor-pointer" : "bg-gray-50 cursor-not-allowed"
                     }`}
                   >
-                    <option value="2026-10-15">15 Oct (Panchami Evening - Agomoni)</option>
-                    <option value="2026-10-16">16 Oct (Sashti Evening - Retro Rock Night)</option>
-                    <option value="2026-10-17">17 Oct (Saptami Evening - Dance Drama)</option>
-                    <option value="2026-10-18">18 Oct (Ashtami Evening - Grand Drama)</option>
-                    <option value="2026-10-19">19 Oct (Nabami Evening - Finale &amp; Awards)</option>
+                    {schedule.map((day) => {
+                      const maxSlots = day.culturalEvening.residentSlotsAvailable || 7;
+                      const booked = performanceCounts[day.isoDate] || 0;
+                      const remaining = Math.max(0, maxSlots - booked);
+                      const isFull = booked >= maxSlots;
+                      return (
+                        <option key={day.id} value={day.isoDate} disabled={isFull}>
+                          {day.date.replace(" 2026", "")} ({day.dayName.replace("Maha ", "")}) — {isFull ? `⛔ FULL (${booked}/${maxSlots} Booked)` : `✓ ${remaining} of ${maxSlots} Slots Left`}
+                        </option>
+                      );
+                    })}
                   </select>
+
+                  {/* Warning banner when selected date is fully booked */}
+                  {isCurrentEveningFull && (
+                    <div className="mt-2.5 p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs flex items-start gap-2 animate-fadeIn">
+                      <AlertCircle size={15} className="text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold">
+                          All {selectedEveningMaxSlots} slots for {selectedEveningSchedule?.dayName || formData.eveningDate} are booked ({selectedEveningBooked}/{selectedEveningMaxSlots}).
+                        </span>
+                        <p className="text-[11px] text-red-700 mt-0.5 leading-relaxed">
+                          Please select another festive evening from the dropdown above. If additional slots are opened by the admin, registrations will immediately unlock.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -966,14 +1089,25 @@ export default function ProgramsPage() {
               </div>
 
               {isPratibimbStageOpen ? (
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] hover:from-[#E5A730] hover:to-[#A77317] text-white font-bold text-sm sm:text-base py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <Music size={20} />
-                  <span>{isSubmitting ? "Submitting Registration..." : "Review & Submit Performance Slot →"}</span>
-                </button>
+                isCurrentEveningFull ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="w-full bg-red-100 text-red-700 border border-red-300 font-bold text-sm sm:text-base py-4 rounded-2xl cursor-not-allowed shadow-none flex items-center justify-center gap-2"
+                  >
+                    <AlertCircle size={18} />
+                    <span>🔒 {selectedEveningSchedule?.dayName || "Selected Evening"} Slots Fully Booked ({selectedEveningBooked}/{selectedEveningMaxSlots})</span>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full bg-gradient-to-r from-[#D99B26] via-[#B8801C] to-[#966714] hover:from-[#E5A730] hover:to-[#A77317] text-white font-bold text-sm sm:text-base py-4 rounded-2xl transition-all shadow-xl hover:shadow-2xl disabled:opacity-50 golden-glow flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Music size={20} />
+                    <span>{isSubmitting ? "Submitting Registration..." : "Review & Submit Performance Slot →"}</span>
+                  </button>
+                )
               ) : (
                 <button
                   type="button"

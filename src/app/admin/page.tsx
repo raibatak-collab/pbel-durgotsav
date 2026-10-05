@@ -418,6 +418,7 @@ export default function AdminDashboard() {
   const [sponsorCopied, setSponsorCopied] = useState<boolean>(false);
   const [volunteers, setVolunteers] = useState<any[]>([]);
   const [performances, setPerformances] = useState<any[]>([]);
+  const [perfDayFilter, setPerfDayFilter] = useState<string>("all");
   const [scheduleDays, setScheduleDays] = useState<DaySchedule[]>(getStoredSchedule());
   const [selectedNirghantoDayId, setSelectedNirghantoDayId] = useState<string>("sashti");
   const [heroChips, setHeroChips] = useState<HeroHighlightChip[]>(getStoredHeroChips());
@@ -2851,8 +2852,57 @@ function decodeCategoryDescription(desc?: string) {
     setScheduleDays(updatedSched);
     await saveStoredSchedule(updatedSched);
 
-    alert(`Stage line-up, PSS Highlight & Featured Acts updated for ${editingEvening.day} and synced to Cloud!`);
+    // Sync total_slots with Supabase cultural_evenings table if row exists or create it
+    try {
+      const targetIsoDate = updatedItem.isoDate || currentSched.find((d) => d.id === targetDayId)?.isoDate;
+      if (targetIsoDate) {
+        const slotLimit = Number(updatedItem.maxResidentSlots) || 8;
+        const { data: existingEvening } = await supabase
+          .from("cultural_evenings")
+          .select("id")
+          .eq("evening_date", targetIsoDate)
+          .maybeSingle();
+
+        if (existingEvening) {
+          await supabase
+            .from("cultural_evenings")
+            .update({ total_slots: slotLimit })
+            .eq("id", existingEvening.id);
+        } else {
+          await supabase
+            .from("cultural_evenings")
+            .insert({ evening_date: targetIsoDate, total_slots: slotLimit });
+        }
+      }
+    } catch (slotErr) {
+      console.warn("Could not sync total_slots with cultural_evenings table:", slotErr);
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("pbel_schedule_updated"));
+      window.dispatchEvent(new Event("pbel_performances_updated"));
+    }
+
+    alert(`Stage line-up, Max Slots (${updatedItem.maxResidentSlots}) & Highlights updated for ${editingEvening.day} and synced to Cloud!`);
     setEditingEvening(null);
+  };
+
+  // PRATIBIMB PERFORMANCE CANCELLATION HANDLER (Frees up slot)
+  const handleDeletePerformance = async (id: string, contactName: string) => {
+    if (!confirm(`Are you sure you want to cancel the registration for "${contactName}"? This will immediately free up 1 slot.`)) return;
+    try {
+      const { error } = await supabase.from("cultural_performances").delete().eq("id", id);
+      if (error) throw error;
+      const updated = performances.filter((p) => p.id !== id);
+      setPerformances(updated);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("pbel_performances_updated"));
+      }
+      alert(`✓ Registration for "${contactName}" removed and performance slot freed up!`);
+    } catch (err) {
+      console.error("Error removing performance:", err);
+      alert("Failed to remove performance slot.");
+    }
   };
 
   // SPONSORS CMS
@@ -5429,77 +5479,151 @@ function decodeCategoryDescription(desc?: string) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                  {eveningsConfig.map((ev) => (
-                    <div key={ev.id} className="bg-gray-50/80 rounded-2xl p-5 border border-gray-200 flex flex-col justify-between relative group hover:border-amber-400 transition">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full uppercase">
-                            {ev.day} ({ev.date})
-                          </span>
-                          {ev.hasPssFlagship && (
-                            <span className="text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
-                              <Star size={10} className="fill-amber-600 text-amber-600" /> PSS Headliner
-                            </span>
-                          )}
-                        </div>
+                  {eveningsConfig.map((ev) => {
+                    const evPerfs = performances.filter((p) => {
+                      const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
+                      return rawDate === ev.isoDate;
+                    });
+                    const bookedCount = evPerfs.length;
+                    const maxSlots = Number(ev.maxResidentSlots) || 8;
+                    const remainingSlots = Math.max(0, maxSlots - bookedCount);
+                    const isFull = bookedCount >= maxSlots;
+                    const percent = Math.min(100, Math.round((bookedCount / maxSlots) * 100));
 
-                        <div>
-                          <h4 className="font-heading text-base font-bold text-gray-900 mb-1">{ev.theme}</h4>
-                          {ev.description && (
-                            <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">{ev.description}</p>
-                          )}
-                        </div>
-                        
-                        <div className="space-y-1.5 text-xs text-gray-600 pt-2.5 border-t border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Stage Timings:</span>
-                            <span className="font-bold text-gray-900">{ev.startTime} - {ev.endTime}</span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-gray-500">Max Resident Slots:</span>
-                            <span className="font-bold text-primary">{ev.maxResidentSlots} Slots</span>
-                          </div>
-                        </div>
-
-                        {/* Featured Acts Lineup */}
-                        {ev.acts && ev.acts.length > 0 && (
-                          <div className="pt-2 border-t border-gray-200/80">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
-                              Featured Acts Lineup ({ev.acts.length}):
-                            </span>
-                            <ul className="space-y-1">
-                              {ev.acts.map((act: string, idx: number) => (
-                                <li key={idx} className="text-[11px] text-gray-700 flex items-start gap-1 font-medium">
-                                  <span className="text-primary font-bold">›</span>
-                                  <span>{act}</span>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-
-                        {/* PSS Flagship Details */}
-                        {ev.hasPssFlagship && (
-                          <div className="p-3 bg-amber-100/70 rounded-xl border border-amber-300 text-xs space-y-0.5">
-                            <span className="text-[10px] font-bold text-amber-900 uppercase block">⭐ Flagship Show:</span>
-                            <p className="font-bold text-gray-900">{ev.pssEventTitle}</p>
-                            <span className="text-amber-800 font-semibold text-[11px] block">{ev.pssEventTime} ({ev.pssDuration})</span>
-                            {ev.pssGenre && <span className="text-gray-600 text-[10px] block italic">{ev.pssGenre}</span>}
-                          </div>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => setEditingEvening({
-                          ...ev,
-                          actsText: (ev.acts || []).join("\n"),
-                        })}
-                        className="mt-4 w-full bg-white hover:bg-amber-50 text-gray-800 hover:text-primary border border-gray-300 hover:border-amber-300 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs"
+                    return (
+                      <div
+                        key={ev.id}
+                        className={`bg-gray-50/80 rounded-2xl p-5 border flex flex-col justify-between relative group transition ${
+                          isFull
+                            ? "border-red-300 bg-red-50/20"
+                            : "border-gray-200 hover:border-amber-400"
+                        }`}
                       >
-                        <Settings size={13} /> Edit Theme, Featured Acts &amp; Headliner
-                      </button>
-                    </div>
-                  ))}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-1 flex-wrap">
+                            <span className="text-xs font-bold bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full uppercase">
+                              {ev.day} ({ev.date})
+                            </span>
+                            <div className="flex items-center gap-1">
+                              {isFull ? (
+                                <span className="text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-300 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                                  <span>⛔</span> FULL ({bookedCount}/{maxSlots})
+                                </span>
+                              ) : bookedCount > 0 ? (
+                                <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
+                                  {bookedCount} of {maxSlots} Filled
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full">
+                                  {maxSlots} Slots Open
+                                </span>
+                              )}
+                              {ev.hasPssFlagship && (
+                                <span className="text-[10px] font-bold bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                  <Star size={10} className="fill-amber-600 text-amber-600" /> PSS Headliner
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div>
+                            <h4 className="font-heading text-base font-bold text-gray-900 mb-1">{ev.theme}</h4>
+                            {ev.description && (
+                              <p className="text-[11px] text-gray-500 line-clamp-2 leading-relaxed">{ev.description}</p>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-2 text-xs text-gray-600 pt-2.5 border-t border-gray-200">
+                            <div className="flex items-center justify-between">
+                              <span className="text-gray-500">Stage Timings:</span>
+                              <span className="font-bold text-gray-900">{ev.startTime} - {ev.endTime}</span>
+                            </div>
+
+                            {/* Live Slot Capacity Tracker & Progress */}
+                            <div className="bg-white p-2.5 rounded-xl border border-gray-200/90 shadow-2xs space-y-1.5">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-semibold text-gray-700">Resident Slots:</span>
+                                <span className="font-bold">
+                                  <span className={bookedCount > 0 ? "text-primary font-black" : "text-gray-700"}>
+                                    {bookedCount}
+                                  </span>
+                                  <span className="text-gray-400"> / </span>
+                                  <span className="text-gray-900">{maxSlots} Filled</span>
+                                  {remainingSlots > 0 ? (
+                                    <span className="text-emerald-700 font-bold ml-1.5">({remainingSlots} left)</span>
+                                  ) : (
+                                    <span className="text-red-600 font-bold ml-1.5">(FULL)</span>
+                                  )}
+                                </span>
+                              </div>
+
+                              {/* Capacity Progress Bar */}
+                              <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all rounded-full ${
+                                    isFull ? "bg-red-500" : percent >= 75 ? "bg-amber-500" : "bg-emerald-500"
+                                  }`}
+                                  style={{ width: `${Math.max(4, percent)}%` }}
+                                />
+                              </div>
+
+                              <div className="flex items-center justify-between text-[10px]">
+                                <span className="text-gray-400">{percent}% Booked</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingEvening({
+                                    ...ev,
+                                    actsText: (ev.acts || []).join("\n"),
+                                  })}
+                                  className="font-bold text-primary hover:underline cursor-pointer"
+                                  title="Increase or decrease max slot capacity for this evening"
+                                >
+                                  Adjust Limit ({maxSlots}) →
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Featured Acts Lineup */}
+                          {ev.acts && ev.acts.length > 0 && (
+                            <div className="pt-2 border-t border-gray-200/80">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block mb-1">
+                                Featured Acts Lineup ({ev.acts.length}):
+                              </span>
+                              <ul className="space-y-1">
+                                {ev.acts.map((act: string, idx: number) => (
+                                  <li key={idx} className="text-[11px] text-gray-700 flex items-start gap-1 font-medium">
+                                    <span className="text-primary font-bold">›</span>
+                                    <span>{act}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* PSS Flagship Details */}
+                          {ev.hasPssFlagship && (
+                            <div className="p-3 bg-amber-100/70 rounded-xl border border-amber-300 text-xs space-y-0.5">
+                              <span className="text-[10px] font-bold text-amber-900 uppercase block">⭐ Flagship Show:</span>
+                              <p className="font-bold text-gray-900">{ev.pssEventTitle}</p>
+                              <span className="text-amber-800 font-semibold text-[11px] block">{ev.pssEventTime} ({ev.pssDuration})</span>
+                              {ev.pssGenre && <span className="text-gray-600 text-[10px] block italic">{ev.pssGenre}</span>}
+                            </div>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => setEditingEvening({
+                            ...ev,
+                            actsText: (ev.acts || []).join("\n"),
+                          })}
+                          className="mt-4 w-full bg-white hover:bg-amber-50 text-gray-800 hover:text-primary border border-gray-300 hover:border-amber-300 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                          <Settings size={13} /> Edit Theme, Slots ({maxSlots}) &amp; Headliner
+                        </button>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -5545,6 +5669,51 @@ function decodeCategoryDescription(desc?: string) {
                   </div>
                 </div>
 
+                {/* Evening Filter Chips */}
+                <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+                  <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">
+                    Filter by Festive Evening:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setPerfDayFilter("all")}
+                    className={`px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                      perfDayFilter === "all"
+                        ? "bg-primary text-white shadow-xs"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    All Days ({performances.length})
+                  </button>
+                  {eveningsConfig.map((ev) => {
+                    const eveningIso = ev.isoDate || ev.date;
+                    const booked = performances.filter((p) => {
+                      const pDate = p.performance_date || (p.cultural_evenings?.evening_date) || "";
+                      return pDate.includes(eveningIso) || (ev.day && (p.day || "").toLowerCase().includes(ev.day.toLowerCase()));
+                    }).length;
+                    const isSelected = perfDayFilter === eveningIso || perfDayFilter === ev.day;
+                    return (
+                      <button
+                        key={ev.id}
+                        type="button"
+                        onClick={() => setPerfDayFilter(isSelected ? "all" : (eveningIso || ev.day))}
+                        className={`px-3 py-1 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                          isSelected
+                            ? "bg-amber-600 text-white shadow-xs"
+                            : "bg-amber-50 text-amber-900 border border-amber-200/80 hover:bg-amber-100"
+                        }`}
+                      >
+                        <span>{ev.day.replace("Maha ", "")}</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-mono ${
+                          isSelected ? "bg-white/25 text-white" : "bg-white text-amber-950 font-bold border border-amber-300/60"
+                        }`}>
+                          {booked}/{ev.maxResidentSlots || 7}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
@@ -5557,10 +5726,17 @@ function decodeCategoryDescription(desc?: string) {
                         <th className="p-3.5">Format</th>
                         <th className="p-3.5">Song / Act</th>
                         <th className="p-3.5">Performers List</th>
+                        <th className="p-3.5 text-right">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {performances.map((p) => (
+                      {performances
+                        .filter((p) => {
+                          if (perfDayFilter === "all") return true;
+                          const pDate = p.performance_date || (p.cultural_evenings?.evening_date) || "";
+                          return pDate.includes(perfDayFilter) || (p.day || "").toLowerCase().includes(perfDayFilter.toLowerCase());
+                        })
+                        .map((p) => (
                         <tr key={p.id} className="hover:bg-gray-50/60">
                           <td className="p-3.5 font-bold text-gray-900">{p.contact_name}</td>
                           <td className="p-3.5 text-gray-700">{p.flat_number}</td>
@@ -5574,12 +5750,29 @@ function decodeCategoryDescription(desc?: string) {
                           <td className="p-3.5 text-gray-600">{p.format}</td>
                           <td className="p-3.5 font-medium text-amber-900">{p.song_name || "N/A"}</td>
                           <td className="p-3.5 max-w-xs truncate text-gray-500">{p.participant_names}</td>
+                          <td className="p-3.5 text-right">
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePerformance(p.id, p.contact_name)}
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
+                              title="Cancel entry and free up 1 slot"
+                            >
+                              <Trash2 size={14} />
+                              <span className="text-[11px] font-semibold">Cancel Slot</span>
+                            </button>
+                          </td>
                         </tr>
                       ))}
-                      {performances.length === 0 && (
+                      {performances.filter((p) => {
+                        if (perfDayFilter === "all") return true;
+                        const pDate = p.performance_date || (p.cultural_evenings?.evening_date) || "";
+                        return pDate.includes(perfDayFilter) || (p.day || "").toLowerCase().includes(perfDayFilter.toLowerCase());
+                      }).length === 0 && (
                         <tr>
-                          <td colSpan={8} className="p-6 text-center text-gray-500">
-                            No resident performance submissions recorded yet.
+                          <td colSpan={9} className="p-6 text-center text-gray-500">
+                            {perfDayFilter === "all" 
+                              ? "No resident performance submissions recorded yet."
+                              : "No resident performance submissions recorded for this selected evening."}
                           </td>
                         </tr>
                       )}
@@ -5985,7 +6178,21 @@ function decodeCategoryDescription(desc?: string) {
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-gray-700 mb-1">Max Resident Performance Slots Capacity *</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block font-semibold text-gray-700">Max Resident Performance Slots Capacity *</label>
+                      {(() => {
+                        const targetIso = editingEvening.isoDate || editingEvening.date;
+                        const booked = performances.filter((p: any) => {
+                          const pDate = p.performance_date || (p.cultural_evenings?.evening_date) || "";
+                          return pDate.includes(targetIso) || (editingEvening.day && (p.day || "").toLowerCase().includes(editingEvening.day.toLowerCase()));
+                        }).length;
+                        return (
+                          <span className="text-xs font-bold text-amber-900 bg-amber-100 px-2.5 py-0.5 rounded-full border border-amber-300">
+                            Currently Booked: {booked} / {editingEvening.maxResidentSlots || 7}
+                          </span>
+                        );
+                      })()}
+                    </div>
                     <input
                       type="number"
                       required
@@ -5995,6 +6202,9 @@ function decodeCategoryDescription(desc?: string) {
                       onChange={(e) => setEditingEvening({ ...editingEvening, maxResidentSlots: Number(e.target.value) })}
                       className="w-full p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-primary outline-none font-bold text-primary"
                     />
+                    <p className="text-[11px] text-gray-500 mt-1">
+                      Adjust this limit to increase or decrease available slots for this evening. If registrations reach this number, the public form automatically locks entries for this date.
+                    </p>
                   </div>
 
                   {/* FEATURED ACTS OF THE EVENING (BULLET POINTS) */}

@@ -4259,6 +4259,44 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 96: Cultural Performance Slot Capacity Governance & Admin Real-Time Counter', () => {
+    it('should verify Admin Console displays live slot utilization counter, progress bar and status badges on evening cards', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('Resident Slots:'), 'Admin evening card must have Resident Slots label');
+      assert.ok(adminSrc.includes('Filled'), 'Admin evening card must show Filled count');
+      assert.ok(adminSrc.includes('left)'), 'Admin evening card must show remaining slots');
+      assert.ok(adminSrc.includes('Adjust Limit ('), 'Admin evening card must provide direct Adjust Limit action');
+      assert.ok(adminSrc.includes('perfDayFilter'), 'Admin must maintain evening filter state');
+      assert.ok(adminSrc.includes('Filter by Festive Evening:'), 'Admin must render filter chips for festive evenings');
+      assert.ok(adminSrc.includes('handleDeletePerformance'), 'Admin must provide slot cancellation handler');
+      assert.ok(adminSrc.includes('pbel_performances_updated'), 'Admin must dispatch pbel_performances_updated on slot changes');
+    });
+
+    it('should verify Admin Edit Evening Modal supports adjusting max slot capacity and displays currently booked count', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('Max Resident Performance Slots Capacity *'), 'Modal must have max slot capacity field');
+      assert.ok(adminSrc.includes('Currently Booked:'), 'Modal must show currently booked count');
+      assert.ok(adminSrc.includes('cultural_evenings') && adminSrc.includes('total_slots'), 'Admin must sync total_slots to cultural_evenings DB table');
+    });
+
+    it('should verify Public Programs Page tracks live slot counts and adheres to admin limits', () => {
+      const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
+      assert.ok(progSrc.includes('performanceCounts'), 'Programs page must declare performanceCounts state');
+      assert.ok(progSrc.includes('loadPerformanceCounts'), 'Programs page must define loadPerformanceCounts');
+      assert.ok(progSrc.includes('pbel_performances_updated'), 'Programs page must listen for pbel_performances_updated events');
+      assert.ok(progSrc.includes('isCurrentEveningFull'), 'Programs page must compute isCurrentEveningFull');
+      assert.ok(progSrc.includes('disabled={isFull}'), 'Dropdown options must be disabled when evening capacity is reached');
+      assert.ok(progSrc.includes('Slots Fully Booked'), 'Submit button must lock when selected evening is fully booked');
+      assert.ok(progSrc.includes('Registration closed: All'), 'Pre-registration check must reject submissions for full evenings');
+    });
+
+    it('should verify Programs Page protects against over-capacity race conditions in executeSubmitPerformance', () => {
+      const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
+      assert.ok(progSrc.includes('count: liveCount') || progSrc.includes('liveCount >= allowedLimit'), 'Must check live DB count against allowed limit before inserting');
+      assert.ok(progSrc.includes('pbel_performances_updated'), 'Must broadcast pbel_performances_updated upon successful booking');
+    });
+  });
+
 });
 
 
