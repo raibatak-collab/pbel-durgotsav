@@ -223,17 +223,17 @@ function createResilientSupabase(base: SupabaseClient<any, any, any>): SupabaseC
           return new Proxy(qb, {
             get(builderTarget, builderProp) {
               if (builderProp === 'select') {
-                return (columns?: string) => {
-                  const res = builderTarget.select(columns);
+                return (...args: any[]) => {
+                  const res = (builderTarget.select as any)(...args);
                   return wrapPostgrestQuery(res, meta);
                 };
               }
               if (builderProp === 'insert' || builderProp === 'update' || builderProp === 'upsert') {
-                return (payload: any) => {
+                return (...args: any[]) => {
                   meta.isMutation = true;
                   meta.mutationType = String(builderProp);
-                  meta.payload = payload;
-                  const res = builderTarget[builderProp](payload);
+                  meta.payload = args[0];
+                  const res = (builderTarget[builderProp] as any)(...args);
                   return wrapPostgrestQuery(res, meta);
                 };
               }

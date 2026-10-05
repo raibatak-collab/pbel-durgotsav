@@ -3126,7 +3126,7 @@ function decodeCategoryDescription(desc?: string) {
 
   // Date formatting helper for Pratibimb Stage Performances
   const formatPerformanceDate = (p: any) => {
-    const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
+    const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || "";
     const dateMap: Record<string, string> = {
       "2026-10-15": "Panchami (15 Oct)",
       "2026-10-16": "Maha Sashti (16 Oct)",
@@ -5481,8 +5481,8 @@ function decodeCategoryDescription(desc?: string) {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                   {eveningsConfig.map((ev) => {
                     const evPerfs = performances.filter((p) => {
-                      const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
-                      return rawDate === ev.isoDate;
+                      const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || "";
+                      return rawDate === ev.isoDate || (ev.date && rawDate.includes(ev.date));
                     });
                     const bookedCount = evPerfs.length;
                     const maxSlots = Number(ev.maxResidentSlots) || 8;
@@ -5688,7 +5688,7 @@ function decodeCategoryDescription(desc?: string) {
                   {eveningsConfig.map((ev) => {
                     const eveningIso = ev.isoDate || ev.date;
                     const booked = performances.filter((p) => {
-                      const pDate = p.performance_date || (p.cultural_evenings?.evening_date) || "";
+                      const pDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || "";
                       return pDate.includes(eveningIso) || (ev.day && (p.day || "").toLowerCase().includes(ev.day.toLowerCase()));
                     }).length;
                     const isSelected = perfDayFilter === eveningIso || perfDayFilter === ev.day;
@@ -5733,7 +5733,7 @@ function decodeCategoryDescription(desc?: string) {
                       {performances
                         .filter((p) => {
                           if (perfDayFilter === "all") return true;
-                          const pDate = p.performance_date || (p.cultural_evenings?.evening_date) || "";
+                          const pDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || "";
                           return pDate.includes(perfDayFilter) || (p.day || "").toLowerCase().includes(perfDayFilter.toLowerCase());
                         })
                         .map((p) => (
@@ -5765,7 +5765,7 @@ function decodeCategoryDescription(desc?: string) {
                       ))}
                       {performances.filter((p) => {
                         if (perfDayFilter === "all") return true;
-                        const pDate = p.performance_date || (p.cultural_evenings?.evening_date) || "";
+                        const pDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || "";
                         return pDate.includes(perfDayFilter) || (p.day || "").toLowerCase().includes(perfDayFilter.toLowerCase());
                       }).length === 0 && (
                         <tr>
@@ -6183,7 +6183,7 @@ function decodeCategoryDescription(desc?: string) {
                       {(() => {
                         const targetIso = editingEvening.isoDate || editingEvening.date;
                         const booked = performances.filter((p: any) => {
-                          const pDate = p.performance_date || (p.cultural_evenings?.evening_date) || "";
+                          const pDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || "";
                           return pDate.includes(targetIso) || (editingEvening.day && (p.day || "").toLowerCase().includes(editingEvening.day.toLowerCase()));
                         }).length;
                         return (

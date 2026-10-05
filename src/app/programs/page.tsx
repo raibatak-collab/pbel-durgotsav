@@ -67,19 +67,55 @@ export default function ProgramsPage() {
   // Load booked performances count per evening to adhere to admin slot capacity limits
   const loadPerformanceCounts = async () => {
     try {
-      const { data, error } = await supabase
+      // 1. Fetch evenings to build an id -> evening_date map
+      const { data: evenings } = await supabase
+        .from("cultural_evenings")
+        .select("id, evening_date, total_slots");
+
+      const eveningDateMap: Record<string, string> = {};
+      (evenings || []).forEach((ev: any) => {
+        if (ev.id && ev.evening_date) {
+          eveningDateMap[ev.id] = ev.evening_date;
+        }
+      });
+
+      // 2. Fetch all performances
+      const { data: perfs, error } = await supabase
         .from("cultural_performances")
-        .select("id, performance_date, cultural_evenings(evening_date)");
-      if (error) throw error;
+        .select("id, evening_id, cultural_evenings(evening_date)");
+
+      if (error) {
+        console.error("Cultural performances query error:", error);
+      }
+
       const counts: Record<string, number> = {};
-      (data || []).forEach((p: any) => {
-        const rawDate = p.performance_date || p.cultural_evenings?.evening_date;
+      (perfs || []).forEach((p: any) => {
+        const rawDate = p.cultural_evenings?.evening_date || eveningDateMap[p.evening_id];
         if (rawDate) {
           const iso = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate;
           counts[iso] = (counts[iso] || 0) + 1;
         }
       });
       setPerformanceCounts(counts);
+
+      // If no ?day= URL param was passed and currently selected date is full, select first available open evening
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.get("day")) {
+          setFormData((prev) => {
+            const currentSched = schedule.find((s) => s.isoDate === prev.eveningDate);
+            const currentMax = currentSched?.culturalEvening?.residentSlotsAvailable || 7;
+            const currentBooked = counts[prev.eveningDate] || 0;
+            if (currentBooked >= currentMax) {
+              const firstOpen = schedule.find((s) => (counts[s.isoDate] || 0) < (s.culturalEvening?.residentSlotsAvailable || 7));
+              if (firstOpen) {
+                return { ...prev, eveningDate: firstOpen.isoDate };
+              }
+            }
+            return prev;
+          });
+        }
+      }
     } catch (err) {
       console.error("Failed to load cultural performance slot counts:", err);
     }
@@ -267,7 +303,7 @@ export default function ProgramsPage() {
         .from("cultural_evenings")
         .select("id, total_slots")
         .eq("evening_date", formData.eveningDate)
-        .single();
+        .maybeSingle();
 
       if (!eveningData) {
         const { data: newEvening } = await supabase
@@ -278,17 +314,20 @@ export default function ProgramsPage() {
         eveningData = newEvening;
       }
 
-      // 2. Concurrency guard: Ensure live count in DB has not exceeded allowed capacity
-      const { count: liveCount } = await supabase
+      // 2. Concurrency guard: Count actual bookings in DB
+      const { data: existingBookings } = await supabase
         .from("cultural_performances")
-        .select("id", { count: "exact", head: true })
+        .select("id")
         .eq("evening_id", eveningData?.id);
 
-      if (typeof liveCount === "number" && liveCount >= allowedLimit) {
+      const liveCount = existingBookings ? existingBookings.length : 0;
+
+      if (liveCount >= allowedLimit) {
         setErrorMessage(
-          `Sorry! The last performance slot for ${targetSched?.dayName || formData.eveningDate} was just booked. No additional entries can be accepted for this evening.`
+          `Sorry! All ${allowedLimit} performance slots for ${targetSched?.dayName || formData.eveningDate} are currently filled (${liveCount} booked). No additional entries can be accepted for this evening.`
         );
         setShowDonationPromptModal(false);
+        setIsSubmitting(false);
         await loadPerformanceCounts();
         return;
       }

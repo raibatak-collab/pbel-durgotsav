@@ -4279,10 +4279,12 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(adminSrc.includes('cultural_evenings') && adminSrc.includes('total_slots'), 'Admin must sync total_slots to cultural_evenings DB table');
     });
 
-    it('should verify Public Programs Page tracks live slot counts and adheres to admin limits', () => {
+    it('should verify Public Programs Page tracks live slot counts and adheres to admin limits without column errors', () => {
       const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
       assert.ok(progSrc.includes('performanceCounts'), 'Programs page must declare performanceCounts state');
       assert.ok(progSrc.includes('loadPerformanceCounts'), 'Programs page must define loadPerformanceCounts');
+      assert.ok(!progSrc.includes('performance_date'), 'Programs page must not reference non-existent performance_date column');
+      assert.ok(progSrc.includes('cultural_evenings') && progSrc.includes('eveningDateMap'), 'Programs page must map evening_date reliably');
       assert.ok(progSrc.includes('pbel_performances_updated'), 'Programs page must listen for pbel_performances_updated events');
       assert.ok(progSrc.includes('isCurrentEveningFull'), 'Programs page must compute isCurrentEveningFull');
       assert.ok(progSrc.includes('disabled={isFull}'), 'Dropdown options must be disabled when evening capacity is reached');
@@ -4290,9 +4292,11 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
       assert.ok(progSrc.includes('Registration closed: All'), 'Pre-registration check must reject submissions for full evenings');
     });
 
-    it('should verify Programs Page protects against over-capacity race conditions in executeSubmitPerformance', () => {
+    it('should verify Supabase resilient client proxy preserves select options and executeSubmitPerformance prevents race conditions', () => {
       const progSrc = fs.readFileSync('src/app/programs/page.tsx', 'utf8');
-      assert.ok(progSrc.includes('count: liveCount') || progSrc.includes('liveCount >= allowedLimit'), 'Must check live DB count against allowed limit before inserting');
+      const clientSrc = fs.readFileSync('src/utils/supabase/client.ts', 'utf8');
+      assert.ok(clientSrc.includes('(...args: any[])'), 'Supabase proxy select must preserve all arguments');
+      assert.ok(progSrc.includes('liveCount >= allowedLimit'), 'Must check live DB count against allowed limit before inserting');
       assert.ok(progSrc.includes('pbel_performances_updated'), 'Must broadcast pbel_performances_updated upon successful booking');
     });
   });
