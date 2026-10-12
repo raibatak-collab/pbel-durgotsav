@@ -107,39 +107,109 @@ body {
   background: #B8801C;
 }
 
-/* 🎭 Sleek Pratibimb Emcee Stage Run-Sheet Isolated Print Styles */
+/* 🎭 Sleek Pratibimb Emcee Stage Run-Sheet Natural Multi-Page Print Styles */
 @media print {
-  body {
+  @page {
+    size: A4 portrait;
+    margin: 12mm 10mm 15mm 10mm;
+  }
+
+  /* Reset document root to visible flow and unconstrained height to allow natural multi-page pagination */
+  html, body {
+    overflow: visible !important;
+    overflow-x: visible !important;
+    overflow-y: visible !important;
+    max-width: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 100% !important;
     background: #ffffff !important;
     color: #111827 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
-  body * {
+
+  /* Hide public navigation and screen chrome */
+  header, nav, footer, .bottom-nav {
+    display: none !important;
+  }
+
+  /* Hide screen controls, tabs, and buttons */
+  .no-print,
+  .emcee-no-print {
+    display: none !important;
+  }
+
+  /* Hide the screen admin dashboard completely during run-sheet print */
+  body:has(#emcee-runsheet-print-container) .admin-screen-dashboard,
+  .admin-screen-dashboard.print\:hidden {
+    display: none !important;
+  }
+
+  /* Fallback visibility rules for unclassed print elements */
+  body:has(#emcee-runsheet-print-container) {
     visibility: hidden;
   }
+
+  .emcee-modal-backdrop,
   #emcee-runsheet-print-container,
   #emcee-runsheet-print-container * {
     visibility: visible;
   }
-  #emcee-runsheet-print-container {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
+
+  /* Natural, unconstrained multi-page flow for the printable run sheet (NO absolute, NO fixed) */
+  .emcee-modal-backdrop {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
     margin: 0 !important;
-    padding: 16px !important;
-    background: #ffffff !important;
-    color: #111827 !important;
-    box-shadow: none !important;
-    border: none !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+    z-index: auto !important;
+  }
+
+  #emcee-runsheet-print-container {
+    position: static !important; /* CRITICAL: Static document flow enables seamless multi-page pagination without stacking or text overlapping */
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
     max-height: none !important;
     overflow: visible !important;
-    z-index: 9999999 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    z-index: auto !important;
   }
-  .emcee-no-print {
-    display: none !important;
+
+  /* Table layout and row integrity across physical page boundaries */
+  #emcee-runsheet-print-container table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    page-break-inside: auto;
   }
+
+  #emcee-runsheet-print-container tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  #emcee-runsheet-print-container th,
+  #emcee-runsheet-print-container td {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
   .emcee-day-page {
-    page-break-after: always;
-    break-after: page;
+    page-break-after: always !important;
+    break-after: page !important;
   }
 }

@@ -3686,7 +3686,8 @@ function decodeCategoryDescription(desc?: string) {
         </div>
       ) : (
         /* 2. AUTHENTICATED ADMIN DASHBOARD */
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+        <>
+          <div className={`admin-screen-dashboard max-w-7xl mx-auto px-4 sm:px-6 py-10 ${isEmceeModalOpen ? "print:hidden" : ""}`}>
           
           {/* Top Banner */}
           <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-gray-200 mb-8 gap-4">
@@ -11094,10 +11095,87 @@ function decodeCategoryDescription(desc?: string) {
         </div>
       )}
 
+
+      {/* ADMIN POP-UP HIGHLIGHT LIVE PREVIEW MODAL */}
+      {isPreviewingPopup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-gradient-to-b from-[#FFFDF9] to-[#FDF8F0] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-amber-400 relative animate-scaleUp max-h-[90vh] flex flex-col">
+            <button
+              onClick={() => setIsPreviewingPopup(false)}
+              className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition backdrop-blur-md shadow-md"
+              aria-label="Close Preview"
+            >
+              <X size={16} />
+            </button>
+
+            {/* Feature Image */}
+            {popupHighlight.imageUrl && (
+              <div className="relative h-44 sm:h-52 w-full bg-gradient-to-r from-[#850E1F] to-[#5C0A15] overflow-hidden shrink-0">
+                <img
+                  src={popupHighlight.imageUrl}
+                  alt={popupHighlight.title}
+                  className="w-full h-full object-cover opacity-90"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#200206] via-transparent to-black/30" />
+                {popupHighlight.badge && (
+                  <div className="absolute bottom-3 left-4 bg-amber-400/95 text-amber-950 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md">
+                    <Sparkles size={12} className="text-amber-900" />
+                    <span>{popupHighlight.badge}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="p-5 sm:p-6 space-y-3.5 overflow-y-auto">
+              {!popupHighlight.imageUrl && popupHighlight.badge && (
+                <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider">
+                  <Sparkles size={12} className="text-primary" />
+                  <span>{popupHighlight.badge}</span>
+                </div>
+              )}
+
+              <div>
+                <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
+                  {popupHighlight.title}
+                </h3>
+                {popupHighlight.subtitle && (
+                  <p className="text-xs sm:text-sm font-semibold text-primary mt-1">
+                    {popupHighlight.subtitle}
+                  </p>
+                )}
+              </div>
+
+              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                {popupHighlight.snippet}
+              </p>
+
+              <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewingPopup(false)}
+                  className="flex-1 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition text-center shadow-md golden-glow"
+                >
+                  {popupHighlight.actionText || "Learn More →"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsPreviewingPopup(false)}
+                  className="bg-amber-100/70 hover:bg-amber-200/80 text-amber-900 py-3 px-5 rounded-xl font-semibold text-xs transition text-center"
+                >
+                  Close Preview
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+
       {/* 🎭 PRATIBIMB EMCEE MASTER RUN-SHEET MODAL */}
       {isEmceeModalOpen && (
-        <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div id="emcee-runsheet-print-container" className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <div className="emcee-modal-backdrop fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4 print:static print:inset-auto print:bg-transparent print:p-0 print:m-0 print:block print:overflow-visible print:z-auto">
+          <div id="emcee-runsheet-print-container" className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto print:static print:max-w-none print:w-full print:p-0 print:m-0 print:border-none print:shadow-none print:rounded-none print:max-h-none print:overflow-visible">
             {/* PRINT-ONLY OFFICIAL HEADER */}
             <div className="hidden print:block mb-6 border-b-2 border-black pb-3">
               <div className="flex items-center justify-between">
@@ -11213,7 +11291,7 @@ function decodeCategoryDescription(desc?: string) {
                     let runningMinutes = 10;
 
                     return (
-                      <div key={dayItem.id} className="border border-amber-300/80 rounded-2xl overflow-hidden shadow-xs print:border-black print:shadow-none print:break-inside-avoid">
+                      <div key={dayItem.id} className="border border-amber-300/80 rounded-2xl overflow-hidden shadow-xs print:border print:border-gray-800 print:shadow-none print:overflow-visible print:rounded-none mb-6 print:mb-8">
                         {/* Day Banner */}
                         <div className="bg-gradient-to-r from-amber-100 via-amber-50 to-white print:bg-gray-100 px-4 py-3 border-b border-amber-200 print:border-black flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                           <div className="flex items-center gap-2">
@@ -11260,8 +11338,8 @@ function decodeCategoryDescription(desc?: string) {
                           </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse text-xs">
+                        <div className="overflow-x-auto print:overflow-visible print:w-full">
+                          <table className="w-full text-left border-collapse text-xs print:w-full print:border-collapse">
                             <thead>
                               <tr className="bg-amber-50/80 text-amber-950 font-bold border-b border-amber-200/80 print:bg-gray-200 print:text-black print:border-black">
                                 <th className="p-3 w-16">Cue #</th>
@@ -11274,7 +11352,7 @@ function decodeCategoryDescription(desc?: string) {
                             </thead>
                             <tbody className="divide-y divide-gray-100 bg-white print:divide-gray-400">
                               {/* 1. Day Opening Cue */}
-                              <tr className="bg-amber-100/30 font-medium print:bg-gray-50">
+                              <tr className="bg-amber-100/30 font-medium print:bg-gray-50 print:break-inside-avoid">
                                 <td className="p-3 font-mono font-bold text-primary print:text-black">#01</td>
                                 <td className="p-3 font-mono font-bold text-gray-900">{startTime}</td>
                                 <td className="p-3">
@@ -11299,7 +11377,7 @@ function decodeCategoryDescription(desc?: string) {
                                 runningMinutes += estDuration + 2;
 
                                 return (
-                                  <tr key={p.id || pIdx} className="hover:bg-gray-50/70">
+                                  <tr key={p.id || pIdx} className="hover:bg-gray-50/70 border-b border-gray-100 print:border-b print:border-gray-300 print:break-inside-avoid">
                                     <td className="p-3 font-mono font-bold text-gray-700 whitespace-nowrap">
                                       <div className="flex items-center gap-1.5">
                                         <span className="font-mono text-xs font-bold text-gray-800">
@@ -11378,7 +11456,7 @@ function decodeCategoryDescription(desc?: string) {
 
                               {/* 3. Day Flagship Headliner or Evening Finale */}
                               {headliner ? (
-                                <tr className="bg-gradient-to-r from-red-50 to-amber-50 font-semibold border-t border-amber-200 print:bg-gray-100 print:border-black">
+                                <tr className="bg-gradient-to-r from-red-50 to-amber-50 font-semibold border-t border-amber-200 print:bg-gray-100 print:border-black print:break-inside-avoid">
                                   <td className="p-3 font-mono font-bold text-primary print:text-black">#FINAL</td>
                                   <td className="p-3 font-mono font-bold text-primary print:text-black">
                                     <span className="block">{headliner.time || calculateStageTime(startTime, runningMinutes)}</span>
@@ -11401,7 +11479,7 @@ function decodeCategoryDescription(desc?: string) {
                                   </td>
                                 </tr>
                               ) : (
-                                <tr className="bg-amber-50/50 font-semibold border-t border-amber-200 print:bg-gray-100 print:border-black">
+                                <tr className="bg-amber-50/50 font-semibold border-t border-amber-200 print:bg-gray-100 print:border-black print:break-inside-avoid">
                                   <td className="p-3 font-mono font-bold text-primary print:text-black">#FINAL</td>
                                   <td className="p-3 font-mono font-bold text-gray-900">
                                     <span className="block">{(dayItem.culturalEvening?.time || "10:00 PM").split(" - ")[1] || "10:00 PM"}</span>
@@ -11445,82 +11523,7 @@ function decodeCategoryDescription(desc?: string) {
           </div>
         </div>
       )}
-
-      {/* ADMIN POP-UP HIGHLIGHT LIVE PREVIEW MODAL */}
-      {isPreviewingPopup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-gradient-to-b from-[#FFFDF9] to-[#FDF8F0] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-amber-400 relative animate-scaleUp max-h-[90vh] flex flex-col">
-            <button
-              onClick={() => setIsPreviewingPopup(false)}
-              className="absolute top-3.5 right-3.5 z-20 w-8 h-8 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition backdrop-blur-md shadow-md"
-              aria-label="Close Preview"
-            >
-              <X size={16} />
-            </button>
-
-            {/* Feature Image */}
-            {popupHighlight.imageUrl && (
-              <div className="relative h-44 sm:h-52 w-full bg-gradient-to-r from-[#850E1F] to-[#5C0A15] overflow-hidden shrink-0">
-                <img
-                  src={popupHighlight.imageUrl}
-                  alt={popupHighlight.title}
-                  className="w-full h-full object-cover opacity-90"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#200206] via-transparent to-black/30" />
-                {popupHighlight.badge && (
-                  <div className="absolute bottom-3 left-4 bg-amber-400/95 text-amber-950 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5 shadow-md">
-                    <Sparkles size={12} className="text-amber-900" />
-                    <span>{popupHighlight.badge}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="p-5 sm:p-6 space-y-3.5 overflow-y-auto">
-              {!popupHighlight.imageUrl && popupHighlight.badge && (
-                <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 px-3 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider">
-                  <Sparkles size={12} className="text-primary" />
-                  <span>{popupHighlight.badge}</span>
-                </div>
-              )}
-
-              <div>
-                <h3 className="font-heading text-xl sm:text-2xl font-bold text-gray-900 leading-snug">
-                  {popupHighlight.title}
-                </h3>
-                {popupHighlight.subtitle && (
-                  <p className="text-xs sm:text-sm font-semibold text-primary mt-1">
-                    {popupHighlight.subtitle}
-                  </p>
-                )}
-              </div>
-
-              <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                {popupHighlight.snippet}
-              </p>
-
-              <div className="pt-2 flex flex-col sm:flex-row gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewingPopup(false)}
-                  className="flex-1 bg-gradient-to-r from-[#D99B26] to-[#B8801C] hover:from-[#B8801C] hover:to-[#966714] text-white py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition text-center shadow-md golden-glow"
-                >
-                  {popupHighlight.actionText || "Learn More →"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsPreviewingPopup(false)}
-                  className="bg-amber-100/70 hover:bg-amber-200/80 text-amber-900 py-3 px-5 rounded-xl font-semibold text-xs transition text-center"
-                >
-                  Close Preview
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-    </div>
+        </>
   )}
 </>
 );
