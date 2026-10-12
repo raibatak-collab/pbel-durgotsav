@@ -4301,7 +4301,65 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 97: Pratibimb Emcee Excel Export, Sleek Print Isolation, and Custom Performance Reordering', () => {
+    it('should verify Admin Console defines handleDownloadEmceeExcel with UTF-8 BOM, 12 cue columns, and per-day filename', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('handleDownloadEmceeExcel'), 'Admin must define handleDownloadEmceeExcel');
+      assert.ok(adminSrc.includes('\\uFEFF'), 'Excel CSV export must prepend UTF-8 Byte Order Mark');
+      assert.ok(adminSrc.includes('Cue #'), 'Export headers must include Cue #');
+      assert.ok(adminSrc.includes('Festive Day'), 'Export headers must include Festive Day');
+      assert.ok(adminSrc.includes('Estimated Stage Time'), 'Export headers must include Estimated Stage Time');
+      assert.ok(adminSrc.includes('Act Title / Song'), 'Export headers must include Act Title / Song');
+      assert.ok(adminSrc.includes('Genre / Performance Type'), 'Export headers must include Genre / Performance Type');
+      assert.ok(adminSrc.includes('Format & Duration'), 'Export headers must include Format & Duration');
+      assert.ok(adminSrc.includes('Artists / Contact Lead'), 'Export headers must include Artists / Contact Lead');
+      assert.ok(adminSrc.includes('Sound & Audio Cues'), 'Export headers must include Sound & Audio Cues');
+      assert.ok(adminSrc.includes('Emcee Notes / Stage Cues'), 'Export headers must include Emcee Notes');
+      assert.ok(adminSrc.includes('PBEL_Pratibimb_Emcee_RunSheet_'), 'Filename must follow professional convention');
+      assert.ok(adminSrc.includes('Download Excel'), 'Admin UI must expose Download Excel button');
+      assert.ok(adminSrc.includes('FileSpreadsheet'), 'Admin must render FileSpreadsheet icon');
+    });
+
+    it('should verify isolated print container and dedicated @media print CSS for sleek emcee stage cue sheet', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      const cssSrc = fs.readFileSync('src/app/globals.css', 'utf8');
+      assert.ok(cssSrc.includes('@media print'), 'globals.css must include dedicated print media query');
+      assert.ok(cssSrc.includes('#emcee-runsheet-print-container'), 'CSS must isolate #emcee-runsheet-print-container');
+      assert.ok(cssSrc.includes('visibility: hidden'), 'CSS must hide dashboard background by default in print');
+      assert.ok(cssSrc.includes('visibility: visible'), 'CSS must make only emcee run-sheet visible in print');
+      assert.ok(adminSrc.includes('id="emcee-runsheet-print-container"'), 'Modal must assign emcee-runsheet-print-container ID');
+      assert.ok(adminSrc.includes('PBEL City Durgotsav 2026 • Pratibimb Stage Cue Sheet'), 'Modal must include official print header');
+      assert.ok(adminSrc.includes('hidden print:block'), 'Print header must be hidden on screen and visible in print');
+      assert.ok(adminSrc.includes('emcee-no-print') || adminSrc.includes('print:hidden'), 'Action buttons must be hidden in print');
+      assert.ok(adminSrc.includes('Print Run-Sheet'), 'Main Admin table must provide dedicated Print Run-Sheet button');
+    });
+
+    it('should verify Performance Sequence Reordering Map state, handlers, and Cloud Config synchronization', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('performanceOrderMap'), 'Admin must maintain performanceOrderMap state');
+      assert.ok(adminSrc.includes('pbel_performance_order'), 'Admin must synchronize with localStorage pbel_performance_order');
+      assert.ok(adminSrc.includes('fetchCloudConfig<Record<string, string[]>>("performance_order_map"'), 'Admin must load order map from Cloud Config');
+      assert.ok(adminSrc.includes('saveCloudConfig("performance_order_map"'), 'Admin must save custom sequence to Cloud Config');
+      assert.ok(adminSrc.includes('handleMovePerformance'), 'Admin must define handleMovePerformance');
+      assert.ok(adminSrc.includes('handleSortPerformancesByGenre'), 'Admin must define handleSortPerformancesByGenre');
+      assert.ok(adminSrc.includes('handleResetPerformanceOrder'), 'Admin must define handleResetPerformanceOrder');
+      assert.ok(adminSrc.includes('ArrowUp') && adminSrc.includes('ArrowDown'), 'Admin must render ArrowUp and ArrowDown reorder buttons');
+      assert.ok(adminSrc.includes('Stage Cue'), 'Main table must feature Stage Cue column');
+      assert.ok(adminSrc.includes('Group by Genre'), 'UI must expose quick Group by Genre action');
+    });
+
+    it('should verify dynamic stage cue timing computation based on performance format and duration', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      assert.ok(adminSrc.includes('calculateStageTime'), 'Admin must define calculateStageTime helper');
+      assert.ok(adminSrc.includes('getEstimatedDurationMinutes'), 'Admin must define getEstimatedDurationMinutes helper');
+      assert.ok(adminSrc.includes('getOrderedPerformances'), 'Admin must define getOrderedPerformances helper');
+      assert.ok(adminSrc.includes('Stage Diya Lighting & Agomoni Welcome'), 'Cue Sheet must open with official Diya Lighting cue #01');
+      assert.ok(adminSrc.includes('#FINAL'), 'Cue Sheet must include final cue for headliner or Aarti');
+    });
+  });
+
 });
+
 
 
 

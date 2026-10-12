@@ -48,6 +48,9 @@ import {
   Edit3,
   CreditCard,
   ArrowRight,
+  ArrowUp,
+  ArrowDown,
+  FileSpreadsheet,
   Video,
   Play,
   ExternalLink,
@@ -613,6 +616,7 @@ export default function AdminDashboard() {
   // Emcee Run-Sheet Modal State
   const [isEmceeModalOpen, setIsEmceeModalOpen] = useState(false);
   const [emceeFilterDay, setEmceeFilterDay] = useState("all");
+  const [performanceOrderMap, setPerformanceOrderMap] = useState<Record<string, string[]>>({});
 
   // Volunteer WhatsApp Dispatcher State
   const [volunteerDispatchShift, setVolunteerDispatchShift] = useState<string | null>(null);
@@ -655,6 +659,13 @@ export default function AdminDashboard() {
         .select("*, cultural_evenings(evening_date)")
         .order("created_at", { ascending: false });
       if (perfs) setPerformances(perfs);
+
+      // 4b. Fetch Performance Custom Sequence Order Map from Cloud
+      const cloudOrderMap = await fetchCloudConfig<Record<string, string[]>>("performance_order_map", {});
+      if (cloudOrderMap && typeof cloudOrderMap === "object" && Object.keys(cloudOrderMap).length > 0) {
+        setPerformanceOrderMap(cloudOrderMap);
+        try { localStorage.setItem("pbel_performance_order", JSON.stringify(cloudOrderMap)); } catch (_) {}
+      }
 
       // 5. Fetch Full 6-Day Schedule from Cloud
       const cloudSched = await fetchStoredSchedule();
@@ -761,6 +772,14 @@ export default function AdminDashboard() {
       if (savedMembers) {
         const parsed = JSON.parse(savedMembers);
         if (Array.isArray(parsed) && parsed.length > 0) setPssMembers(parsed);
+      }
+
+      const savedPerfOrder = localStorage.getItem("pbel_performance_order");
+      if (savedPerfOrder) {
+        try {
+          const parsedOrder = JSON.parse(savedPerfOrder);
+          if (parsedOrder && typeof parsedOrder === "object") setPerformanceOrderMap(parsedOrder);
+        } catch (_) {}
       }
 
       const savedIncMem = localStorage.getItem("pbel_include_member_contributions");
@@ -897,6 +916,12 @@ export default function AdminDashboard() {
         if (cloudPopup && typeof cloudPopup.enabled === "boolean") {
           setPopupHighlight(cloudPopup);
           localStorage.setItem("pbel_site_popup_highlight", JSON.stringify(cloudPopup));
+        }
+      });
+      fetchCloudConfig<Record<string, string[]>>("performance_order_map", {}).then((cloudOrder) => {
+        if (cloudOrder && typeof cloudOrder === "object" && Object.keys(cloudOrder).length > 0) {
+          setPerformanceOrderMap(cloudOrder);
+          try { localStorage.setItem("pbel_performance_order", JSON.stringify(cloudOrder)); } catch (_) {}
         }
       });
     } catch (e) {
@@ -2895,6 +2920,24 @@ function decodeCategoryDescription(desc?: string) {
       if (error) throw error;
       const updated = performances.filter((p) => p.id !== id);
       setPerformances(updated);
+
+      // Clean up deleted id from performanceOrderMap
+      const updatedMap = { ...performanceOrderMap };
+      let mapChanged = false;
+      for (const k of Object.keys(updatedMap)) {
+        if (updatedMap[k]?.includes(id)) {
+          updatedMap[k] = updatedMap[k].filter((pId) => pId !== id);
+          mapChanged = true;
+        }
+      }
+      if (mapChanged) {
+        setPerformanceOrderMap(updatedMap);
+        try {
+          localStorage.setItem("pbel_performance_order", JSON.stringify(updatedMap));
+          saveCloudConfig("performance_order_map", updatedMap);
+        } catch (_) {}
+      }
+
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("pbel_performances_updated"));
       }
@@ -3136,6 +3179,320 @@ function decodeCategoryDescription(desc?: string) {
       "2026-10-20": "Vijaya Dashami (20 Oct)",
     };
     return dateMap[rawDate] || (rawDate ? new Date(rawDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "Scheduled Pujo Evening");
+  };
+
+  // Helper to extract evening identifier from performance
+  const getPerformanceEveningKey = (p: any): string => {
+    return p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
+  };
+
+  // Helper to return performances in customized sequence order
+  const getOrderedPerformances = (
+    dayPerfs: any[],
+    eveningKey: string,
+    orderMap: Record<string, string[]>
+  ): any[] => {
+    const customOrder = orderMap[eveningKey];
+    if (!customOrder || !Array.isArray(customOrder) || customOrder.length === 0) {
+      return [...dayPerfs];
+    }
+    return [...dayPerfs].sort((a, b) => {
+      const idxA = customOrder.indexOf(a.id);
+      const idxB = customOrder.indexOf(b.id);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return 0;
+    });
+  };
+
+  // Helper to calculate stage cue timing
+  const calculateStageTime = (baseTimeStr: string, offsetMinutes: number): string => {
+    try {
+      const timeRegex = /(\d+):(\d+)\s*(AM|PM)?/i;
+      const match = baseTimeStr.match(timeRegex);
+      if (!match) return baseTimeStr;
+
+      let hours = parseInt(match[1], 10);
+      const minutes = parseInt(match[2], 10);
+      const meridian = match[3] ? match[3].toUpperCase() : null;
+
+      if (meridian === "PM" && hours < 12) hours += 12;
+      if (meridian === "AM" && hours === 12) hours = 0;
+
+      const totalMinutes = hours * 60 + minutes + offsetMinutes;
+      const newHours24 = Math.floor(totalMinutes / 60) % 24;
+      const newMinutes = totalMinutes % 60;
+
+      const displayHours = newHours24 % 12 === 0 ? 12 : newHours24 % 12;
+      const displayMeridian = newHours24 >= 12 ? "PM" : "AM";
+      const padMin = String(newMinutes).padStart(2, "0");
+      const padHour = String(displayHours).padStart(2, "0");
+
+      return `${padHour}:${padMin} ${displayMeridian}`;
+    } catch {
+      return baseTimeStr;
+    }
+  };
+
+  // Helper to estimate stage duration based on performance type and format
+  const getEstimatedDurationMinutes = (format?: string, performanceType?: string): number => {
+    const f = (format || "").toLowerCase();
+    const t = (performanceType || "").toLowerCase();
+    if (f.includes("drama") || t.includes("drama") || f.includes("skit") || t.includes("skit") || t.includes("natok")) return 20;
+    if (f.includes("group") || t.includes("group") || t.includes("choir")) return 8;
+    if (f.includes("duet") || t.includes("duet")) return 6;
+    if (f.includes("solo") || t.includes("solo")) return 5;
+    return 7;
+  };
+
+  // Reorder performance earlier or later in cue sequence
+  const handleMovePerformance = async (
+    eveningKey: string,
+    perfId: string,
+    direction: "up" | "down"
+  ) => {
+    const rawDayPerfs = performances.filter((p) => {
+      const pDate = getPerformanceEveningKey(p);
+      return pDate.includes(eveningKey) || (p.day && p.day.toLowerCase().includes(eveningKey.toLowerCase()));
+    });
+
+    if (rawDayPerfs.length <= 1) return;
+
+    const currentOrdered = getOrderedPerformances(rawDayPerfs, eveningKey, performanceOrderMap);
+    const currentIndex = currentOrdered.findIndex((p) => p.id === perfId);
+    if (currentIndex === -1) return;
+
+    const targetIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (targetIndex < 0 || targetIndex >= currentOrdered.length) return;
+
+    const reordered = [...currentOrdered];
+    const itemToMove = reordered[currentIndex];
+    reordered[currentIndex] = reordered[targetIndex];
+    reordered[targetIndex] = itemToMove;
+
+    const newOrderIds = reordered.map((p) => p.id);
+    const updatedMap = {
+      ...performanceOrderMap,
+      [eveningKey]: newOrderIds,
+    };
+
+    setPerformanceOrderMap(updatedMap);
+    try {
+      localStorage.setItem("pbel_performance_order", JSON.stringify(updatedMap));
+      await saveCloudConfig("performance_order_map", updatedMap);
+    } catch (err) {
+      console.error("Failed to persist performance order:", err);
+    }
+  };
+
+  // Quick auto-grouping by genre (Dances -> Music -> Instrumental -> Drama -> Recitation)
+  const handleSortPerformancesByGenre = async (eveningKey: string) => {
+    const rawDayPerfs = performances.filter((p) => {
+      const pDate = getPerformanceEveningKey(p);
+      return pDate.includes(eveningKey) || (p.day && p.day.toLowerCase().includes(eveningKey.toLowerCase()));
+    });
+    if (rawDayPerfs.length <= 1) return;
+
+    const typePriority: Record<string, number> = {
+      "dance": 1,
+      "vocal": 2,
+      "music": 2,
+      "song": 2,
+      "instrumental": 3,
+      "drama": 4,
+      "skit": 4,
+      "natok": 4,
+      "recitation": 5,
+    };
+
+    const sorted = [...rawDayPerfs].sort((a, b) => {
+      const tA = (a.performance_type || "").toLowerCase();
+      const tB = (b.performance_type || "").toLowerCase();
+      const pA = Object.entries(typePriority).find(([k]) => tA.includes(k))?.[1] || 99;
+      const pB = Object.entries(typePriority).find(([k]) => tB.includes(k))?.[1] || 99;
+      if (pA !== pB) return pA - pB;
+      return (a.song_name || "").localeCompare(b.song_name || "");
+    });
+
+    const newOrderIds = sorted.map((p) => p.id);
+    const updatedMap = {
+      ...performanceOrderMap,
+      [eveningKey]: newOrderIds,
+    };
+
+    setPerformanceOrderMap(updatedMap);
+    try {
+      localStorage.setItem("pbel_performance_order", JSON.stringify(updatedMap));
+      await saveCloudConfig("performance_order_map", updatedMap);
+    } catch (err) {
+      console.error("Failed to sort performances by genre:", err);
+    }
+  };
+
+  // Reset performance cue sequence to initial registration order
+  const handleResetPerformanceOrder = async (eveningKey: string) => {
+    const updatedMap = { ...performanceOrderMap };
+    delete updatedMap[eveningKey];
+    setPerformanceOrderMap(updatedMap);
+    try {
+      localStorage.setItem("pbel_performance_order", JSON.stringify(updatedMap));
+      await saveCloudConfig("performance_order_map", updatedMap);
+    } catch (err) {
+      console.error("Failed to reset performance order:", err);
+    }
+  };
+
+  // Dynamic Pratibimb Emcee Run-Sheet Excel (.csv with UTF-8 BOM) Exporter
+  const handleDownloadEmceeExcel = (targetDayIso?: string) => {
+    const currentScheduleList = scheduleDays && scheduleDays.length > 0 ? scheduleDays : getStoredSchedule();
+    const targetDays = (!targetDayIso || targetDayIso === "all")
+      ? currentScheduleList
+      : currentScheduleList.filter((d) => d.isoDate === targetDayIso);
+
+    const headers = [
+      "Cue #",
+      "Festive Day",
+      "Estimated Stage Time",
+      "Act Title / Song",
+      "Genre / Performance Type",
+      "Format & Duration",
+      "Artists / Contact Lead",
+      "Tower & Flat",
+      "WhatsApp Phone",
+      "Performers List",
+      "Sound & Audio Cues",
+      "Emcee Notes / Stage Cues",
+    ];
+
+    const rows: string[][] = [headers];
+
+    targetDays.forEach((dayItem) => {
+      const dayRawPerfs = performances.filter((p) => {
+        const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
+        return rawDate === dayItem.isoDate || (p.day && p.day.toLowerCase().includes(dayItem.dayName.toLowerCase()));
+      });
+
+      const eveningKey = dayItem.isoDate;
+      const orderedDayPerfs = getOrderedPerformances(dayRawPerfs, eveningKey, performanceOrderMap);
+      const startTime = (dayItem.culturalEvening?.time || "06:30 PM").split(" - ")[0] || "06:30 PM";
+
+      // Cue #1: Opening Inauguration
+      rows.push([
+        "#01",
+        `${dayItem.dayName} (${dayItem.date})`,
+        startTime,
+        "Stage Diya Lighting & Agomoni Welcome",
+        "Inauguration & Pandal Welcome",
+        "10 mins Ceremony",
+        "PSS Cultural Leads & Priests",
+        "Main Stage",
+        "N/A",
+        "PSS Cultural Committee & Priests",
+        "2 Wireless Handheld Mics + Aarti Light Wash Cue",
+        `Welcome township residents. Announce evening theme: "${dayItem.theme}". Acknowledge festival patrons & sponsors.`
+      ]);
+
+      let cumulativeMinutes = 10;
+
+      // Cue #2+: Resident Acts in Custom Ordered Sequence
+      orderedDayPerfs.forEach((p, idx) => {
+        const actTime = calculateStageTime(startTime, cumulativeMinutes);
+        const estDuration = getEstimatedDurationMinutes(p.format, p.performance_type);
+        cumulativeMinutes += estDuration + 2;
+
+        const cueNum = `#${String(idx + 2).padStart(2, "0")}`;
+        const genre = p.performance_type || "Cultural Performance";
+        const formatStr = `${p.format || "Solo"} (~${estDuration} mins)`;
+        const songOrAct = p.song_name || p.performance_type || "Cultural Act";
+        const contactLead = p.contact_name || "Resident Artist";
+        const flatStr = p.flat_number ? `Flat ${p.flat_number}` : "PBEL Township";
+        const phoneStr = p.phone || "";
+        const performers = p.participant_names || p.contact_name || "Solo";
+
+        let audioCue = "1 Vocal Mic + Instrument In";
+        const lowerGenre = (genre || "").toLowerCase();
+        if (lowerGenre.includes("dance")) {
+          audioCue = "Aux / Bluetooth Audio Track • Dynamic Stage Wash Lights";
+        } else if (lowerGenre.includes("recitation")) {
+          audioCue = "1 High-Gain Vocal Mic + Gentle Amber Fill";
+        } else if (lowerGenre.includes("drama") || lowerGenre.includes("skit") || lowerGenre.includes("natok")) {
+          audioCue = "3 Wireless Headset/Lapel Mics + 2 Boom Mics + Full Scene Lighting";
+        } else if (lowerGenre.includes("group") || lowerGenre.includes("choir")) {
+          audioCue = "3 Chorus Vocal Mics + Instrumental Track Cue";
+        }
+
+        const emceeNote = `Introduce ${contactLead} (${flatStr}). Performance: "${songOrAct}" (${genre} - ${formatStr}). Keep transition brisk.`;
+
+        rows.push([
+          cueNum,
+          `${dayItem.dayName} (${dayItem.date})`,
+          actTime,
+          songOrAct,
+          genre,
+          formatStr,
+          contactLead,
+          flatStr,
+          phoneStr,
+          performers,
+          audioCue,
+          emceeNote
+        ]);
+      });
+
+      // Finale Cue
+      const headliner = dayItem.culturalEvening?.pssHeadliner;
+      if (headliner) {
+        const headlinerTime = headliner.time || calculateStageTime(startTime, cumulativeMinutes);
+        rows.push([
+          "#FINAL",
+          `${dayItem.dayName} (${dayItem.date})`,
+          headlinerTime,
+          headliner.title,
+          headliner.genre || "Flagship Production",
+          headliner.duration || "45 mins",
+          "PSS Flagship Production / Artists",
+          "Main Stage",
+          "N/A",
+          "PSS Production Troupe & Guest Artists",
+          "Full Stage Sound Setup, 4 Vocal Mics, Percussion Mics & LED Visuals",
+          `Headline presentation: ${headliner.title}. Present felicitation tokens, announce dinner bhog & vote of thanks.`
+        ]);
+      } else {
+        const finaleTime = calculateStageTime(startTime, cumulativeMinutes);
+        rows.push([
+          "#FINAL",
+          `${dayItem.dayName} (${dayItem.date})`,
+          finaleTime,
+          "Grand Sandhya Aarti & Community Farewell",
+          "Sandhya Aarti & Stage Finale",
+          "15 mins",
+          "All Residents & Cultural Volunteers",
+          "Main Stage",
+          "N/A",
+          "Community & Volunteers",
+          "Dhaak Beats & Stage Follow Spot Lights",
+          "Invite all attendees to main mandap for Sandhya Aarti. Announce upcoming day schedule & dinner bhog."
+        ]);
+      }
+    });
+
+    const csvBody = "\uFEFF" + rows.map((r) =>
+      r.map((cell) => `"${String(cell ?? "").replace(/"/g, '""').replace(/[\r\n]+/g, ' ; ')}"`).join(",")
+    ).join("\r\n");
+
+    const blob = new Blob([csvBody], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const downloadAnchor = document.createElement("a");
+    const safeDayLabel = (!targetDayIso || targetDayIso === "all")
+      ? "All_6_Days"
+      : (targetDays[0]?.dayName?.replace(/[^a-zA-Z0-9]/g, "_") || targetDayIso);
+    downloadAnchor.setAttribute("href", url);
+    downloadAnchor.setAttribute("download", `PBEL_Pratibimb_Emcee_RunSheet_${safeDayLabel}_2026.csv`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    document.body.removeChild(downloadAnchor);
+    URL.revokeObjectURL(url);
   };
 
   // GALLERY CMS
@@ -5657,14 +6014,36 @@ function decodeCategoryDescription(desc?: string) {
                         </>
                       )}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadEmceeExcel(perfDayFilter)}
+                      className="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold px-3.5 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition cursor-pointer"
+                      title="Download Pratibimb Stage Lineup in Excel (.csv with UTF-8 encoding)"
+                    >
+                      <FileSpreadsheet size={14} />
+                      <span>Download Excel</span>
+                    </button>
                     <button 
-                      onClick={() => setIsEmceeModalOpen(true)} 
-                      className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition"
+                      type="button"
+                      onClick={() => {
+                        if (perfDayFilter !== "all") setEmceeFilterDay(perfDayFilter);
+                        setIsEmceeModalOpen(true);
+                      }} 
+                      className="bg-primary hover:bg-primary-hover text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition cursor-pointer"
                     >
                       <ClipboardList size={14} /> Open Emcee Run-Sheet
                     </button>
-                    <button onClick={() => window.print()} className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5">
-                      <Download size={14} /> Print
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        if (perfDayFilter !== "all") setEmceeFilterDay(perfDayFilter);
+                        setIsEmceeModalOpen(true);
+                        setTimeout(() => window.print(), 250);
+                      }} 
+                      className="bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                      title="Print isolated stage cue sheet"
+                    >
+                      <Printer size={14} /> Print Run-Sheet
                     </button>
                   </div>
                 </div>
@@ -5712,12 +6091,35 @@ function decodeCategoryDescription(desc?: string) {
                       </button>
                     );
                   })}
+                  {perfDayFilter !== "all" && (
+                    <div className="flex items-center gap-2 ml-auto">
+                      <button
+                        type="button"
+                        onClick={() => handleSortPerformancesByGenre(perfDayFilter)}
+                        className="text-[11px] font-semibold text-amber-900 bg-amber-100/80 hover:bg-amber-200 border border-amber-300/80 px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1"
+                        title="Auto-group performances by genre (Dance, Vocal, Instrumental, Drama)"
+                      >
+                        <span>⚡ Group by Genre</span>
+                      </button>
+                      {performanceOrderMap[perfDayFilter] && (
+                        <button
+                          type="button"
+                          onClick={() => handleResetPerformanceOrder(perfDayFilter)}
+                          className="text-[11px] font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-2 py-1 rounded-lg transition cursor-pointer"
+                          title="Reset to default registration order"
+                        >
+                          Reset Order
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
                     <thead>
                       <tr className="bg-gray-100 text-gray-600 font-semibold border-b border-gray-200">
+                        <th className="p-3.5 w-24">Stage Cue</th>
                         <th className="p-3.5">Contact Lead</th>
                         <th className="p-3.5">Flat Number</th>
                         <th className="p-3.5">WhatsApp Phone</th>
@@ -5730,39 +6132,98 @@ function decodeCategoryDescription(desc?: string) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {performances
-                        .filter((p) => {
+                      {(() => {
+                        const filtered = performances.filter((p) => {
                           if (perfDayFilter === "all") return true;
                           const pDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || "";
                           return pDate.includes(perfDayFilter) || (p.day || "").toLowerCase().includes(perfDayFilter.toLowerCase());
-                        })
-                        .map((p) => (
-                        <tr key={p.id} className="hover:bg-gray-50/60">
-                          <td className="p-3.5 font-bold text-gray-900">{p.contact_name}</td>
-                          <td className="p-3.5 text-gray-700">{p.flat_number}</td>
-                          <td className="p-3.5 text-gray-600 font-mono">{p.phone}</td>
-                          <td className="p-3.5">
-                            <span className="bg-amber-100 text-amber-950 font-bold px-2.5 py-1 rounded-full text-[11px] whitespace-nowrap border border-amber-300/80 shadow-2xs inline-flex items-center gap-1">
-                              <span>📅</span> {formatPerformanceDate(p)}
-                            </span>
-                          </td>
-                          <td className="p-3.5 font-semibold text-primary">{p.performance_type}</td>
-                          <td className="p-3.5 text-gray-600">{p.format}</td>
-                          <td className="p-3.5 font-medium text-amber-900">{p.song_name || "N/A"}</td>
-                          <td className="p-3.5 max-w-xs truncate text-gray-500">{p.participant_names}</td>
-                          <td className="p-3.5 text-right">
-                            <button
-                              type="button"
-                              onClick={() => handleDeletePerformance(p.id, p.contact_name)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
-                              title="Cancel entry and free up 1 slot"
-                            >
-                              <Trash2 size={14} />
-                              <span className="text-[11px] font-semibold">Cancel Slot</span>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                        });
+
+                        const displayList = perfDayFilter !== "all"
+                          ? getOrderedPerformances(filtered, perfDayFilter, performanceOrderMap)
+                          : filtered;
+
+                        if (displayList.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={10} className="p-6 text-center text-gray-500">
+                                {perfDayFilter === "all" 
+                                  ? "No resident performance submissions recorded yet."
+                                  : "No resident performance submissions recorded for this selected evening."}
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return displayList.map((p, idx) => {
+                          const canReorder = perfDayFilter !== "all" && displayList.length > 1;
+
+                          return (
+                            <tr key={p.id} className="hover:bg-gray-50/60">
+                              <td className="p-3.5 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono text-xs font-bold bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md border border-gray-200">
+                                    #{String(idx + 1).padStart(2, "0")}
+                                  </span>
+                                  {canReorder && (
+                                    <div className="flex flex-col gap-0.5">
+                                      <button
+                                        type="button"
+                                        disabled={idx === 0}
+                                        onClick={() => handleMovePerformance(perfDayFilter, p.id, "up")}
+                                        title="Move act up (earlier slot)"
+                                        className={`p-0.5 rounded transition ${
+                                          idx === 0
+                                            ? "text-gray-300 cursor-not-allowed"
+                                            : "text-amber-700 hover:text-white hover:bg-amber-600 cursor-pointer"
+                                        }`}
+                                      >
+                                        <ArrowUp size={12} />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        disabled={idx === displayList.length - 1}
+                                        onClick={() => handleMovePerformance(perfDayFilter, p.id, "down")}
+                                        title="Move act down (later slot)"
+                                        className={`p-0.5 rounded transition ${
+                                          idx === displayList.length - 1
+                                            ? "text-gray-300 cursor-not-allowed"
+                                            : "text-amber-700 hover:text-white hover:bg-amber-600 cursor-pointer"
+                                        }`}
+                                      >
+                                        <ArrowDown size={12} />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-3.5 font-bold text-gray-900">{p.contact_name}</td>
+                              <td className="p-3.5 text-gray-700">{p.flat_number}</td>
+                              <td className="p-3.5 text-gray-600 font-mono">{p.phone}</td>
+                              <td className="p-3.5">
+                                <span className="bg-amber-100 text-amber-950 font-bold px-2.5 py-1 rounded-full text-[11px] whitespace-nowrap border border-amber-300/80 shadow-2xs inline-flex items-center gap-1">
+                                  <span>📅</span> {formatPerformanceDate(p)}
+                                </span>
+                              </td>
+                              <td className="p-3.5 font-semibold text-primary">{p.performance_type}</td>
+                              <td className="p-3.5 text-gray-600">{p.format}</td>
+                              <td className="p-3.5 font-medium text-amber-900">{p.song_name || "N/A"}</td>
+                              <td className="p-3.5 max-w-xs truncate text-gray-500">{p.participant_names}</td>
+                              <td className="p-3.5 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePerformance(p.id, p.contact_name)}
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-lg transition inline-flex items-center gap-1 cursor-pointer"
+                                  title="Cancel entry and free up 1 slot"
+                                >
+                                  <Trash2 size={14} />
+                                  <span className="text-[11px] font-semibold">Cancel Slot</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                       {performances.filter((p) => {
                         if (perfDayFilter === "all") return true;
                         const pDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || "";
@@ -10636,15 +11097,33 @@ function decodeCategoryDescription(desc?: string) {
       {/* 🎭 PRATIBIMB EMCEE MASTER RUN-SHEET MODAL */}
       {isEmceeModalOpen && (
         <div className="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+          <div id="emcee-runsheet-print-container" className="bg-white rounded-3xl max-w-5xl w-full p-6 sm:p-8 border border-amber-400/40 shadow-2xl relative max-h-[90vh] overflow-y-auto">
+            {/* PRINT-ONLY OFFICIAL HEADER */}
+            <div className="hidden print:block mb-6 border-b-2 border-black pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-xl font-bold uppercase tracking-wider text-black">
+                    PBEL City Durgotsav 2026 • Pratibimb Stage Cue Sheet
+                  </h1>
+                  <p className="text-xs text-gray-700 font-medium">
+                    Official Chronological Stage Running Order for Sound Engineers, Stage Leads &amp; Emcees
+                  </p>
+                </div>
+                <div className="text-right text-xs text-gray-800">
+                  <p className="font-bold">PBEL Sanskritik Samiti</p>
+                  <p>Stage Hotline: +91 70320 06645</p>
+                </div>
+              </div>
+            </div>
+
             <button
               onClick={() => setIsEmceeModalOpen(false)}
-              className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition"
+              className="absolute top-4 right-4 p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition emcee-no-print print:hidden cursor-pointer"
             >
               <X size={18} />
             </button>
 
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-gray-100">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 pb-4 border-b border-gray-100 emcee-no-print print:hidden">
               <div>
                 <div className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider mb-2">
                   <ClipboardList size={13} className="text-primary" />
@@ -10660,8 +11139,18 @@ function decodeCategoryDescription(desc?: string) {
 
               <div className="flex items-center gap-2">
                 <button
+                  type="button"
+                  onClick={() => handleDownloadEmceeExcel(emceeFilterDay)}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  title="Export full cue sheet to Microsoft Excel (.csv with UTF-8 encoding)"
+                >
+                  <FileSpreadsheet size={14} />
+                  <span>Download Excel (.csv)</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => window.print()}
-                  className="bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                  className="bg-primary hover:bg-primary-hover text-white px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <Printer size={14} />
                   <span>Print Stage Cue Sheet</span>
@@ -10670,7 +11159,7 @@ function decodeCategoryDescription(desc?: string) {
             </div>
 
             {/* DAY SELECTION FILTER TABS */}
-            <div className="flex flex-wrap items-center gap-1.5 mb-5 p-1.5 bg-amber-50/70 rounded-2xl border border-amber-200/70">
+            <div className="flex flex-wrap items-center gap-1.5 mb-5 p-1.5 bg-amber-50/70 rounded-2xl border border-amber-200/70 emcee-no-print print:hidden">
               {[
                 { id: "all", label: "All 6 Days", date: "" },
                 { id: "2026-10-15", label: "Panchami", date: "15 Oct" },
@@ -10696,7 +11185,7 @@ function decodeCategoryDescription(desc?: string) {
 
             {/* DYNAMIC PER-DAY RUN SHEET */}
             {(() => {
-              const currentScheduleList = getStoredSchedule();
+              const currentScheduleList = scheduleDays && scheduleDays.length > 0 ? scheduleDays : getStoredSchedule();
               const targetDays = emceeFilterDay === "all"
                 ? currentScheduleList
                 : currentScheduleList.filter((d) => d.isoDate === emceeFilterDay);
@@ -10714,33 +11203,67 @@ function decodeCategoryDescription(desc?: string) {
                   {targetDays.map((dayItem) => {
                     const dayPerfs = performances.filter((p) => {
                       const rawDate = p.cultural_evenings?.evening_date || p.evening_date || p.scheduled_date || (p.created_at ? p.created_at.split("T")[0] : "");
-                      return rawDate === dayItem.isoDate;
+                      return rawDate === dayItem.isoDate || (p.day && p.day.toLowerCase().includes(dayItem.dayName.toLowerCase()));
                     });
 
+                    const orderedDayPerfs = getOrderedPerformances(dayPerfs, dayItem.isoDate, performanceOrderMap);
                     const headliner = dayItem.culturalEvening?.pssHeadliner;
                     const startTime = (dayItem.culturalEvening?.time || "06:30 PM").split(" - ")[0] || "06:30 PM";
 
+                    let runningMinutes = 10;
+
                     return (
-                      <div key={dayItem.id} className="border border-amber-300/80 rounded-2xl overflow-hidden shadow-xs">
+                      <div key={dayItem.id} className="border border-amber-300/80 rounded-2xl overflow-hidden shadow-xs print:border-black print:shadow-none print:break-inside-avoid">
                         {/* Day Banner */}
-                        <div className="bg-gradient-to-r from-amber-100 via-amber-50 to-white px-4 py-3 border-b border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                        <div className="bg-gradient-to-r from-amber-100 via-amber-50 to-white print:bg-gray-100 px-4 py-3 border-b border-amber-200 print:border-black flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                           <div className="flex items-center gap-2">
-                            <span className="bg-primary text-white text-xs font-bold px-2.5 py-0.5 rounded-full">
+                            <span className="bg-primary text-white text-xs font-bold px-2.5 py-0.5 rounded-full print:bg-black print:text-white">
                               {dayItem.dayName}
                             </span>
                             <span className="font-heading font-bold text-gray-900 text-sm">
                               {dayItem.theme}
                             </span>
                           </div>
-                          <span className="text-xs font-semibold text-amber-900">
-                            📅 {dayItem.date} • ⏱️ {dayItem.culturalEvening?.time || "06:30 PM - 10:30 PM"}
-                          </span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-semibold text-amber-900 print:text-black">
+                              📅 {dayItem.date} • ⏱️ {dayItem.culturalEvening?.time || "06:30 PM - 10:30 PM"}
+                            </span>
+                            <div className="flex items-center gap-1.5 emcee-no-print print:hidden">
+                              <button
+                                type="button"
+                                onClick={() => handleSortPerformancesByGenre(dayItem.isoDate)}
+                                className="bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 text-[11px] font-bold px-2 py-0.5 rounded-lg transition cursor-pointer"
+                                title="Auto-group performances by genre (Dance, Vocal, Drama)"
+                              >
+                                ⚡ Group by Genre
+                              </button>
+                              {performanceOrderMap[dayItem.isoDate] && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleResetPerformanceOrder(dayItem.isoDate)}
+                                  className="text-[11px] font-semibold text-gray-600 hover:text-gray-900 bg-white/80 hover:bg-white border border-gray-200 px-2 py-0.5 rounded-lg transition cursor-pointer"
+                                  title="Reset to initial registration order"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadEmceeExcel(dayItem.isoDate)}
+                                className="bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-bold px-2 py-0.5 rounded-lg transition flex items-center gap-1 cursor-pointer"
+                                title="Download this day's run-sheet in Excel"
+                              >
+                                <FileSpreadsheet size={11} />
+                                <span>Day CSV</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
 
                         <div className="overflow-x-auto">
                           <table className="w-full text-left border-collapse text-xs">
                             <thead>
-                              <tr className="bg-amber-50/80 text-amber-950 font-bold border-b border-amber-200/80">
+                              <tr className="bg-amber-50/80 text-amber-950 font-bold border-b border-amber-200/80 print:bg-gray-200 print:text-black print:border-black">
                                 <th className="p-3 w-16">Cue #</th>
                                 <th className="p-3 w-28">Stage Time</th>
                                 <th className="p-3">Performance / Act Title</th>
@@ -10749,19 +11272,19 @@ function decodeCategoryDescription(desc?: string) {
                                 <th className="p-3">Audio &amp; Stage Cues</th>
                               </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100 bg-white">
+                            <tbody className="divide-y divide-gray-100 bg-white print:divide-gray-400">
                               {/* 1. Day Opening Cue */}
-                              <tr className="bg-amber-100/30 font-medium">
-                                <td className="p-3 font-mono font-bold text-primary">#01</td>
+                              <tr className="bg-amber-100/30 font-medium print:bg-gray-50">
+                                <td className="p-3 font-mono font-bold text-primary print:text-black">#01</td>
                                 <td className="p-3 font-mono font-bold text-gray-900">{startTime}</td>
                                 <td className="p-3">
-                                  <span className="font-bold text-primary block">
+                                  <span className="font-bold text-primary print:text-black block">
                                     Stage Diya Lighting &amp; Agomoni Welcome
                                   </span>
                                   <span className="text-gray-500 text-[11px]">{dayItem.theme}</span>
                                 </td>
                                 <td className="p-3">
-                                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-semibold text-[11px]">
+                                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-semibold text-[11px] print:bg-gray-200 print:text-black">
                                     Inauguration
                                   </span>
                                 </td>
@@ -10770,39 +11293,82 @@ function decodeCategoryDescription(desc?: string) {
                               </tr>
 
                               {/* 2. Registered Resident Performances for this day */}
-                              {dayPerfs.map((p, pIdx) => (
-                                <tr key={p.id || pIdx} className="hover:bg-gray-50/70">
-                                  <td className="p-3 font-mono font-bold text-gray-700">
-                                    #{String(pIdx + 2).padStart(2, "0")}
-                                  </td>
-                                  <td className="p-3 font-mono font-semibold text-gray-900">
-                                    {p.scheduled_time || `Act ${pIdx + 1}`}
-                                  </td>
-                                  <td className="p-3">
-                                    <span className="font-bold text-gray-900 block">{p.song_name || p.performance_type}</span>
-                                    <span className="text-gray-500 text-[11px]">{p.performance_type}</span>
-                                  </td>
-                                  <td className="p-3">
-                                    <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md font-medium text-[11px]">
-                                      {p.format || "Solo"}
-                                    </span>
-                                  </td>
-                                  <td className="p-3">
-                                    <span className="font-semibold text-gray-900 block">{p.contact_name} (Flat {p.flat_number})</span>
-                                    <span className="text-gray-500 text-[11px]">
-                                      {p.participant_names || "Solo"} • 📱 {p.phone}
-                                    </span>
-                                  </td>
-                                  <td className="p-3 text-gray-600">
-                                    {p.performance_type === "Dance"
-                                      ? "Aux / Bluetooth Audio Track • Stage Wash"
-                                      : "1 Vocal Mic + Instrument In"}
-                                  </td>
-                                </tr>
-                              ))}
+                              {orderedDayPerfs.map((p, pIdx) => {
+                                const actTime = calculateStageTime(startTime, runningMinutes);
+                                const estDuration = getEstimatedDurationMinutes(p.format, p.performance_type);
+                                runningMinutes += estDuration + 2;
+
+                                return (
+                                  <tr key={p.id || pIdx} className="hover:bg-gray-50/70">
+                                    <td className="p-3 font-mono font-bold text-gray-700 whitespace-nowrap">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="font-mono text-xs font-bold text-gray-800">
+                                          #{String(pIdx + 2).padStart(2, "0")}
+                                        </span>
+                                        <div className="flex flex-col gap-0.5 emcee-no-print print:hidden">
+                                          <button
+                                            type="button"
+                                            disabled={pIdx === 0}
+                                            onClick={() => handleMovePerformance(dayItem.isoDate, p.id, "up")}
+                                            title="Move act earlier in stage lineup"
+                                            className={`p-0.5 rounded transition ${
+                                              pIdx === 0
+                                                ? "text-gray-300 cursor-not-allowed"
+                                                : "text-amber-700 hover:text-white hover:bg-amber-600 cursor-pointer"
+                                            }`}
+                                          >
+                                            <ArrowUp size={11} />
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={pIdx === orderedDayPerfs.length - 1}
+                                            onClick={() => handleMovePerformance(dayItem.isoDate, p.id, "down")}
+                                            title="Move act later in stage lineup"
+                                            className={`p-0.5 rounded transition ${
+                                              pIdx === orderedDayPerfs.length - 1
+                                                ? "text-gray-300 cursor-not-allowed"
+                                                : "text-amber-700 hover:text-white hover:bg-amber-600 cursor-pointer"
+                                            }`}
+                                          >
+                                            <ArrowDown size={11} />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="p-3 font-mono font-semibold text-gray-900 whitespace-nowrap">
+                                      <span className="font-bold text-gray-900 block">{actTime}</span>
+                                      <span className="text-[10px] text-gray-400 block font-normal">~{estDuration} min act</span>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className="font-bold text-gray-900 block">{p.song_name || p.performance_type}</span>
+                                      <span className="text-gray-500 text-[11px]">{p.performance_type}</span>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className="bg-gray-100 text-gray-800 px-2 py-0.5 rounded-md font-medium text-[11px] print:border print:border-gray-300">
+                                        {p.format || "Solo"}
+                                      </span>
+                                    </td>
+                                    <td className="p-3">
+                                      <span className="font-semibold text-gray-900 block">{p.contact_name} (Flat {p.flat_number})</span>
+                                      <span className="text-gray-500 text-[11px]">
+                                        {p.participant_names || "Solo"} • 📱 {p.phone}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-gray-600">
+                                      {p.performance_type === "Dance"
+                                        ? "Aux / Bluetooth Audio Track • Dynamic Stage Wash Lights"
+                                        : p.performance_type === "Recitation"
+                                        ? "1 High-Gain Vocal Mic + Gentle Amber Fill"
+                                        : p.performance_type === "Drama / Skit" || p.performance_type === "Drama"
+                                        ? "3 Wireless Headsets / Lapel Mics + Full Scene Lighting"
+                                        : "1 Vocal Mic + Instrument In"}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
 
                               {/* If no resident performances registered for this day yet */}
-                              {dayPerfs.length === 0 && (
+                              {orderedDayPerfs.length === 0 && (
                                 <tr>
                                   <td colSpan={6} className="p-4 text-center text-gray-400 italic text-[11px]">
                                     Resident performance slots open ({dayItem.culturalEvening?.residentSlotsAvailable || 8} slots available).
@@ -10812,17 +11378,20 @@ function decodeCategoryDescription(desc?: string) {
 
                               {/* 3. Day Flagship Headliner or Evening Finale */}
                               {headliner ? (
-                                <tr className="bg-gradient-to-r from-red-50 to-amber-50 font-semibold border-t border-amber-200">
-                                  <td className="p-3 font-mono font-bold text-primary">#FINAL</td>
-                                  <td className="p-3 font-mono font-bold text-primary">{headliner.time}</td>
-                                  <td className="p-3">
-                                    <span className="font-heading font-bold text-primary block text-sm">
-                                      {headliner.title}
-                                    </span>
-                                    <span className="text-amber-900 text-[11px] font-medium">{headliner.genre}</span>
+                                <tr className="bg-gradient-to-r from-red-50 to-amber-50 font-semibold border-t border-amber-200 print:bg-gray-100 print:border-black">
+                                  <td className="p-3 font-mono font-bold text-primary print:text-black">#FINAL</td>
+                                  <td className="p-3 font-mono font-bold text-primary print:text-black">
+                                    <span className="block">{headliner.time || calculateStageTime(startTime, runningMinutes)}</span>
+                                    <span className="text-[10px] text-amber-700 print:text-gray-600 block font-normal">{headliner.duration}</span>
                                   </td>
                                   <td className="p-3">
-                                    <span className="bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md text-[11px] font-bold">
+                                    <span className="font-heading font-bold text-primary print:text-black block text-sm">
+                                      {headliner.title}
+                                    </span>
+                                    <span className="text-amber-900 print:text-gray-700 text-[11px] font-medium">{headliner.genre}</span>
+                                  </td>
+                                  <td className="p-3">
+                                    <span className="bg-amber-200 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md text-[11px] font-bold print:bg-gray-200 print:text-black print:border-black">
                                       {headliner.duration}
                                     </span>
                                   </td>
@@ -10832,19 +11401,20 @@ function decodeCategoryDescription(desc?: string) {
                                   </td>
                                 </tr>
                               ) : (
-                                <tr className="bg-amber-50/50 font-semibold border-t border-amber-200">
-                                  <td className="p-3 font-mono font-bold text-primary">#FINAL</td>
+                                <tr className="bg-amber-50/50 font-semibold border-t border-amber-200 print:bg-gray-100 print:border-black">
+                                  <td className="p-3 font-mono font-bold text-primary print:text-black">#FINAL</td>
                                   <td className="p-3 font-mono font-bold text-gray-900">
-                                    {(dayItem.culturalEvening?.time || "10:00 PM").split(" - ")[1] || "10:00 PM"}
+                                    <span className="block">{(dayItem.culturalEvening?.time || "10:00 PM").split(" - ")[1] || "10:00 PM"}</span>
+                                    <span className="text-[10px] text-gray-500 block font-normal">~15 mins</span>
                                   </td>
                                   <td className="p-3">
-                                    <span className="font-heading font-bold text-primary block">
+                                    <span className="font-heading font-bold text-primary print:text-black block">
                                       Grand Sandhya Aarti &amp; Community Farewell
                                     </span>
                                     <span className="text-gray-500 text-[11px]">Pratibimb Daily Stage Finale</span>
                                   </td>
                                   <td className="p-3">
-                                    <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-medium">
+                                    <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md text-[11px] font-medium print:bg-gray-200 print:text-black">
                                       Community Aarti
                                     </span>
                                   </td>
@@ -10862,11 +11432,11 @@ function decodeCategoryDescription(desc?: string) {
               );
             })()}
 
-            <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 emcee-no-print print:hidden">
               <span>Pratibimb Stage Coordination Desk • PBEL Sanskritik Samiti</span>
               <button
                 onClick={() => setIsEmceeModalOpen(false)}
-                className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded-xl"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold px-4 py-2 rounded-xl cursor-pointer"
               >
                 Close Run-Sheet
               </button>
