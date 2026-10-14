@@ -7,6 +7,7 @@
  * 3. Sit and Draw "Indradhanush" (120 total entries across 3 age groups)
  * 4. Junior Discovery Quiz (6 teams max, 5 members each, Grade 4-10)
  * 5. Dhunuchi Jugalbandi (10 Groups max, Duet Dhunuchi Dance, Saree & Dhoti/Kurta compulsory)
+ * 6. The Grand Dhunuchi Competition (Dashami Morning 12:30 PM onwards, Solo Devotional Dance)
  *
  * Cloud persisted and dynamically toggleable via Admin Control Center.
  */
@@ -18,7 +19,8 @@ export type CulturalEventId =
   | "mini_kumartuli"
   | "sit_and_draw"
   | "junior_quiz"
-  | "duet_dhunuchi";
+  | "duet_dhunuchi"
+  | "grand_dhunuchi";
 
 export type EventStatus = "open" | "coming_soon" | "closed";
 
@@ -143,6 +145,28 @@ export const DEFAULT_CULTURAL_EVENTS: CulturalEventConfig[] = [
       "Strictly 10 Groups (Pairs / Duos) max.",
       "Both participants in each group must perform synchronized rhythmic Dhunuchi dance to traditional Dhaak beats.",
       "Dress code is strictly COMPULSORY: Traditional Saree and Dhoti / Pyjama Kurta.",
+    ],
+    isOpen: false,
+    isVisible: true,
+    status: "coming_soon",
+  },
+  {
+    id: "grand_dhunuchi",
+    title: "The Grand Dhunuchi Competition",
+    subtitle: "Grand Solo Devotional Dhunuchi Dance Face-off on Dashami Morning",
+    day: "Vijaya Dashami • 20 Oct 2026 (Tue)",
+    time: "12:30 PM onwards",
+    location: "Main Pandal Courtyard & Cultural Arena",
+    maxLimit: 30,
+    teamSize: 1,
+    gradeEligibility: "Open to All Residents (Teens & Adults)",
+    dressCode: "Traditional Saree or Dhoti / Kurta recommended",
+    rules: [
+      "Open solo / individual competition for all energetic PBEL City residents (Teens & Adults).",
+      "Showcase your rhythmic footwork, balance, and devotion to traditional live Dhaak beats.",
+      "Safety first: Prepared earthen Dhunuchi (coconut husk, camphor & fragrant dhuna) and fire safety support provided by PSS volunteer crew.",
+      "Traditional attire (Saree / Kurta / Dhoti) is strongly encouraged.",
+      "Judging criteria: Rhythm, traditional posture, timing to the Dhaak, and devotional energy.",
     ],
     isOpen: false,
     isVisible: true,

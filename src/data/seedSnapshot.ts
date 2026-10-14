@@ -1434,6 +1434,12 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
         "description": "Playing with Vermilion: After honoring the goddess, the women playfully smear sindoor on each other's faces and foreheads, accompanied by exchanging sweets and warm embraces"
       },
       {
+        "time": "12:30 PM",
+        "event": "The Grand Dhunuchi Competition (12:30 PM onwards)",
+        "type": "cultural",
+        "description": "Grand festive Dhunuchi dance competition on Dashami morning to pulsating Dhaak beats"
+      },
+      {
         "time": "04:30 PM",
         "event": "Maa Durga Visarjan Shobha Yatra (Procession)",
         "type": "ritual"
@@ -2004,6 +2010,28 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
     "status": "coming_soon"
   },
   {
+    "id": "grand_dhunuchi",
+    "title": "The Grand Dhunuchi Competition",
+    "subtitle": "Grand Solo Devotional Dhunuchi Dance Face-off on Dashami Morning",
+    "day": "Vijaya Dashami • 20 Oct 2026 (Tue)",
+    "time": "12:30 PM onwards",
+    "location": "Main Pandal Courtyard & Cultural Arena",
+    "maxLimit": 30,
+    "teamSize": 1,
+    "gradeEligibility": "Open to All Residents (Teens & Adults)",
+    "dressCode": "Traditional Saree or Dhoti / Kurta recommended",
+    "rules": [
+      "Open solo / individual competition for all energetic PBEL City residents (Teens & Adults).",
+      "Showcase your rhythmic footwork, balance, and devotion to traditional live Dhaak beats.",
+      "Safety first: Prepared earthen Dhunuchi (coconut husk, camphor & fragrant dhuna) and fire safety support provided by PSS volunteer crew.",
+      "Traditional attire (Saree / Kurta / Dhoti) is strongly encouraged.",
+      "Judging criteria: Rhythm, traditional posture, timing to the Dhaak, and devotional energy."
+    ],
+    "isOpen": false,
+    "isVisible": true,
+    "status": "coming_soon"
+  },
+  {
     "id": "flash_mob",
     "title": "Sundowner Fitness Party",
     "subtitle": "High-Energy Festive Township Fitness & Dance Showcase",
@@ -2230,8 +2258,8 @@ export const SEED_SNAPSHOT: SeedSnapshotData = {
   },
   {
     "id": "chip-3",
-    "icon": "music",
-    "text": "Dhunuchi Dnce Competition: 20 Oct 12:30 PM"
+    "icon": "flame",
+    "text": "The Grand Dhunuchi Competition: 20 Oct 12:30 PM"
   }
 ],
   sponsorship_tiers: [

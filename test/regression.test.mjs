@@ -4358,6 +4358,38 @@ describe('PBEL City Durgotsav 2026 - Automated Regression Suite', () => {
     });
   });
 
+  describe('Suite 98: The Grand Dhunuchi Competition on Vijaya Dashami Morning (12:30 PM)', () => {
+    it('should verify culturalEvents configuration defines grand_dhunuchi on Dashami at 12:30 PM onwards', () => {
+      const configSrc = fs.readFileSync('src/config/culturalEvents.ts', 'utf8');
+      assert.ok(configSrc.includes('"grand_dhunuchi"'), 'CulturalEventId must include grand_dhunuchi');
+      assert.ok(configSrc.includes('The Grand Dhunuchi Competition'), 'Must define The Grand Dhunuchi Competition title');
+      assert.ok(configSrc.includes('Vijaya Dashami • 20 Oct 2026'), 'Must schedule on Vijaya Dashami');
+      assert.ok(configSrc.includes('12:30 PM onwards'), 'Must specify 12:30 PM onwards timing');
+    });
+
+    it('should verify schedule.ts includes The Grand Dhunuchi Competition in Dashami rituals at 12:30 PM', () => {
+      const schedSrc = fs.readFileSync('src/config/schedule.ts', 'utf8');
+      assert.ok(schedSrc.includes('The Grand Dhunuchi Competition (12:30 PM onwards)'), 'Dashami rituals must include Grand Dhunuchi Competition');
+      assert.ok(schedSrc.includes('"12:30 PM"'), 'Event must be scheduled at 12:30 PM');
+    });
+
+    it('should verify CulturalEventsRegistration component supports grand_dhunuchi icon, tabs, and form', () => {
+      const regSrc = fs.readFileSync('src/components/CulturalEventsRegistration.tsx', 'utf8');
+      assert.ok(regSrc.includes('grand_dhunuchi: <Flame'), 'EVENT_ICONS must map grand_dhunuchi');
+      assert.ok(regSrc.includes('lg:grid-cols-6'), 'Tab selector grid must support 6 event cards');
+      assert.ok(regSrc.includes('activeEvent.id === "grand_dhunuchi"'), 'Component must render grand_dhunuchi form section');
+      assert.ok(regSrc.includes('Solo Dhunuchi Dancer'), 'Registration submission must handle Solo Dhunuchi Dancer member');
+    });
+
+    it('should verify Admin Console and seedSnapshot integrate The Grand Dhunuchi Competition', () => {
+      const adminSrc = fs.readFileSync('src/app/admin/page.tsx', 'utf8');
+      const seedSrc = fs.readFileSync('src/data/seedSnapshot.ts', 'utf8');
+      assert.ok(adminSrc.includes('Manage 6 Official Cultural Events'), 'Admin header must reflect 6 cultural events');
+      assert.ok(adminSrc.includes('value="grand_dhunuchi"'), 'Admin event filter must include grand_dhunuchi option');
+      assert.ok(seedSrc.includes('"id": "grand_dhunuchi"'), 'SEED_SNAPSHOT must include grand_dhunuchi for offline resiliency');
+    });
+  });
+
 });
 
 

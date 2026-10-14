@@ -211,6 +211,7 @@ export const DEFAULT_PUJO_SCHEDULE: DaySchedule[] = [
     rituals: [
       { time: "09:00 AM", event: "Darpan Visarjan (Mirror Immersion Ceremony)", type: "ritual" },
       { time: "10:30 AM", event: "Devi Baran & Traditional Sindoor Khela", type: "ritual" },
+      { time: "12:30 PM", event: "The Grand Dhunuchi Competition (12:30 PM onwards)", type: "cultural", description: "Grand festive Dhunuchi dance competition on Dashami morning to pulsating Dhaak beats" },
       { time: "04:30 PM", event: "Maa Durga Visarjan Shobha Yatra (Procession)", type: "ritual" },
       { time: "08:00 PM", event: "Shanti Jal Sprinkling & Subho Bijoya Kolakoli", type: "ritual" },
     ],

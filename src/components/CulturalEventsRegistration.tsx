@@ -36,6 +36,7 @@ const EVENT_ICONS: Record<CulturalEventId, React.ReactNode> = {
   junior_quiz: <HelpCircle size={20} className="text-blue-500" />,
   mini_kumartuli: <Sparkles size={20} className="text-amber-500" />,
   duet_dhunuchi: <Flame size={20} className="text-red-500" />,
+  grand_dhunuchi: <Flame size={20} className="text-orange-500" />,
   flash_mob: <Music2 size={20} className="text-purple-500" />,
 };
 
@@ -256,6 +257,10 @@ export function CulturalEventsRegistration() {
           { name: contactName, grade: "Dancer 1 (Lead)" },
           { name: partnerName, grade: "Dancer 2 (Partner)" }
         );
+      } else if (activeEvent.id === "grand_dhunuchi") {
+        membersList.push(
+          { name: contactName, grade: "Solo Dhunuchi Dancer" }
+        );
       }
 
       const result = await submitCulturalRegistration({
@@ -265,13 +270,13 @@ export function CulturalEventsRegistration() {
         phone: cleanPhone,
         tower: selectedTower,
         flat: formattedFlat,
-        teamName: teamName || (activeEvent.id === "duet_dhunuchi" ? (contactName + " & " + partnerName) : undefined),
+        teamName: teamName || (activeEvent.id === "duet_dhunuchi" ? (contactName + " & " + partnerName) : (activeEvent.id === "grand_dhunuchi" ? (contactName + " (Solo Dhunuchi)") : undefined)),
         category: activeEvent.id === "sit_and_draw" ? selectedCategory : undefined,
         grade: activeEvent.id === "sit_and_draw" ? childGrade : undefined,
         ageGroup: activeEvent.id === "flash_mob" ? flashMobAgeGroup : undefined,
         notes: activeEvent.id === "sit_and_draw" ? ("Parent: " + contactName) : (activeEvent.id === "flash_mob" ? ("Category: " + flashMobAgeGroup) : undefined),
         members: membersList.length > 0 ? membersList : undefined,
-        dressCodeConfirmed: activeEvent.id === "duet_dhunuchi" ? true : undefined,
+        dressCodeConfirmed: (activeEvent.id === "duet_dhunuchi" || activeEvent.id === "grand_dhunuchi") ? true : undefined,
       });
 
       if (result.success && result.registration) {
@@ -305,8 +310,8 @@ export function CulturalEventsRegistration() {
         </p>
       </div>
 
-      {/* 5 EVENT SELECTOR TABS / CARDS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
+      {/* CULTURAL EVENT SELECTOR TABS / CARDS */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3">
         {visibleEvents.length === 0 ? (
           <div className="col-span-full bg-white rounded-2xl border border-gray-200 p-6 text-center text-xs text-gray-500">
             No cultural competitions are currently active for registration.
@@ -972,6 +977,44 @@ export function CulturalEventsRegistration() {
                       />
                       <span className="text-xs text-amber-950 font-semibold leading-relaxed">
                         Compulsory Dress Code Confirmation: I confirm that both participants will strictly wear traditional Saree and Dhoti / Pyjama Kurta during the Duet Dhunuchi competition.
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {/* 4.5. THE GRAND DHUNUCHI COMPETITION (VIJAYA DASHAMI MORNING 12:30 PM ONWARDS) */}
+              {activeEvent.id === "grand_dhunuchi" && (
+                <div className="space-y-4 pt-2">
+                  <div>
+                    <label className="block font-semibold text-gray-700 mb-1">Dancer / Participant Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={contactName}
+                      onChange={(e) => setContactName(e.target.value)}
+                      placeholder="e.g. Joydeep Mukherjee"
+                      className="w-full p-3 border border-gray-200 rounded-xl bg-gray-50 focus:bg-white focus:ring-2 focus:ring-primary outline-none transition"
+                    />
+                  </div>
+
+                  <div className="p-4 bg-orange-50/80 rounded-2xl border border-orange-200 text-xs text-orange-950 space-y-2">
+                    <div className="flex items-center gap-2 font-bold text-orange-900">
+                      <Flame size={16} className="text-orange-600" />
+                      <span>Vijaya Dashami Grand Morning Dhunuchi Showcase:</span>
+                    </div>
+                    <p className="leading-relaxed text-gray-700">
+                      Earthen Dhunuchi with burning fragrant dhuna and live traditional Dhaak beats will be provided by PSS in the open central arena. Traditional festive attire (Saree, Kurta or Dhoti) is strongly encouraged.
+                    </p>
+                    <label className="flex items-start gap-2 pt-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={dressCodeConfirmed}
+                        onChange={(e) => setDressCodeConfirmed(e.target.checked)}
+                        className="w-4 h-4 mt-0.5 rounded border-orange-400 text-primary focus:ring-primary cursor-pointer shrink-0"
+                      />
+                      <span className="text-xs text-gray-800 font-medium">
+                        I confirm traditional festive attire and agree to adhere to PSS fire safety guidelines during the competition.
                       </span>
                     </label>
                   </div>
